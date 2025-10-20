@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <filesystem>
 
 /* Build shaders from strings containing shader source code */
 GLuint ShaderHelpers::BuildShader(GLenum eShaderType, const string &shaderText)
@@ -44,13 +45,18 @@ GLuint ShaderHelpers::BuildShader(GLenum eShaderType, const string &shaderText)
 /* Read a text file into a string*/
 string ShaderHelpers::readFile(const char *filePath)
 {
+    filesystem::path path = filesystem::current_path();
+	path += "/assets/";
+	path += filePath;
+
 	string content;
-	ifstream fileStream(filePath, ios::in);
+	ifstream fileStream(path, ios::in);
 
 	if (!fileStream.is_open()) {
-		cerr << "Could not read file " << filePath << ". File does not exist." << endl;
+		cerr << "Could not read file " << path.string() << ". File does not exist." << endl;
 		return "";
 	}
+	cout << "Reading file " << path.string() << endl;
 
 	string line = "";
 	while (!fileStream.eof()) {

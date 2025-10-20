@@ -5,6 +5,8 @@
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
 
+#include "ui.h"
+
 #include "wrapper_glfw.h"
 using namespace std;
 
@@ -12,9 +14,7 @@ GLuint positionBufferObject;
 GLuint program;
 GLuint vao;
 
-bool show_demo_window;
-bool show_another_window;
-ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+Ui ui;
 
 const char* glsl_version = "#version 130";
 /*
@@ -64,7 +64,7 @@ void init(GlfwWrapper *glfw)
 
 	try
 	{
-		program = ShaderHelpers::LoadShader("basic.vert", "basic.frag");
+		program = ShaderHelpers::LoadShader("shaders/basic.vert", "shaders/basic.frag");
 	}
 	catch (exception &e)
 	{
@@ -81,9 +81,6 @@ void init(GlfwWrapper *glfw)
 //You should call glfwSwapBuffers() after all of your rendering to display what you rendered.
 void display(GlfwWrapper* glfw)
 {// Create window with graphics context
-
-
-	glUseProgram(program);
 	if (glfwGetWindowAttrib(glfw->window, GLFW_ICONIFIED) != 0)
 	{
 		ImGui_ImplGlfw_Sleep(10);
@@ -95,52 +92,17 @@ void display(GlfwWrapper* glfw)
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
 
-	// 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-	if (show_demo_window)
-		ImGui::ShowDemoWindow(&show_demo_window);
-
-	// 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
-	{
-		static float f = 0.0f;
-		static int counter = 0;
-
-		ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-		ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-		ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-		ImGui::Checkbox("Another Window", &show_another_window);
-
-		ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-		ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-
-		if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-			counter++;
-		ImGui::SameLine();
-		ImGui::Text("counter = %d", counter);
-
-    	ImGuiIO& io = ImGui::GetIO();
-		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-		ImGui::End();
-	}
-
-	// 3. Show another simple window.
-	if (show_another_window)
-	{
-		ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-		ImGui::Text("Hello from another window!");
-		if (ImGui::Button("Close Me"))
-			show_another_window = false;
-		ImGui::End();
-	}
+	ui.draw_frame();
 
 	// Rendering
 	int display_w, display_h;
 	glfwGetFramebufferSize(glfw->window, &display_w, &display_h);
 	glViewport(0, 0, display_w, display_h);
-	glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
+	glClearColor(ui.clear_color.x * ui.clear_color.w, ui.clear_color.y * ui.clear_color.w, ui.clear_color.z * ui.clear_color.w, ui.clear_color.w);
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	// mesh drawing
+	glUseProgram(program);
 	glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
@@ -152,10 +114,6 @@ void display(GlfwWrapper* glfw)
 	// imgui render
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-	// swap buffers
-	glfwSwapBuffers(glfw->window);
-	glUseProgram(0);
 }
 
 

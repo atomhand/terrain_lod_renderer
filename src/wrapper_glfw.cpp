@@ -109,7 +109,6 @@ int GlfwWrapper::eventLoop()
 		glfwPollEvents();
 	}
 
-	glfwTerminate();
 	return 0;
 }
 
