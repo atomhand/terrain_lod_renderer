@@ -1,0 +1,27 @@
+#include "asset_helper.h"
+#include <iostream>
+#include <fstream>
+
+/* Read a text file into a string*/
+std::string Engine::AssetHelper::readFile(const char *filePath)
+{
+    std::filesystem::path path = assetPath(filePath);
+
+	std::string content;
+	std::ifstream fileStream(path, std::ios::in);
+
+	if (!fileStream.is_open()) {
+		std::cerr << "Could not read file " << path.string() << ". File does not exist." << std::endl;
+		return "";
+	}
+	std::cout << "Reading file " << path.string() << std::endl;
+
+	std::string line = "";
+	while (!fileStream.eof()) {
+		getline(fileStream, line);
+		content.append(line + "\n");
+	}
+
+	fileStream.close();
+	return content;
+}
