@@ -1,0 +1,15 @@
+cmake_minimum_required(VERSION 3.10)
+project(ImguiExample LANGUAGES C CXX)
+
+# GLFW build arguments - disable tests, examples and documentation
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+
+add_subdirectory("extern/glfw")
+add_subdirectory("extern/imgui")
+
+add_executable(ImguiExample "src/main.cpp" "src/wrapper_glfw.cpp" "src/shader_helpers.cpp" "extern/glad/src/glad.c")
+
+target_include_directories(ImguiExample PRIVATE "extern/glad/include")
+target_link_libraries(ImguiExample PRIVATE glfw imgui)
