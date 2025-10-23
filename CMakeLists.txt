@@ -12,7 +12,7 @@ add_subdirectory("extern/imgui")
 add_subdirectory("extern/glm")
 
 add_executable(ImguiExample
-    "src/main.cpp" "src/wrapper_glfw.cpp" "src/asset_loading.cpp" "src/shader.cpp" "extern/glad/src/glad.c")
+    "src/main.cpp" "src/wrapper_glfw.cpp" "src/asset_loading.cpp" "src/shader.cpp" "extern/glad/src/glad.c" "src/ui.cpp")
 
 target_include_directories(ImguiExample PRIVATE "extern/glad/include")
 target_link_libraries(ImguiExample PRIVATE glfw imgui glm)

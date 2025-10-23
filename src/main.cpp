@@ -1,10 +1,6 @@
 #include <iostream>
 #include "shader.h"
 
-#include "imgui.h"
-#include "backends/imgui_impl_glfw.h"
-#include "backends/imgui_impl_opengl3.h"
-
 #include "ui.h"
 
 #include "wrapper_glfw.h"
@@ -16,37 +12,16 @@ GLuint vao;
 
 Ui ui;
 
-const char* glsl_version = "#version 130";
 /*
 This function is called before entering the main rendering loop.
 Use it for all you initialisation stuff
 */
 void init(GlfwWrapper *glfw)
 {	
-	float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor()); // Valid on GLFW 3.3+ only
     glfwMakeContextCurrent(glfw->window);
     glfwSwapInterval(1); // Enable vsync
 
-    // Setup Dear ImGui context
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-
-    // Setup Dear ImGui style
-    ImGui::StyleColorsDark();
-    //ImGui::StyleColorsLight();
-
-    // Setup scaling
-    ImGuiStyle& style = ImGui::GetStyle();
-    style.ScaleAllSizes(main_scale);        // Bake a fixed style scale. (until we have a solution for dynamic style scaling, changing this requires resetting Style + calling this again)
-    style.FontScaleDpi = main_scale;        // Set initial font scale. (using io.ConfigDpiScaleFonts=true makes this unnecessary. We leave both here for documentation purpose)
-
-    // Setup Platform/Renderer backends
-    ImGui_ImplGlfw_InitForOpenGL(glfw->window, true);
-    ImGui_ImplOpenGL3_Init(glsl_version);
-
+    ui.init(glfw);
 
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
@@ -80,19 +55,8 @@ void init(GlfwWrapper *glfw)
 //Called to update the display.
 //You should call glfwSwapBuffers() after all of your rendering to display what you rendered.
 void display(GlfwWrapper* glfw)
-{// Create window with graphics context
-	if (glfwGetWindowAttrib(glfw->window, GLFW_ICONIFIED) != 0)
-	{
-		ImGui_ImplGlfw_Sleep(10);
-		return;
-	}
-
-	// Start the Dear ImGui frame
-	ImGui_ImplOpenGL3_NewFrame();
-	ImGui_ImplGlfw_NewFrame();
-	ImGui::NewFrame();
-
-	ui.draw_frame();
+{
+	ui.frame_update(glfw);
 
 	// Rendering
 	int display_w, display_h;
@@ -111,9 +75,7 @@ void display(GlfwWrapper* glfw)
 
 	glDisableVertexAttribArray(0);
 
-	// imgui render
-	ImGui::Render();
-	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+	ui.render();
 }
 
 
