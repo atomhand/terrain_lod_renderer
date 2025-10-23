@@ -12,7 +12,7 @@ private:
 public:
     glm::vec4 clear_color = glm::vec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-    void init(GlfwWrapper *glfw);
-    void frame_update(GlfwWrapper *glfw);
+    void init(Engine::GlfwWrapper *glfw);
+    void frame_update(Engine::GlfwWrapper *glfw);
     void render();
 };

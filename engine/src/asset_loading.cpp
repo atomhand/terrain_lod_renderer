@@ -5,7 +5,7 @@
 #include <filesystem>
 
 /* Read a text file into a string*/
-string AssetLoading::readFile(const char *filePath)
+string Engine::AssetLoading::readFile(const char *filePath)
 {
     filesystem::path path = filesystem::current_path();
 	path += "/assets/";

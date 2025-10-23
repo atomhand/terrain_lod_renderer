@@ -9,7 +9,7 @@
 using namespace std;
 
 /* Constructor for wrapper object */
-GlfwWrapper::GlfwWrapper(int width, int height, const char *title) {
+Engine::GlfwWrapper::GlfwWrapper(int width, int height, const char *title) {
 
 	this->width = width;
 	this->height = height;
@@ -53,9 +53,6 @@ GlfwWrapper::GlfwWrapper(int width, int height, const char *title) {
 		return;
 	}
 
-	/* Can set the Window title at a later time if you wish*/
-	glfwSetWindowTitle(window, "Hello Graphics (again)");
-
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, true);
 
 	glEnable(GL_MULTISAMPLE);
@@ -63,12 +60,12 @@ GlfwWrapper::GlfwWrapper(int width, int height, const char *title) {
 
 
 /* Terminate GLFW on destruvtion of the wrapepr object */
-GlfwWrapper::~GlfwWrapper() {
+Engine::GlfwWrapper::~GlfwWrapper() {
 	glfwTerminate();
 }
 
 /* Returns the GLFW window handle, required to call GLFW functions outside this class */
-GLFWwindow* GlfwWrapper::getWindow()
+GLFWwindow* Engine::GlfwWrapper::getWindow()
 {
 	return window;
 }
@@ -77,7 +74,7 @@ GLFWwindow* GlfwWrapper::getWindow()
 /*
  * Print OpenGL Version details
  */
-void GlfwWrapper::DisplayVersion()
+void Engine::GlfwWrapper::DisplayVersion()
 {
 	/* One way to get OpenGL version*/
 	int major, minor;
@@ -96,7 +93,7 @@ void GlfwWrapper::DisplayVersion()
 GLFW_Main function normally starts the windows system, calls any init routines
 and then starts the event loop which runs until the program ends
 */
-int GlfwWrapper::eventLoop()
+int Engine::GlfwWrapper::eventLoop()
 {
 	// Main loop
 	while (!glfwWindowShouldClose(window))
@@ -114,24 +111,24 @@ int GlfwWrapper::eventLoop()
 
 
 /* Register an error callback function */
-void GlfwWrapper::setErrorCallback(void(*func)(int error, const char* description))
+void Engine::GlfwWrapper::setErrorCallback(void(*func)(int error, const char* description))
 {
 	glfwSetErrorCallback(func);
 }
 
 /* Register a display function that renders in the window */
-void GlfwWrapper::setRenderer(void(*func)(GlfwWrapper*)) {
+void Engine::GlfwWrapper::setRenderer(void(*func)(GlfwWrapper*)) {
 	this->renderer = func;
 }
 
 /* Register a callback that runs after the window gets resized */
-void GlfwWrapper::setReshapeCallback(void(*func)(GLFWwindow* window, int w, int h)) {
+void Engine::GlfwWrapper::setReshapeCallback(void(*func)(GLFWwindow* window, int w, int h)) {
 	glfwSetFramebufferSizeCallback(window, func);
 }
 
 
 /* Register a callback to respond to keyboard events */
-void GlfwWrapper::setKeyCallback(void(*func)(GLFWwindow* window, int key, int scancode, int action, int mods))
+void Engine::GlfwWrapper::setKeyCallback(void(*func)(GLFWwindow* window, int key, int scancode, int action, int mods))
 {
 	glfwSetKeyCallback(window, func);
 }

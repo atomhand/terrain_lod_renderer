@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-Shader::Shader(const char* vertexPath, const char* fragmentPath)
+Engine::Shader::Shader(const char* vertexPath, const char* fragmentPath)
 {
     std::string vertexCode = AssetLoading::readFile(vertexPath);
     std::string fragmentCode = AssetLoading::readFile(fragmentPath);
@@ -56,22 +56,22 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath)
     glDeleteShader(fragment);
 }
 
-void Shader::use()
+void Engine::Shader::use()
 {
     glUseProgram(programID);
 }
 
-void Shader::setBool(const std::string &name, bool value) const
+void Engine::Shader::setBool(const std::string &name, bool value) const
 {
     glUniform1i(glGetUniformLocation(programID, name.c_str()), (int)value); 
 }
 
-void Shader::setInt(const std::string &name, int value) const
+void Engine::Shader::setInt(const std::string &name, int value) const
 {
     glUniform1i(glGetUniformLocation(programID, name.c_str()), value); 
 }
 
-void Shader::setFloat(const std::string &name, float value) const
+void Engine::Shader::setFloat(const std::string &name, float value) const
 {    
     glUniform1f(glGetUniformLocation(programID, name.c_str()), value); 
 }

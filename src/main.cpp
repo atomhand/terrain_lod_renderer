@@ -4,11 +4,15 @@
 #include "ui.h"
 
 #include "wrapper_glfw.h"
+
+#include "terrain_mesh.h"
+
 using namespace std;
 
 GLuint positionBufferObject;
-Shader* shader;
 GLuint vao;
+
+TerrainMesh* terrain_mesh;
 
 Ui ui;
 
@@ -16,7 +20,7 @@ Ui ui;
 This function is called before entering the main rendering loop.
 Use it for all you initialisation stuff
 */
-void init(GlfwWrapper *glfw)
+void init(Engine::GlfwWrapper *glfw)
 {	
     glfwMakeContextCurrent(glfw->window);
     glfwSwapInterval(1); // Enable vsync
@@ -39,7 +43,8 @@ void init(GlfwWrapper *glfw)
 
 	try
 	{
-		shader = new Shader("shaders/basic.vert", "shaders/basic.frag");
+		Engine::Shader shader = Engine::Shader("shaders/basic.vert", "shaders/basic.frag");
+		terrain_mesh = new TerrainMesh(shader);
 	}
 	catch (exception &e)
 	{
@@ -50,11 +55,13 @@ void init(GlfwWrapper *glfw)
 
 	glfw->DisplayVersion();
 
+	/* Can set the Window title at a later time if you wish*/
+	glfwSetWindowTitle(glfw->window, "Crowd Simulation Test");
 }
 
 //Called to update the display.
 //You should call glfwSwapBuffers() after all of your rendering to display what you rendered.
-void display(GlfwWrapper* glfw)
+void display(Engine::GlfwWrapper* glfw)
 {
 	ui.frame_update(glfw);
 
@@ -66,15 +73,9 @@ void display(GlfwWrapper* glfw)
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	// mesh drawing
-	shader->use();
-	glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
+	terrain_mesh->draw();
 
-	glDrawArrays(GL_TRIANGLES, 0, 3);
-
-	glDisableVertexAttribArray(0);
-
+	// render ui
 	ui.render();
 }
 
@@ -105,7 +106,7 @@ static void error_callback(int error, const char* description)
 int main()
 {
     const char * title = "Crowd Simulation Test";
-    GlfwWrapper *glfw = new GlfwWrapper(1024,768,title);
+    Engine::GlfwWrapper *glfw = new Engine::GlfwWrapper(1024,768,title);
 
     if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
@@ -122,7 +123,7 @@ int main()
 
     glfw->eventLoop();
 
-	delete(shader);
+	delete(terrain_mesh);
 
     delete(glfw);
     return 0;
