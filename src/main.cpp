@@ -1,5 +1,5 @@
 #include <iostream>
-#include "shader_helpers.h"
+#include "shader.h"
 
 #include "imgui.h"
 #include "backends/imgui_impl_glfw.h"
@@ -11,7 +11,7 @@
 using namespace std;
 
 GLuint positionBufferObject;
-GLuint program;
+Shader* shader;
 GLuint vao;
 
 Ui ui;
@@ -64,7 +64,7 @@ void init(GlfwWrapper *glfw)
 
 	try
 	{
-		program = ShaderHelpers::LoadShader("shaders/basic.vert", "shaders/basic.frag");
+		shader = new Shader("shaders/basic.vert", "shaders/basic.frag");
 	}
 	catch (exception &e)
 	{
@@ -102,7 +102,7 @@ void display(GlfwWrapper* glfw)
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	// mesh drawing
-	glUseProgram(program);
+	shader->use();
 	glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
@@ -159,6 +159,8 @@ int main()
     init(glfw);
 
     glfw->eventLoop();
+
+	delete(shader);
 
     delete(glfw);
     return 0;
