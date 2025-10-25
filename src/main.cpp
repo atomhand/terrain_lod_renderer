@@ -7,6 +7,8 @@
 
 #include "terrain_mesh.h"
 
+#include "rts_camera.h"
+
 using namespace std;
 
 GLuint positionBufferObject;
@@ -15,6 +17,8 @@ GLuint vao;
 TerrainMesh* terrain_mesh;
 
 Ui ui;
+
+RtsCamera camera;
 
 /*
 This function is called before entering the main rendering loop.
@@ -44,7 +48,7 @@ void init(Engine::GlfwWrapper *glfw)
 	try
 	{
 		Engine::Shader shader = Engine::Shader("shaders/basic.vert", "shaders/basic.frag");
-		terrain_mesh = new TerrainMesh(shader);
+		terrain_mesh = new TerrainMesh(TerrainConfig(32),shader);
 	}
 	catch (exception &e)
 	{
@@ -56,13 +60,15 @@ void init(Engine::GlfwWrapper *glfw)
 	glfw->DisplayVersion();
 
 	/* Can set the Window title at a later time if you wish*/
-	glfwSetWindowTitle(glfw->window, "Crowd Simulation Test");
+	glfwSetWindowTitle(glfw->window, "Unnamed Project");
 }
 
 //Called to update the display.
 //You should call glfwSwapBuffers() after all of your rendering to display what you rendered.
 void display(Engine::GlfwWrapper* glfw)
 {
+	camera.update_transform();
+
 	ui.frame_update(glfw);
 
 	// Rendering
@@ -72,6 +78,7 @@ void display(Engine::GlfwWrapper* glfw)
 	glClearColor(ui.clear_color.x * ui.clear_color.w, ui.clear_color.y * ui.clear_color.w, ui.clear_color.z * ui.clear_color.w, ui.clear_color.w);
 	glClear(GL_COLOR_BUFFER_BIT);
 
+	terrain_mesh->shader.setCamera(camera);
 	// mesh drawing
 	terrain_mesh->draw();
 
@@ -97,6 +104,11 @@ static void keyCallback(GLFWwindow* window, int k, int s, int action, int mods)
 		glfwSetWindowShouldClose(window, GL_TRUE);
 }
 
+static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	camera.update_zoom((float)yoffset);
+}
+
 /* An error callback function to output GLFW errors*/
 static void error_callback(int error, const char* description)
 {
@@ -118,6 +130,8 @@ int main()
     glfw->setKeyCallback(keyCallback);
     glfw->setReshapeCallback(reshape);
     glfw->setErrorCallback(error_callback);
+
+	glfwSetScrollCallback(glfw->window,scrollCallback);
 
     init(glfw);
 

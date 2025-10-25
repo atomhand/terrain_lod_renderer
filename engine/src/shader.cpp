@@ -75,3 +75,10 @@ void Engine::Shader::setFloat(const std::string &name, float value) const
 {    
     glUniform1f(glGetUniformLocation(programID, name.c_str()), value); 
 }
+
+
+void Engine::Shader::setCamera(const Camera &camera)
+{
+    setMat4("view", camera.get_view());
+    setMat4("projection", camera.get_proj());
+}
