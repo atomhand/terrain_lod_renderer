@@ -7,7 +7,7 @@
 
 const char* glsl_version = "#version 130";
 
-void Ui::init(Engine::GlfwWrapper *glfw)
+void Ui::init(Engine::GameWindow &window)
 {
     float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor()); // Valid on GLFW 3.3+ only
     // Setup Dear ImGui context
@@ -27,14 +27,14 @@ void Ui::init(Engine::GlfwWrapper *glfw)
     style.FontScaleDpi = main_scale;        // Set initial font scale. (using io.ConfigDpiScaleFonts=true makes this unnecessary. We leave both here for documentation purpose)
 
     // Setup Platform/Renderer backends
-    ImGui_ImplGlfw_InitForOpenGL(glfw->window, true);
+    ImGui_ImplGlfw_InitForOpenGL(window.getWindow(), true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 }
 
-void  Ui::frame_update(Engine::GlfwWrapper *glfw)
+void  Ui::frame_update(Engine::GameWindow &window)
 {
     // Create window with graphics context
-    if (glfwGetWindowAttrib(glfw->window, GLFW_ICONIFIED) != 0)
+    if (window.isIconified())
     {
         ImGui_ImplGlfw_Sleep(10);
         return;
@@ -56,7 +56,7 @@ void  Ui::frame_update(Engine::GlfwWrapper *glfw)
 
         ImGui::Begin("Debug Window");                          // Create a window called "Hello, world!" and append into it.
 
-        ImGui::Text("Shoutout to Dear Imgui.");               // Display some text (you can use a format strings too)
+        ImGui::Text("Scroll delta: %.1f" ,window.getScrollDelta());               // Display some text (you can use a format strings too)
         ImGui::Checkbox("Checkbox", &show_demo_window);      // Edit bools storing our window open/close state
 
         /*
