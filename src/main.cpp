@@ -22,7 +22,7 @@ int main()
 	try
 	{
 		Engine::Shader shader = Engine::Shader("shaders/basic.vert", "shaders/basic.frag");
-		Mesh spheremesh = Mesh::Sphere(16,16);
+		Mesh spheremesh = Mesh::Sphere(64,64);
 		
 		MaterialRenderGroup batch(shader, spheremesh);
 		batch.transforms.push_back(glm::mat4x4(1.0));

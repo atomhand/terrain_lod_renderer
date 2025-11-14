@@ -126,9 +126,11 @@ public:
         
         // fill buffer data
         glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject());
-        glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(glm::vec4), verts.data(), GL_STATIC_DRAW);            
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferObject());
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(glm::vec4), verts.data(), GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ARRAY_BUFFER, normalsBufferObject());
+        glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(glm::vec4), normals.data(), GL_STATIC_DRAW);
+
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferObject());
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
         
