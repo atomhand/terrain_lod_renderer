@@ -1,5 +1,4 @@
 #pragma once
-#include <entt/entt.hpp>
 #include <glm/glm.hpp>
 
 struct  Input {
@@ -10,6 +9,5 @@ public:
 
 class World {
 public:
-    entt::registry registry;
     Input input;
 };

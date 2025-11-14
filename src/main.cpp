@@ -3,7 +3,6 @@
 
 #include "world.h"
 
-#include "ui.h"
 #include "application.h"
 #include "terrain_mesh.h"
 #include "rts_camera.h"
@@ -16,7 +15,6 @@ GLuint vao;
 
 World world;
 TerrainMesh* terrain_mesh;
-Ui ui;
 
 RtsCamera camera;
 
@@ -26,8 +24,6 @@ Use it for all you initialisation stuff
 */
 void init(Engine::Application &window)
 {
-    ui.init(window);
-
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
@@ -62,21 +58,16 @@ void display(Engine::Application& window)
 	camera.update_zoom(world.input.scrollDelta);
 	camera.update_transform();
 
-	ui.frame_update(window);
-
 	// Rendering
 	int display_w, display_h;
 	window.getFramebufferSize(display_w,display_h);
 	glViewport(0, 0, display_w, display_h);
-	glClearColor(ui.clear_color.x * ui.clear_color.w, ui.clear_color.y * ui.clear_color.w, ui.clear_color.z * ui.clear_color.w, ui.clear_color.w);
+	glClearColor(0.1f,0.1f,0.25f,1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	terrain_mesh->shader.setCamera(camera);
 	// mesh drawing
 	terrain_mesh->draw();
-
-	// render ui
-	ui.render();
 }
 
 int main()

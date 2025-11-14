@@ -8,18 +8,15 @@ set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
 add_subdirectory("extern/glfw")
-add_subdirectory("extern/imgui")
 add_subdirectory("extern/glm")
-add_subdirectory("extern/entt")
 
 add_subdirectory("engine")
 
 add_executable(ImguiExample
     src/main.cpp
-    src/ui.cpp
 )
 
-target_link_libraries(ImguiExample PRIVATE imgui engine)
+target_link_libraries(ImguiExample PRIVATE engine)
 
 # Copy asset folder to executing directory
 # TODO - Compress it

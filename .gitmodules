@@ -1,9 +1,3 @@
-[submodule "extern/imgui/imgui"]
-	path = extern/imgui/imgui
-	url = https://github.com/ocornut/imgui.git
 [submodule "extern/glm"]
 	path = extern/glm
 	url = https://github.com/g-truc/glm.git
-[submodule "extern/entt"]
-	path = extern/entt
-	url = https://github.com/skypjack/entt.git
