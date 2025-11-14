@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 set(SRC_PATH ${CMAKE_CURRENT_LIST_DIR}/src)
 file(GLOB ENGINE_GLOB
-    ${SRC_PATH}/asset_loading.cpp
+    ${SRC_PATH}/asset_helper.cpp
     ${SRC_PATH}/shader.cpp
     ${SRC_PATH}/application.cpp
     )

@@ -1,12 +1,12 @@
 #include "shader.h"
-#include "asset_loading.h"
+#include "asset_helper.h"
 
 #include <iostream>
 
 Engine::Shader::Shader(const char* vertexPath, const char* fragmentPath)
 {
-    std::string vertexCode = AssetLoading::readFile(vertexPath);
-    std::string fragmentCode = AssetLoading::readFile(fragmentPath);
+    std::string vertexCode = AssetHelper::readFile(vertexPath);
+    std::string fragmentCode = AssetHelper::readFile(fragmentPath);
     const char* vShaderCode = vertexCode.c_str();
     const char* fShaderCode = fragmentCode.c_str();
     

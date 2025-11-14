@@ -1,11 +1,11 @@
-#include "asset_loading.h"
+#include "asset_helper.h"
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <filesystem>
 
 /* Read a text file into a string*/
-string Engine::AssetLoading::readFile(const char *filePath)
+string Engine::AssetHelper::readFile(const char *filePath)
 {
     filesystem::path path = filesystem::current_path();
 	path += "/assets/";
