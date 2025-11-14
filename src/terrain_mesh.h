@@ -7,11 +7,11 @@
 class TerrainMesh
 {
 private:
-    GLuint positionBufferObject;
-    GLuint vao;
     
     TerrainConfig terrain_config;
 public:
+    GLuint positionBufferObject;
+    GLuint vao;
     Engine::Shader shader;
     void draw() {
         shader.use();
@@ -23,8 +23,6 @@ public:
 
         glDisableVertexAttribArray(0);
     }
-
-
 
     TerrainMesh(TerrainConfig terrain_config, Engine::Shader& shader) : shader(shader), terrain_config(terrain_config) {
         glGenVertexArrays(1, &vao);

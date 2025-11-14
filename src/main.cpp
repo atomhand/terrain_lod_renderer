@@ -1,28 +1,28 @@
 #include <iostream>
 #include "shader.h"
 
-#include "world.h"
+#include "demo_world.h"
 
 #include "application.h"
 #include "terrain_mesh.h"
 #include "rts_camera.h"
 #include "world.h"
 
+#include "renderpasses.h"
+
 using namespace std;
 
 GLuint positionBufferObject;
 GLuint vao;
 
-World world;
+DemoWorld world;
 TerrainMesh* terrain_mesh;
-
-RtsCamera camera;
 
 /*
 This function is called before entering the main rendering loop.
 Use it for all you initialisation stuff
 */
-void init(Engine::Application &window)
+void init(Engine::Application &app)
 {
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
@@ -53,34 +53,51 @@ void init(Engine::Application &window)
 
 //Called to update the display.
 //You should call glfwSwapBuffers() after all of your rendering to display what you rendered.
-void display(Engine::Application& window)
+void display(Engine::Application &app)
 {
-	camera.update(world);
 
-	// Rendering
-	int display_w, display_h;
-	window.getFramebufferSize(display_w,display_h);
-	glViewport(0, 0, display_w, display_h);
-	glClearColor(0.1f,0.1f,0.25f,1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-
-	terrain_mesh->shader.setCamera(camera);
+	terrain_mesh->shader.setCamera(world.camera);
 	// mesh drawing
 	terrain_mesh->draw();
 }
 
 int main()
 {
-    const char * title = "Crowd Simulation Test";
+    const char * title = "GPU Programming Coursework App";
 	Engine::Application app = Engine::Application(1024,768,title);
 
     init(app);
 
+	try
+	{
+		Engine::Shader shader = Engine::Shader("shaders/basic.vert", "shaders/basic.frag");
+		
+		InstancedRenderBatch batch(shader);
+		batch.vao = terrain_mesh->vao;
+		batch.positionBufferObject = terrain_mesh->positionBufferObject;
+		batch.transforms.push_back(glm::mat4x4(1.0));
+		batch.num_indices = 6;
+
+		world.instanced_render_batches.push_back(batch);
+	}
+	catch (exception &e)
+	{
+		cout << "Caught exception: " << e.what() << endl;
+		cin.ignore();
+		exit(0);
+	}
+
 	// event loop
 	while(!app.shouldClose()) {
 		app.frameStart(world);
+		world.camera.update(world);
 
-		display(app);
+		for(auto &transform : world.instanced_render_batches[0].transforms) {
+			transform = glm::translate(transform, glm::vec3(0.01,0.0f,0.0f));
+		}
+
+		RenderPasses::preRender(world, app);
+		RenderPasses::instancedRenderPasses(world,app);
 
 		app.frameEnd(world);
 	}
