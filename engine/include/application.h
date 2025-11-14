@@ -24,8 +24,6 @@ namespace Engine {
         static void errorCallback(int erorr, const  char* description);
         static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
         static void cursorPosCallback(GLFWwindow* window, double xpos, double ypos);
-
-        std::vector<void(*)(Application& window)> renderPasses;
     public:
         void updateWorld(World& world);
 
@@ -48,8 +46,18 @@ namespace Engine {
             return (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0);
         }
 
-        void addRenderPass(void(*f)(Application& window)) {
-            renderPasses.push_back(f);
-        };
+        void frameStart(World& world) {
+            glfwPollEvents();
+            updateWorld(world);
+        }
+
+        void frameEnd(World& world) {
+            // Swap buffers
+            glfwSwapBuffers(window);
+        }
+
+        bool shouldClose() {
+            return glfwWindowShouldClose(window);
+        }
     };
 }

@@ -7,7 +7,7 @@
 
 const char* glsl_version = "#version 130";
 
-void Ui::init(Engine::Application &window)
+void Ui::init(Engine::Application &app)
 {
     float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor()); // Valid on GLFW 3.3+ only
     // Setup Dear ImGui context
@@ -27,14 +27,14 @@ void Ui::init(Engine::Application &window)
     style.FontScaleDpi = main_scale;        // Set initial font scale. (using io.ConfigDpiScaleFonts=true makes this unnecessary. We leave both here for documentation purpose)
 
     // Setup Platform/Renderer backends
-    ImGui_ImplGlfw_InitForOpenGL(window.getWindow(), true);
+    ImGui_ImplGlfw_InitForOpenGL(app.getWindow(), true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 }
 
-void  Ui::frame_update(Engine::Application &window)
+void  Ui::frame_update(Engine::Application &app)
 {
     // Create window with graphics context
-    if (window.isIconified())
+    if (app.isIconified())
     {
         ImGui_ImplGlfw_Sleep(10);
         return;

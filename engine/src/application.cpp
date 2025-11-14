@@ -100,21 +100,3 @@ Engine::Application::Application(int width, int height, const char *title) {
 Engine::Application::~Application() {    
 	glfwTerminate();
 }
-
-int Engine::Application::eventLoop(World& world)
-{
-	// Main loop
-	while (!glfwWindowShouldClose(window))
-	{
-		glfwPollEvents();
-		updateWorld(world);
-		// Call function to draw your graphics
-		for(auto pass : renderPasses) {
-            pass(*this);
-        }
-		// Swap buffers
-		glfwSwapBuffers(window);
-	}
-
-	return 0;
-}

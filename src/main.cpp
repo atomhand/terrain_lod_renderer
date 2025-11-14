@@ -82,13 +82,18 @@ void display(Engine::Application& window)
 int main()
 {
     const char * title = "Crowd Simulation Test";
-	Engine::Application window = Engine::Application(1024,768,title);
+	Engine::Application app = Engine::Application(1024,768,title);
 
-    init(window);
+    init(app);
 
-	window.addRenderPass(display);
+	// event loop
+	while(!app.shouldClose()) {
+		app.frameStart(world);
 
-    window.eventLoop(world);
+		display(app);
+
+		app.frameEnd(world);
+	}
 
 	delete(terrain_mesh);
     return 0;
