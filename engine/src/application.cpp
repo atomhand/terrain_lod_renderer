@@ -5,6 +5,13 @@
 static double scrollDelta = 0.f;
 static glm::vec2 mousePos;
 
+static float yAxisKeyDelta;
+static float xAxisKeyDelta;
+
+static float numInput = -1.0;
+
+static float lastFrameTime;
+
 void Engine::Application::cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
 	mousePos = glm::vec2((float)xpos,(float)ypos);
 };
@@ -19,14 +26,55 @@ void Engine::Application::passInputs(World& world) {
 	world.input.scrollDelta = (float)scrollDelta;
 	world.input.mousePos = mousePos;
 
+	world.input.xAxisKeyDelta = xAxisKeyDelta;	
+	world.input.yAxisKeyDelta = yAxisKeyDelta;
+
+	xAxisKeyDelta = 0.0;
+	yAxisKeyDelta = 0.0;
+
 	scrollDelta = 0.f;
+
+	float currentFrame = float(glfwGetTime());
+	world.input.deltaTime = currentFrame - lastFrameTime;
+	lastFrameTime = currentFrame;
+
+	if(numInput > 0.0) {
+		world.input.animSpeed = numInput;
+		numInput = -1.0;
+	}
 }
 
 void Engine::Application::keyCallback(GLFWwindow* window, int k, int s, int action, int mods)
 {
-	if (action != GLFW_PRESS) return;
+	if (k == GLFW_KEY_1 && action == GLFW_PRESS)
+		numInput = 1.0;
+	if (k == GLFW_KEY_2 && action == GLFW_PRESS)
+		numInput = 2.0;
+	if (k == GLFW_KEY_3 && action == GLFW_PRESS)
+		numInput = 3.0;
+	if (k == GLFW_KEY_4 && action == GLFW_PRESS)
+		numInput = 4.0;
+	if (k == GLFW_KEY_5 && action == GLFW_PRESS)
+		numInput = 5.0;
+	if (k == GLFW_KEY_6 && action == GLFW_PRESS)
+		numInput = 6.0;
+	if (k == GLFW_KEY_7 && action == GLFW_PRESS)
+		numInput = 7.0;
+	if (k == GLFW_KEY_8 && action == GLFW_PRESS)
+		numInput = 8.0;
+	if (k == GLFW_KEY_9 && action == GLFW_PRESS)
+		numInput = 9.0;
+	if (k == GLFW_KEY_0 && action == GLFW_PRESS)
+		numInput = 0.0;
 
-	std::cout << "KEY: " << (char)k << std::endl;
+	if(k == GLFW_KEY_W && (action == GLFW_REPEAT || action == GLFW_PRESS))
+		yAxisKeyDelta += -1.0;
+	if(k == GLFW_KEY_S && (action == GLFW_REPEAT || action == GLFW_PRESS))
+		yAxisKeyDelta += 1.0;
+	if(k == GLFW_KEY_A && (action == GLFW_REPEAT || action == GLFW_PRESS))
+		xAxisKeyDelta += -1.0;
+	if(k == GLFW_KEY_D && (action == GLFW_REPEAT || action == GLFW_PRESS))
+		xAxisKeyDelta += 1.0;
 
 	if (k == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GL_TRUE);

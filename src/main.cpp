@@ -43,8 +43,8 @@ int main()
 		app.frameStart(world);
 		world.camera.update(world);
 
-		wind_angle += 0.01;
-		world.windmill.update(wind_angle,0.01);
+		wind_angle += world.input.deltaTime * world.input.animSpeed;
+		world.windmill.update(wind_angle,world.input.deltaTime * world.input.animSpeed * 0.5);
 
 		world.material_render_groups[0].transforms = world.windmill.getTransforms();
 		world.material_render_groups[0].colours = world.windmill.getColours();
