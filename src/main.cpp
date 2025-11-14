@@ -14,6 +14,8 @@ using namespace std;
 
 DemoWorld world;
 
+float wind_angle = 0.0;
+
 int main()
 {
     const char * title = "GPU Programming Coursework App";
@@ -22,10 +24,10 @@ int main()
 	try
 	{
 		Engine::Shader shader = Engine::Shader("shaders/basic.vert", "shaders/basic.frag");
-		Mesh spheremesh = Mesh::Sphere(64,64);
+		Mesh spheremesh = Mesh::Cube();
 		
 		MaterialRenderGroup batch(shader, spheremesh);
-		batch.transforms.push_back(glm::mat4x4(1.0));
+		batch.transforms.push_back(glm::translate(glm::mat4x4(1.0), glm::vec3(1.0,0.0,0.0)));
 
 		world.material_render_groups.push_back(batch);
 	}
@@ -41,9 +43,11 @@ int main()
 		app.frameStart(world);
 		world.camera.update(world);
 
-		for(auto &transform : world.material_render_groups[0].transforms) {
-			transform = glm::translate(transform, glm::vec3(0.01,0.0f,0.0f));
-		}
+		wind_angle += 0.01;
+		world.windmill.update(wind_angle,0.01);
+
+		world.material_render_groups[0].transforms = world.windmill.getTransforms();
+		world.material_render_groups[0].colours = world.windmill.getColours();
 
 		RenderPasses::preRender(world, app);
 		RenderPasses::materialRenderPass(world,app);

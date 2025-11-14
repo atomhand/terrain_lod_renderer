@@ -2,6 +2,7 @@
 #include "world.h"
 #include "mesh.h"
 #include "rts_camera.h"
+#include "windmill.h"
 #include <vector>
 #include <glm/glm.hpp>
 #include <glad/glad.h>
@@ -10,6 +11,7 @@ struct MaterialRenderGroup
 {    
     Engine::Shader shader;
     std::vector<glm::mat4x4> transforms;
+    std::vector<glm::vec4> colours;
 
     Mesh mesh;
 
@@ -24,7 +26,7 @@ struct MaterialRenderGroup
 class DemoWorld : public World {
 public:
     RtsCamera camera;
-
+    Windmill windmill;
     
     std::vector<MaterialRenderGroup> material_render_groups;
 };

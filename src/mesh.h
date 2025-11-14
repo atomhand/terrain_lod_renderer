@@ -1,14 +1,13 @@
 #pragma once
 
 #include <glad/glad.h>
-#include "shader.h"
 
 class Mesh
 {
     GLuint buffers[3];
 
-    std::vector<glm::vec4> verts;
-    std::vector<glm::vec4> normals;
+    std::vector<glm::vec3> verts;
+    std::vector<glm::vec3> normals;
     std::vector<GLuint> indices;
 public:
     GLuint positionBufferObject() { return buffers[0]; }
@@ -17,17 +16,118 @@ public:
     void* indexData() { return indices.data(); }
 
     GLsizei count() { return int(indices.size()); }
-
     GLuint vao;
 
+    static Mesh Cube() {
+            /* Define vertices for a cube in 12 triangles */
+        std::vector<glm::vec3> verts =
+        {
+            glm::vec3(-0.25f, 0.25f, -0.25f),
+            glm::vec3(-0.25f, -0.25f, -0.25f),
+            glm::vec3(0.25f, -0.25f, -0.25f),
+
+            glm::vec3(0.25f, -0.25f, -0.25f),
+            glm::vec3(0.25f, 0.25f, -0.25f),
+            glm::vec3(-0.25f, 0.25f, -0.25f),
+
+            glm::vec3(0.25f, -0.25f, -0.25f),
+            glm::vec3(0.25f, -0.25f, 0.25f),
+            glm::vec3(0.25f, 0.25f, -0.25f),
+
+            glm::vec3(0.25f, -0.25f, 0.25f),
+            glm::vec3(0.25f, 0.25f, 0.25f),
+            glm::vec3(0.25f, 0.25f, -0.25f),
+
+            glm::vec3(0.25f, -0.25f, 0.25f),
+            glm::vec3(-0.25f, -0.25f, 0.25f),
+            glm::vec3(0.25f, 0.25f, 0.25f),
+
+            glm::vec3(-0.25f, -0.25f, 0.25f),
+            glm::vec3(-0.25f, 0.25f, 0.25f),
+            glm::vec3(0.25f, 0.25f, 0.25f),
+
+            glm::vec3(-0.25f, -0.25f, 0.25f),
+            glm::vec3(-0.25f, -0.25f, -0.25f),
+            glm::vec3(-0.25f, 0.25f, 0.25f),
+
+            glm::vec3(-0.25f, -0.25f, -0.25f),
+            glm::vec3(-0.25f, 0.25f, -0.25f),
+            glm::vec3(-0.25f, 0.25f, 0.25f),
+
+            glm::vec3(-0.25f, -0.25f, 0.25f),
+            glm::vec3(0.25f, -0.25f, 0.25f),
+            glm::vec3(0.25f, -0.25f, -0.25f),
+
+            glm::vec3(0.25f, -0.25f, -0.25f),
+            glm::vec3(-0.25f, -0.25f, -0.25f),
+            glm::vec3(-0.25f, -0.25f, 0.25f),
+
+            glm::vec3(-0.25f, 0.25f, -0.25f),
+            glm::vec3(0.25f, 0.25f, -0.25f),
+            glm::vec3(0.25f, 0.25f, 0.25f),
+
+            glm::vec3(0.25f, 0.25f, 0.25f),
+            glm::vec3(-0.25f, 0.25f, 0.25f),
+            glm::vec3(-0.25f, 0.25f, -0.25f),
+        };
+
+        /* Manually specified normals for our cube */
+        std::vector<glm::vec3> normals =
+        {
+            glm::vec3(0, 0, -1.f),
+            glm::vec3(0, 0, -1.f),
+            glm::vec3(0, 0, -1.f),
+            glm::vec3(0, 0, -1.f),
+            glm::vec3(0, 0, -1.f),
+            glm::vec3(0, 0, -1.f),
+            glm::vec3(1.f, 0, 0),
+            glm::vec3(1.f, 0, 0),
+            glm::vec3(1.f, 0, 0),
+            glm::vec3(1.f, 0, 0),
+            glm::vec3(1.f, 0, 0),
+            glm::vec3(1.f, 0, 0),
+            glm::vec3(0, 0, 1.f),
+            glm::vec3(0, 0, 1.f),
+            glm::vec3(0, 0, 1.f),
+            glm::vec3(0, 0, 1.f),
+            glm::vec3(0, 0, 1.f),
+            glm::vec3(0, 0, 1.f),
+            glm::vec3(-1.f, 0, 0),
+            glm::vec3(-1.f, 0, 0),
+            glm::vec3(-1.f, 0, 0),
+            glm::vec3(-1.f, 0, 0),
+            glm::vec3(-1.f, 0, 0),
+            glm::vec3(-1.f, 0, 0),
+            glm::vec3(0, -1.f, 0),
+            glm::vec3(0, -1.f, 0),
+            glm::vec3(0, -1.f, 0),
+            glm::vec3(0, -1.f, 0),
+            glm::vec3(0, -1.f, 0),
+            glm::vec3(0, -1.f, 0),
+            glm::vec3(0, 1.f, 0),
+            glm::vec3(0, 1.f, 0),
+            glm::vec3(0, 1.f, 0),
+            glm::vec3(0, 1.f, 0),
+            glm::vec3(0, 1.f, 0),
+            glm::vec3(0, 1.f, 0),
+        };
+
+        std::vector<GLuint> indices;
+        for(int i=0; i<36; i++) {
+            indices.push_back(i);
+        }
+
+        return Mesh(verts,normals,indices);
+    }
+
     static Mesh Sphere(int w, int h) {
-        std::vector<glm::vec4> verts;
-        std::vector<glm::vec4> normals;
+        std::vector<glm::vec3> verts;
+        std::vector<glm::vec3> normals;
         std::vector<GLuint> indices;
 
         float pi = glm::pi<float>();
 
-        verts.push_back(glm::vec4(0.0,1.0,0.0, 1.0));
+        verts.push_back(glm::vec3(0.0,1.0,0.0));
 
         GLuint v0 = 0;
 
@@ -40,17 +140,17 @@ public:
                         glm::cos(phi),
                         glm::sin(phi) * glm::sin(theta)
                     );
-                verts.push_back(glm::vec4(pos,1.0f));
+                verts.push_back(pos);
             }
         }
 
-        verts.push_back(glm::vec4(0.0,-1.0,0.0, 1.0));
+        verts.push_back(glm::vec3(0.0,-1.0,0.0));
         GLuint v1 = verts.size() - 1;
 
         // add normals
         for(auto vert : verts) {
             glm::vec3 normal = glm::normalize(glm::vec3(vert));
-            normals.push_back(glm::vec4(normal,1.0f));
+            normals.push_back(normal);
         }
 
         // add top/bottom triangles
@@ -91,19 +191,19 @@ public:
     }
 
     static Mesh Plane(int w, int h) {
-        std::vector<glm::vec4> verts;
-        std::vector<glm::vec4> normals;
+        std::vector<glm::vec3> verts;
+        std::vector<glm::vec3> normals;
         std::vector<GLuint> indices;
 
-        verts.push_back(glm::vec4(0.0,0.0,0.0, 1.0));
-        verts.push_back(glm::vec4(float(w),0.0,0.0, 1.0));
-        verts.push_back(glm::vec4(0.0,0.0,float(h), 1.0));
-        verts.push_back(glm::vec4(float(w),0.0,float(h), 1.0));
+        verts.push_back(glm::vec3(0.0,0.0,0.0));
+        verts.push_back(glm::vec3(float(w),0.0,0.0));
+        verts.push_back(glm::vec3(0.0,0.0,float(h)));
+        verts.push_back(glm::vec3(float(w),0.0,float(h)));
 
-        normals.push_back(glm::vec4(0.0,1.0,0.0,1.0));
-        normals.push_back(glm::vec4(0.0,1.0,0.0,1.0));
-        normals.push_back(glm::vec4(0.0,1.0,0.0,1.0));
-        normals.push_back(glm::vec4(0.0,1.0,0.0,1.0));
+        normals.push_back(glm::vec3(0.0,1.0,0.0));
+        normals.push_back(glm::vec3(0.0,1.0,0.0));
+        normals.push_back(glm::vec3(0.0,1.0,0.0));
+        normals.push_back(glm::vec3(0.0,1.0,0.0));
         
         indices.push_back(0);
         indices.push_back(2);
@@ -118,18 +218,18 @@ public:
 
     
 
-    Mesh(std::vector<glm::vec4> _vertexPositions, 
-        std::vector<glm::vec4> _normals,    
+    Mesh(std::vector<glm::vec3> _vertexPositions, 
+        std::vector<glm::vec3> _normals,    
         std::vector<GLuint> _indices) : verts(_vertexPositions) , normals(_normals), indices(_indices) {
 
         glGenBuffers(3, buffers);
         
         // fill buffer data
         glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject());
-        glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(glm::vec4), verts.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(glm::vec3), verts.data(), GL_STATIC_DRAW);
 
         glBindBuffer(GL_ARRAY_BUFFER, normalsBufferObject());
-        glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(glm::vec4), normals.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(glm::vec3), normals.data(), GL_STATIC_DRAW);
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferObject());
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
@@ -141,12 +241,12 @@ public:
         // positions
         glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject());
         glEnableVertexAttribArray(0); 
-        glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
         
         // normals
         glBindBuffer(GL_ARRAY_BUFFER, normalsBufferObject());
         glEnableVertexAttribArray(1); 
-        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, 0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
         
         // indices
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferObject());
