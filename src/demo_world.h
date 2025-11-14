@@ -27,6 +27,7 @@ class DemoWorld : public World {
 public:
     RtsCamera camera;
     Windmill windmill;
+    glm::vec4 lightPos = glm::vec4(16.0f,16.0f,0.0f, 1.0f);
     
     std::vector<MaterialRenderGroup> material_render_groups;
 };

@@ -28,7 +28,7 @@ public:
                 Mesh& mesh =group.mesh;
                 
                 group.shader.setMat4("model", transform);
-                group.shader.setVec4("lightpos", glm::vec4(16.0f,16.0f,0.0f, 1.0f));
+                group.shader.setVec4("lightpos", view * world.lightPos);
 
                 if(i < group.colours.size()) {
                     auto colour = group.colours[i];
