@@ -1,5 +1,6 @@
 #include "application.h"
 #include <iostream>
+#include <GLFW/glfw3.h>
 
 static double scrollDelta = 0.f;
 static glm::vec2 mousePos;
@@ -99,4 +100,26 @@ Engine::Application::Application(int width, int height, const char *title) {
 
 Engine::Application::~Application() {    
 	glfwTerminate();
+}
+
+void Engine::Application::getFramebufferSize(int& w, int& h) {
+	glfwGetFramebufferSize(window, &w, &h);
+};
+
+bool Engine::Application::isIconified() {
+	return (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0);
+}
+
+void Engine::Application::frameStart(World& world) {
+	glfwPollEvents();
+	passInputs(world);
+}
+
+void Engine::Application::frameEnd(World& world) {
+	// Swap buffers
+	glfwSwapBuffers(window);
+}
+
+bool Engine::Application::shouldClose() {
+	return glfwWindowShouldClose(window);
 }
