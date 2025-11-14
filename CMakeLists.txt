@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(ImguiExample LANGUAGES C CXX)
+project(GpuProgrammingProject LANGUAGES C CXX)
 set (CMAKE_CXX_STANDARD 20)
 
 # GLFW build arguments - disable tests, examples and documentation
@@ -12,17 +12,17 @@ add_subdirectory("extern/glm")
 
 add_subdirectory("engine")
 
-add_executable(ImguiExample
+add_executable(GpuProgrammingProject
     src/main.cpp
 )
 
-target_link_libraries(ImguiExample PRIVATE engine)
+target_link_libraries(GpuProgrammingProject PRIVATE engine)
 
 # Copy asset folder to executing directory
 # TODO - Compress it
 add_custom_command(
-    TARGET ImguiExample POST_BUILD
+    TARGET GpuProgrammingProject POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_SOURCE_DIR}/assets
-        $<TARGET_FILE_DIR:ImguiExample>/assets
+        $<TARGET_FILE_DIR:GpuProgrammingProject>/assets
 )
