@@ -10,6 +10,7 @@ public:
             // Rendering
         int display_w, display_h;
         app.getFramebufferSize(display_w,display_h);
+        world.camera.setFramebufferSize(display_w,display_h);
         glViewport(0, 0, display_w, display_h);
         glClearColor(0.1f,0.1f,0.25f,1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

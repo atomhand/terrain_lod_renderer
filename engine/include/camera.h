@@ -12,12 +12,17 @@ namespace Engine
 
         float fov = 45.0f;
 
+        float near= 0.1f;
+        float far = 100.f;
+        
         float width = 1024.f;
         float height = 768.f;
-
-        float near= 0.1f;
-        float far = 100.f;  
     public:
+        void setFramebufferSize(int width, int height) {
+            this->width = float(width);
+            this->height = float(height);
+        }
+
         glm::mat4 get_proj() const {
             return glm::perspective(glm::radians(fov), width/height, near, far);
         }
