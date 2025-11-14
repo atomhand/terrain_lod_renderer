@@ -14,19 +14,19 @@ public:
         glClear(GL_COLOR_BUFFER_BIT);
     }
 
-    static void instancedRenderPasses(DemoWorld& world, Engine::Application &app) {
-        for(InstancedRenderBatch group : world.instanced_render_batches) {
+    static void materialRenderPass(DemoWorld& world, Engine::Application &app) {
+        for(MaterialRenderGroup group : world.material_render_groups) {
             group.shader.setCamera(world.camera);
             group.shader.use();
+
             for(auto transform : group.transforms) {
+                Mesh& mesh =group.mesh;
+                
                 group.shader.setMat4("transform", transform);
-                glBindBuffer(GL_ARRAY_BUFFER, group.positionBufferObject);
-                glEnableVertexAttribArray(0);
-                glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
-
-                glDrawArrays(GL_TRIANGLES, 0, group.num_indices);
-
-                glDisableVertexAttribArray(0);
+                
+                glBindVertexArray(mesh.vao);
+                glDrawElements(GL_TRIANGLES, mesh.count(), GL_UNSIGNED_INT, nullptr);
+                glBindVertexArray(0);
             }
         }
     }

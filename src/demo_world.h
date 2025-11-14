@@ -1,22 +1,19 @@
 #pragma once
 #include "world.h"
-
+#include "mesh.h"
 #include "rts_camera.h"
 #include <vector>
 #include <glm/glm.hpp>
 #include <glad/glad.h>
 
-struct InstancedRenderBatch
+struct MaterialRenderGroup
 {    
     Engine::Shader shader;
     std::vector<glm::mat4x4> transforms;
 
-    unsigned int num_indices;
+    Mesh mesh;
 
-    GLuint positionBufferObject;
-    GLuint vao;
-
-    InstancedRenderBatch(Engine::Shader shader) : shader(shader) {
+    MaterialRenderGroup(Engine::Shader shader, Mesh mesh) : shader(shader), mesh(mesh) {
 
     };
 };
@@ -29,5 +26,5 @@ public:
     RtsCamera camera;
 
     
-    std::vector<InstancedRenderBatch> instanced_render_batches;
+    std::vector<MaterialRenderGroup> material_render_groups;
 };
