@@ -7,15 +7,15 @@
 
 class Windmill {
 private:
-    const float HEIGHT = 9.0;
-    const float BASE_HEIGHT = 1.0;
-    const float BASE_WIDTH = 5.0;
-    const float WIDTH = 4.0;
+    const float HEIGHT = 4.5;
+    const float BASE_HEIGHT = 0.5;
+    const float BASE_WIDTH = 2.5;
+    const float WIDTH = 2.0;
 
     
-    const float BLADES_LENGTH = 8.0;
-    const float BLADES_WIDTH = 1.0;
-    const float BLADES_THICKNESS = 0.25f;
+    const float BLADES_LENGTH = 4.0;
+    const float BLADES_WIDTH = 0.5;
+    const float BLADES_THICKNESS = 0.125f;
 
     float current_angle = 0.7f;
     float blades_angle = 1.5;
@@ -56,14 +56,14 @@ public:
             glm::scale(glm::mat4(1.0), glm::vec3(BASE_HEIGHT, BASE_HEIGHT, BASE_WIDTH))
         );
 
-        glm::mat4 body_transform = glm::translate(glm::mat4(1.0), glm::vec3(0.0,BASE_HEIGHT/2.0+HEIGHT/4.0,0.0)) * mainRotation();
+        glm::mat4 body_transform = glm::translate(glm::mat4(1.0), glm::vec3(0.0,BASE_HEIGHT/2.0+HEIGHT/2.0,0.0)) * mainRotation();
 
         // body
         transforms.push_back(            
             body_transform * glm::scale(glm::mat4(1.0), glm::vec3(WIDTH, HEIGHT, WIDTH))
         );
         
-        glm::vec3 blade_offset = glm::vec3(WIDTH/4.0+BLADES_THICKNESS/2.0,HEIGHT/4.0,0.0);
+        glm::vec3 blade_offset = glm::vec3(WIDTH/2.0+BLADES_THICKNESS/2.0,HEIGHT/2.0,0.0);
 
         transforms.push_back(
             body_transform * glm::translate(glm::mat4(1.0),blade_offset) *  glm::rotate(glm::mat4(1.0), blades_angle, glm::vec3(1.0,0.0,0.0)) * glm::scale(glm::mat4(1.0), glm::vec3(BLADES_THICKNESS, BLADES_WIDTH, BLADES_LENGTH))
