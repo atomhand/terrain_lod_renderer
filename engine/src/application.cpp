@@ -14,7 +14,7 @@ void Engine::Application::reshapeCallback(GLFWwindow* window, int w, int h)
 	glViewport(0, 0, (GLsizei)w, (GLsizei)h);
 }
 
-void Engine::Application::updateWorld(World& world) {
+void Engine::Application::passInputs(World& world) {
 	world.input.scrollDelta = (float)scrollDelta;
 	world.input.mousePos = mousePos;
 

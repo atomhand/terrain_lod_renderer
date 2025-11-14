@@ -55,8 +55,7 @@ void init(Engine::Application &window)
 //You should call glfwSwapBuffers() after all of your rendering to display what you rendered.
 void display(Engine::Application& window)
 {
-	camera.update_zoom(world.input.scrollDelta);
-	camera.update_transform();
+	camera.update(world);
 
 	// Rendering
 	int display_w, display_h;

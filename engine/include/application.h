@@ -24,9 +24,9 @@ namespace Engine {
         static void errorCallback(int erorr, const  char* description);
         static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
         static void cursorPosCallback(GLFWwindow* window, double xpos, double ypos);
-    public:
-        void updateWorld(World& world);
 
+        void passInputs(World& world);
+    public:
         Application(int width, int height, const char *title);
         ~Application();
 
@@ -48,7 +48,7 @@ namespace Engine {
 
         void frameStart(World& world) {
             glfwPollEvents();
-            updateWorld(world);
+            passInputs(world);
         }
 
         void frameEnd(World& world) {
