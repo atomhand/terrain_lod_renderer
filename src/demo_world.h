@@ -3,22 +3,11 @@
 #include "mesh.h"
 #include "rts_camera.h"
 #include "windmill.h"
+#include "duck.h"
 #include <vector>
 #include <glm/glm.hpp>
 #include <glad/glad.h>
-
-struct MaterialRenderGroup
-{    
-    Engine::Shader shader;
-    std::vector<glm::mat4x4> transforms;
-    std::vector<glm::vec4> colours;
-
-    Mesh mesh;
-
-    MaterialRenderGroup(Engine::Shader shader, Mesh mesh) : shader(shader), mesh(mesh) {
-
-    };
-};
+#include "material_render_group.h"
 
 // Container for the demo data so it can easily be passed between parts of the application
 // As a future extension, the World class will have a dynamic registry (ECS pattern)
@@ -27,7 +16,8 @@ class DemoWorld : public World {
 public:
     RtsCamera camera;
     Windmill windmill;
-    glm::vec4 lightPos = glm::vec4(16.0f,16.0f,0.0f, 1.0f);
+    Duck duck;
+    glm::vec4 lightDir = glm::vec4(glm::normalize(glm::vec3(1.0f,0.8f,0.0f)), 2.0f); // light intensity packed into W
     
     std::vector<MaterialRenderGroup> material_render_groups;
 };

@@ -134,7 +134,7 @@ public:
         for(int i=0; i<h; i++) {
             float phi = pi * float(i+1) / float(w);
             for(int j=0; j<w; j++) {
-                float theta = 2.0 * pi * float(j) / float(h);
+                float theta = 2.0f * pi * float(j) / float(h);
                 glm::vec3 pos = glm::vec3(
                         glm::sin(phi) * glm::cos(theta),
                         glm::cos(phi),
@@ -145,7 +145,7 @@ public:
         }
 
         verts.push_back(glm::vec3(0.0,-1.0,0.0));
-        GLuint v1 = verts.size() - 1;
+        GLuint v1 = GLuint(verts.size() - 1);
 
         // add normals
         for(auto vert : verts) {
@@ -154,7 +154,7 @@ public:
         }
 
         // add top/bottom triangles
-        for(GLuint i =0; i<w; i++) {
+        for(int i =0; i<w; i++) {
             GLuint i0 = i+1;
             GLuint i1 = (i+1) % w + 1;
             indices.push_back(v0);
@@ -188,35 +188,7 @@ public:
         }
 
         return Mesh(verts,normals,indices);
-    }
-
-    static Mesh Plane(int w, int h) {
-        std::vector<glm::vec3> verts;
-        std::vector<glm::vec3> normals;
-        std::vector<GLuint> indices;
-
-        verts.push_back(glm::vec3(0.0,0.0,0.0));
-        verts.push_back(glm::vec3(float(w),0.0,0.0));
-        verts.push_back(glm::vec3(0.0,0.0,float(h)));
-        verts.push_back(glm::vec3(float(w),0.0,float(h)));
-
-        normals.push_back(glm::vec3(0.0,1.0,0.0));
-        normals.push_back(glm::vec3(0.0,1.0,0.0));
-        normals.push_back(glm::vec3(0.0,1.0,0.0));
-        normals.push_back(glm::vec3(0.0,1.0,0.0));
-        
-        indices.push_back(0);
-        indices.push_back(2);
-        indices.push_back(1);
-        
-        indices.push_back(2);
-        indices.push_back(3);
-        indices.push_back(1);
-
-        return Mesh(verts,normals,indices);
-    }
-
-    
+    }    
 
     Mesh(std::vector<glm::vec3> _vertexPositions, 
         std::vector<glm::vec3> _normals,    

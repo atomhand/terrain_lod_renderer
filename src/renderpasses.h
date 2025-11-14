@@ -20,6 +20,8 @@ public:
         glm::mat4 view = world.camera.get_view();
         for(MaterialRenderGroup group : world.material_render_groups) {
             group.shader.setCamera(world.camera);
+            group.shader.setVec4("lightdir", glm::vec4(glm::normalize(glm::mat3(view) * glm::vec3(world.lightDir)),world.lightDir.w));
+            group.shader.setFloat("shininess", group.shininess);
             group.shader.use();
 
             for(int i=0; i<group.transforms.size(); i++) {
@@ -28,26 +30,11 @@ public:
                 Mesh& mesh =group.mesh;
                 
                 group.shader.setMat4("model", transform);
-                group.shader.setVec4("lightpos", view * world.lightPos);
 
                 if(i < group.colours.size()) {
                     auto colour = group.colours[i];
                     group.shader.setVec4("colour", colour);
                 }
-
-                glm::mat3 normalmatrix = glm::transpose(glm::inverse(glm::mat3(view * transform)));                
-                group.shader.setMat3("normalmatrix", normalmatrix);
-                
-                glBindVertexArray(mesh.vao);
-                glDrawElements(GL_TRIANGLES, mesh.count(), GL_UNSIGNED_INT, nullptr);
-                glBindVertexArray(0);
-            }
-
-            for(auto transform : group.transforms) {
-                Mesh& mesh =group.mesh;
-                
-                group.shader.setMat4("model", transform);
-                group.shader.setVec4("lightpos", glm::vec4(16.0f,16.0f,0.0f, 1.0f));
 
                 glm::mat3 normalmatrix = glm::transpose(glm::inverse(glm::mat3(view * transform)));                
                 group.shader.setMat3("normalmatrix", normalmatrix);

@@ -24,12 +24,15 @@ int main()
 	try
 	{
 		Engine::Shader shader = Engine::Shader("shaders/basic.vert", "shaders/basic.frag");
-		Mesh spheremesh = Mesh::Cube();
-		
-		MaterialRenderGroup batch(shader, spheremesh);
-		batch.transforms.push_back(glm::translate(glm::mat4x4(1.0), glm::vec3(1.0,0.0,0.0)));
+		Mesh cubemesh = Mesh::Cube();
+		Mesh spheremesh = Mesh::Sphere(8,8);
 
-		world.material_render_groups.push_back(batch);
+		MaterialRenderGroup windmill = MaterialRenderGroup(shader,cubemesh);
+		MaterialRenderGroup duck = MaterialRenderGroup(shader,spheremesh);
+		duck.shininess = 5.0;
+
+		world.material_render_groups.push_back(windmill);
+		world.material_render_groups.push_back(duck);
 	}
 	catch (exception &e)
 	{
@@ -44,10 +47,14 @@ int main()
 		world.camera.update(world);
 
 		wind_angle += world.input.deltaTime * world.input.animSpeed;
-		world.windmill.update(wind_angle,world.input.deltaTime * world.input.animSpeed * 0.5);
+		world.windmill.update(wind_angle,world.input.deltaTime * world.input.animSpeed * 0.5f);
+		world.duck.update(world.input.deltaTime * world.input.animSpeed * 0.5f);
 
 		world.material_render_groups[0].transforms = world.windmill.getTransforms();
 		world.material_render_groups[0].colours = world.windmill.getColours();
+
+		world.material_render_groups[1].transforms = world.duck.getTransforms();
+		world.material_render_groups[1].colours = world.duck.getColours();
 
 		RenderPasses::preRender(world, app);
 		RenderPasses::materialRenderPass(world,app);
