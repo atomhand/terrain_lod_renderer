@@ -14,14 +14,12 @@ void Engine::GameWindow::reshapeCallback(GLFWwindow* window, int w, int h)
 	glViewport(0, 0, (GLsizei)w, (GLsizei)h);
 }
 
+void Engine::GameWindow::updateWorld(World& world) {
+	world.input.scrollDelta = (float)scrollDelta;
+	world.input.mousePos = mousePos;
 
-float Engine::GameWindow::getScrollDelta() { return (float)scrollDelta; }
-
-void Engine::GameWindow::frameStart() {
 	scrollDelta = 0.f;
 }
-
-glm::vec2 Engine::GameWindow::getMousePos() { return mousePos; }
 
 void Engine::GameWindow::keyCallback(GLFWwindow* window, int k, int s, int action, int mods)
 {
@@ -103,19 +101,17 @@ Engine::GameWindow::~GameWindow() {
 	glfwTerminate();
 }
 
-int Engine::GameWindow::eventLoop()
+int Engine::GameWindow::eventLoop(World& world)
 {
 	// Main loop
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
-
+		updateWorld(world);
 		// Call function to draw your graphics
 		for(auto pass : renderPasses) {
             pass(*this);
         }
-		frameStart();
-
 		// Swap buffers
 		glfwSwapBuffers(window);
 	}

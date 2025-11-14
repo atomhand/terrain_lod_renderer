@@ -54,9 +54,7 @@ void  Ui::frame_update(Engine::GameWindow &window)
         static float f = 0.0f;
         static int counter = 0;
 
-        ImGui::Begin("Debug Window");                          // Create a window called "Hello, world!" and append into it.
-
-        ImGui::Text("Scroll delta: %.1f" ,window.getScrollDelta());               // Display some text (you can use a format strings too)
+        ImGui::Begin("Debug Window");                          // Create a window called "Hello, world!" and append into it
         ImGui::Checkbox("Checkbox", &show_demo_window);      // Edit bools storing our window open/close state
 
         /*

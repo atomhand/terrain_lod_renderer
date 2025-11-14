@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 
 #include <vector>
+#include "world.h"
 
 namespace Engine {
     class GameWindow
@@ -17,8 +18,6 @@ namespace Engine {
         const char *title;
         
         GLFWwindow* window;
-
-        void frameStart();
         
         static void reshapeCallback(GLFWwindow* window, int w, int h);
         static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
@@ -28,13 +27,12 @@ namespace Engine {
 
         std::vector<void(*)(GameWindow& window)> renderPasses;
     public:
-        glm::vec2 getMousePos();
-        float getScrollDelta();
+        void updateWorld(World& world);
 
         GameWindow(int width, int height, const char *title);
         ~GameWindow();
 
-        int eventLoop();
+        int eventLoop(World& world);
 
         void getFramebufferSize(int& w, int& h) {
 	        glfwGetFramebufferSize(window, &w, &h);

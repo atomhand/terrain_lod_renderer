@@ -1,21 +1,21 @@
 #include <iostream>
 #include "shader.h"
 
+#include "world.h"
+
 #include "ui.h"
-
 #include "game_window.h"
-
 #include "terrain_mesh.h"
-
 #include "rts_camera.h"
+#include "world.h"
 
 using namespace std;
 
 GLuint positionBufferObject;
 GLuint vao;
 
+World world;
 TerrainMesh* terrain_mesh;
-
 Ui ui;
 
 RtsCamera camera;
@@ -59,7 +59,7 @@ void init(Engine::GameWindow &window)
 //You should call glfwSwapBuffers() after all of your rendering to display what you rendered.
 void display(Engine::GameWindow& window)
 {
-	camera.update_zoom(window.getScrollDelta());
+	camera.update_zoom(world.input.scrollDelta);
 	camera.update_transform();
 
 	ui.frame_update(window);
@@ -88,7 +88,7 @@ int main()
 
 	window.addRenderPass(display);
 
-    window.eventLoop();
+    window.eventLoop(world);
 
 	delete(terrain_mesh);
     return 0;
