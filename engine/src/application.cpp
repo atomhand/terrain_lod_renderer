@@ -1,27 +1,27 @@
-#include "game_window.h"
+#include "application.h"
 #include <iostream>
 
 static double scrollDelta = 0.f;
 static glm::vec2 mousePos;
 
-void Engine::GameWindow::cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
+void Engine::Application::cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
 	mousePos = glm::vec2((float)xpos,(float)ypos);
 };
 		
 /* Called whenever the window is resized. The new window size is given, in pixels. */
-void Engine::GameWindow::reshapeCallback(GLFWwindow* window, int w, int h)
+void Engine::Application::reshapeCallback(GLFWwindow* window, int w, int h)
 {
 	glViewport(0, 0, (GLsizei)w, (GLsizei)h);
 }
 
-void Engine::GameWindow::updateWorld(World& world) {
+void Engine::Application::updateWorld(World& world) {
 	world.input.scrollDelta = (float)scrollDelta;
 	world.input.mousePos = mousePos;
 
 	scrollDelta = 0.f;
 }
 
-void Engine::GameWindow::keyCallback(GLFWwindow* window, int k, int s, int action, int mods)
+void Engine::Application::keyCallback(GLFWwindow* window, int k, int s, int action, int mods)
 {
 	if (action != GLFW_PRESS) return;
 
@@ -31,18 +31,18 @@ void Engine::GameWindow::keyCallback(GLFWwindow* window, int k, int s, int actio
 		glfwSetWindowShouldClose(window, GL_TRUE);
 }
 
-void Engine::GameWindow::scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
+void Engine::Application::scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
 {
 	scrollDelta += yoffset;
 }
 
 /* An error callback function to output GLFW errors*/
-void Engine::GameWindow::errorCallback(int error, const char* description)
+void Engine::Application::errorCallback(int error, const char* description)
 {
 	fputs(description, stderr);
 }
 
-Engine::GameWindow::GameWindow(int width, int height, const char *title) {
+Engine::Application::Application(int width, int height, const char *title) {
     this->width = width;
     this->height = height;
     this->title = title;
@@ -97,11 +97,11 @@ Engine::GameWindow::GameWindow(int width, int height, const char *title) {
 	glfwSetWindowTitle(window, title);
 }
 
-Engine::GameWindow::~GameWindow() {    
+Engine::Application::~Application() {    
 	glfwTerminate();
 }
 
-int Engine::GameWindow::eventLoop(World& world)
+int Engine::Application::eventLoop(World& world)
 {
 	// Main loop
 	while (!glfwWindowShouldClose(window))

@@ -7,7 +7,7 @@
 
 const char* glsl_version = "#version 130";
 
-void Ui::init(Engine::GameWindow &window)
+void Ui::init(Engine::Application &window)
 {
     float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor()); // Valid on GLFW 3.3+ only
     // Setup Dear ImGui context
@@ -31,7 +31,7 @@ void Ui::init(Engine::GameWindow &window)
     ImGui_ImplOpenGL3_Init(glsl_version);
 }
 
-void  Ui::frame_update(Engine::GameWindow &window)
+void  Ui::frame_update(Engine::Application &window)
 {
     // Create window with graphics context
     if (window.isIconified())

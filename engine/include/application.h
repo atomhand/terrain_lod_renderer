@@ -10,7 +10,7 @@
 #include "world.h"
 
 namespace Engine {
-    class GameWindow
+    class Application
     {
     private:
         int width;
@@ -25,12 +25,12 @@ namespace Engine {
         static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
         static void cursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 
-        std::vector<void(*)(GameWindow& window)> renderPasses;
+        std::vector<void(*)(Application& window)> renderPasses;
     public:
         void updateWorld(World& world);
 
-        GameWindow(int width, int height, const char *title);
-        ~GameWindow();
+        Application(int width, int height, const char *title);
+        ~Application();
 
         int eventLoop(World& world);
 
@@ -48,7 +48,7 @@ namespace Engine {
             return (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0);
         }
 
-        void addRenderPass(void(*f)(GameWindow& window)) {
+        void addRenderPass(void(*f)(Application& window)) {
             renderPasses.push_back(f);
         };
     };

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include "game_window.h"
+#include "application.h"
 
 class Ui
 {
@@ -12,7 +12,7 @@ private:
 public:
     glm::vec4 clear_color = glm::vec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-    void init(Engine::GameWindow &window);
-    void frame_update(Engine::GameWindow &window);
+    void init(Engine::Application &window);
+    void frame_update(Engine::Application &window);
     void render();
 };

@@ -4,7 +4,7 @@
 #include "world.h"
 
 #include "ui.h"
-#include "game_window.h"
+#include "application.h"
 #include "terrain_mesh.h"
 #include "rts_camera.h"
 #include "world.h"
@@ -24,7 +24,7 @@ RtsCamera camera;
 This function is called before entering the main rendering loop.
 Use it for all you initialisation stuff
 */
-void init(Engine::GameWindow &window)
+void init(Engine::Application &window)
 {
     ui.init(window);
 
@@ -57,7 +57,7 @@ void init(Engine::GameWindow &window)
 
 //Called to update the display.
 //You should call glfwSwapBuffers() after all of your rendering to display what you rendered.
-void display(Engine::GameWindow& window)
+void display(Engine::Application& window)
 {
 	camera.update_zoom(world.input.scrollDelta);
 	camera.update_transform();
@@ -82,7 +82,7 @@ void display(Engine::GameWindow& window)
 int main()
 {
     const char * title = "Crowd Simulation Test";
-	Engine::GameWindow window = Engine::GameWindow(1024,768,title);
+	Engine::Application window = Engine::Application(1024,768,title);
 
     init(window);
 

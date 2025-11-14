@@ -4,7 +4,7 @@ set(SRC_PATH ${CMAKE_CURRENT_LIST_DIR}/src)
 file(GLOB ENGINE_GLOB
     ${SRC_PATH}/asset_loading.cpp
     ${SRC_PATH}/shader.cpp
-    ${SRC_PATH}/game_window.cpp
+    ${SRC_PATH}/application.cpp
     )
 add_library(engine STATIC ${ENGINE_GLOB} ../extern/glad/src/glad.c)
 
