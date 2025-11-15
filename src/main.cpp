@@ -1,6 +1,7 @@
 #include <iostream>
 #include "shader.h"
 
+#include <entt/entt.hpp>
 #include "world.h"
 
 #include "ui.h"
@@ -41,14 +42,18 @@ void init(Engine::Application &window)
 
 //Called to update the display.
 //You should call glfwSwapBuffers() after all of your rendering to display what you rendered.
-void display(Engine::Application& window)
+void display(Engine::Application& app)
 {
-	camera.update_zoom(world.input.scrollDelta);
-	camera.update_transform();
+	UpdateCameraSystem(world, app);
 
-	ui.frame_update(window);
+	ui.frame_update(app);
 
-	terrain_mesh->shader.setCamera(camera);
+	auto camera_view = world.registry.view<Engine::Camera>();
+	for(auto entity : camera_view) {
+		auto camera = world.registry.get<Engine::Camera>(entity);
+		terrain_mesh->shader.setCamera(camera.get_view(),camera.get_proj());
+	}
+
 	// mesh drawing
 	terrain_mesh->draw();
 }
@@ -59,6 +64,10 @@ int main()
 	Engine::Application app = Engine::Application(1024,768,title);
 
     init(app);
+
+	auto camera_entity = world.registry.create();
+	world.registry.emplace<Engine::Camera>(camera_entity);
+	world.registry.emplace<RtsCamera>(camera_entity);
 
 	// event loop
 	while(!app.shouldClose()) {

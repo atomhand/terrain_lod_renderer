@@ -77,8 +77,8 @@ void Engine::Shader::setFloat(const std::string &name, float value) const
 }
 
 
-void Engine::Shader::setCamera(const Camera &camera)
+void Engine::Shader::setCamera(glm::mat4 view, glm::mat4 proj)
 {
-    setMat4("view", camera.get_view());
-    setMat4("projection", camera.get_proj());
+    setMat4("view", view);
+    setMat4("projection", proj);
 }

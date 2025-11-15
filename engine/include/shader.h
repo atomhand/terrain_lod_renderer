@@ -26,6 +26,6 @@ namespace Engine
         }
 
 
-        void setCamera(const Camera &camera);
+        void setCamera(glm::mat4 view, glm::mat4 proj);
     };
 }

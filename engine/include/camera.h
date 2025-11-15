@@ -1,14 +1,17 @@
 #pragma once
 
+#include "world.h"
+#include "application.h"
+
 #include <glm/glm.hpp>
 #include <glm/ext/matrix_transform.hpp> 
 #include <glm/ext/matrix_clip_space.hpp> // glm::perspective
 
 namespace Engine
 {
-    class Camera {
-    protected:
-        glm::mat4x4 transform;
+
+    struct Camera {
+    public:
 
         float fov = 45.0f;
 
@@ -17,7 +20,7 @@ namespace Engine
 
         float near= 0.1f;
         float far = 100.f;  
-    public:
+        glm::mat4x4 transform;
         glm::mat4 get_proj() const {
             return glm::perspective(glm::radians(fov), width/height, near, far);
         }

@@ -19,7 +19,7 @@ add_executable(ImguiExample
     src/ui.cpp
 )
 
-target_link_libraries(ImguiExample PRIVATE imgui engine)
+target_link_libraries(ImguiExample PRIVATE imgui engine EnTT::EnTT)
 
 # Copy asset folder to executing directory
 # TODO - Compress it
