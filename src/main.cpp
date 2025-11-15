@@ -8,11 +8,9 @@
 #include "terrain_mesh.h"
 #include "rts_camera.h"
 #include "world.h"
+#include "render_passes.h"
 
 using namespace std;
-
-GLuint positionBufferObject;
-GLuint vao;
 
 World world;
 TerrainMesh* terrain_mesh;
@@ -27,20 +25,6 @@ Use it for all you initialisation stuff
 void init(Engine::Application &window)
 {
     ui.init(window);
-
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-
-	float vertexPositions[] = {
-		0.75f, 0.75f, 0.0f, 1.0f,
-		0.75f, -0.75f, 0.0f, 1.0f,
-		-0.75f, -0.75f, 0.0f, 1.0f,
-	};
-
-	glGenBuffers(1, &positionBufferObject);
-	glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertexPositions), vertexPositions, GL_STATIC_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	try
 	{
@@ -64,19 +48,9 @@ void display(Engine::Application& window)
 
 	ui.frame_update(window);
 
-	// Rendering
-	int display_w, display_h;
-	window.getFramebufferSize(display_w,display_h);
-	glViewport(0, 0, display_w, display_h);
-	glClearColor(ui.clear_color.x * ui.clear_color.w, ui.clear_color.y * ui.clear_color.w, ui.clear_color.z * ui.clear_color.w, ui.clear_color.w);
-	glClear(GL_COLOR_BUFFER_BIT);
-
 	terrain_mesh->shader.setCamera(camera);
 	// mesh drawing
 	terrain_mesh->draw();
-
-	// render ui
-	ui.render();
 }
 
 int main()
@@ -89,6 +63,8 @@ int main()
 	// event loop
 	while(!app.shouldClose()) {
 		app.frameStart(world);
+
+		RenderPasses::clear(app, ui);
 
 		display(app);
 

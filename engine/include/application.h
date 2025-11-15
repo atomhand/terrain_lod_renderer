@@ -3,11 +3,12 @@
 #include <string>
 
 #include <glad/glad.h>
-#include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
 #include <vector>
 #include "world.h"
+
+struct GLFWwindow;
 
 namespace Engine {
     class Application
@@ -30,34 +31,16 @@ namespace Engine {
         Application(int width, int height, const char *title);
         ~Application();
 
-        int eventLoop(World& world);
+        void getFramebufferSize(int& w, int& h) const;
 
-        void getFramebufferSize(int& w, int& h) {
-	        glfwGetFramebufferSize(window, &w, &h);
-        };
+        bool isIconified() const;
 
+        void frameStart(World& world);
 
-        // TODO - Remove Glfw from the public API
-        GLFWwindow* getWindow() {
-            return window;
-        }
+        void frameEnd(World& world);
 
-        bool isIconified() {
-            return (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0);
-        }
+        bool shouldClose() const;
 
-        void frameStart(World& world) {
-            glfwPollEvents();
-            updateWorld(world);
-        }
-
-        void frameEnd(World& world) {
-            // Swap buffers
-            glfwSwapBuffers(window);
-        }
-
-        bool shouldClose() {
-            return glfwWindowShouldClose(window);
-        }
+        float getUiContentScale() const;
     };
 }

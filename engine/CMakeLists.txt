@@ -9,4 +9,4 @@ file(GLOB ENGINE_GLOB
 add_library(engine STATIC ${ENGINE_GLOB} ../extern/glad/src/glad.c)
 
 target_include_directories(engine PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include  ../extern/glad/include)
-target_link_libraries(engine PUBLIC glfw glm EnTT::EnTT)
+target_link_libraries(engine PUBLIC glfw glm EnTT::EnTT imgui)

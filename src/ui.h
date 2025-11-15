@@ -14,5 +14,4 @@ public:
 
     void init(Engine::Application &window);
     void frame_update(Engine::Application &window);
-    void render();
 };

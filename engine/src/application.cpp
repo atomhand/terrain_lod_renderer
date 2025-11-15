@@ -1,5 +1,13 @@
 #include "application.h"
 #include <iostream>
+#include "imgui.h"
+#include "backends/imgui_impl_glfw.h"
+#include "backends/imgui_impl_opengl3.h"
+
+#include <GLFW/glfw3.h>
+#include "ui_backend.h"
+
+const char* glsl_version = "#version 130";
 
 static double scrollDelta = 0.f;
 static glm::vec2 mousePos;
@@ -40,6 +48,40 @@ void Engine::Application::scrollCallback(GLFWwindow* window, double xoffset, dou
 void Engine::Application::errorCallback(int error, const char* description)
 {
 	fputs(description, stderr);
+}
+
+void Engine::Application::getFramebufferSize(int& w, int& h) const {
+	glfwGetFramebufferSize(window, &w, &h);
+};
+
+bool Engine::Application::isIconified() const {
+	return (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0);
+}
+
+void Engine::Application::frameStart(World& world) {
+	// Create window with graphics context
+	if (isIconified())
+	{
+		ImGui_ImplGlfw_Sleep(10);
+		return;
+	}
+	
+	// Start the Dear ImGui frame
+    UiBackend::FrameStart();
+
+	
+	glfwPollEvents();
+	updateWorld(world);
+}
+
+void Engine::Application::frameEnd(World& world) {
+	UiBackend::render();
+	// Swap buffers
+	glfwSwapBuffers(window);
+}
+
+bool Engine::Application::shouldClose() const {
+	return glfwWindowShouldClose(window);
 }
 
 Engine::Application::Application(int width, int height, const char *title) {
@@ -95,8 +137,15 @@ Engine::Application::Application(int width, int height, const char *title) {
 	glfwSetCursorPosCallback(window,cursorPosCallback);
 
 	glfwSetWindowTitle(window, title);
+
+	// INIT imGui	
+    UiBackend::Init(window);
 }
 
 Engine::Application::~Application() {    
 	glfwTerminate();
+}
+
+float Engine::Application::getUiContentScale() const {
+	return ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor()); // Valid on GLFW 3.3+ only
 }

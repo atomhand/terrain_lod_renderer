@@ -1,18 +1,11 @@
 
 #include "ui.h"
-
 #include "imgui.h"
-#include "backends/imgui_impl_glfw.h"
-#include "backends/imgui_impl_opengl3.h"
-
-const char* glsl_version = "#version 130";
 
 void Ui::init(Engine::Application &app)
 {
-    float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor()); // Valid on GLFW 3.3+ only
+    float main_scale = app.getUiContentScale();
     // Setup Dear ImGui context
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
@@ -25,26 +18,10 @@ void Ui::init(Engine::Application &app)
     ImGuiStyle& style = ImGui::GetStyle();
     style.ScaleAllSizes(main_scale);        // Bake a fixed style scale. (until we have a solution for dynamic style scaling, changing this requires resetting Style + calling this again)
     style.FontScaleDpi = main_scale;        // Set initial font scale. (using io.ConfigDpiScaleFonts=true makes this unnecessary. We leave both here for documentation purpose)
-
-    // Setup Platform/Renderer backends
-    ImGui_ImplGlfw_InitForOpenGL(app.getWindow(), true);
-    ImGui_ImplOpenGL3_Init(glsl_version);
 }
 
 void  Ui::frame_update(Engine::Application &app)
-{
-    // Create window with graphics context
-    if (app.isIconified())
-    {
-        ImGui_ImplGlfw_Sleep(10);
-        return;
-    }
-    
-    // Start the Dear ImGui frame
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-    
+{    
     // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
     if (show_demo_window)
         ImGui::ShowDemoWindow(&show_demo_window);
@@ -83,11 +60,4 @@ void  Ui::frame_update(Engine::Application &app)
             show_another_window = false;
         ImGui::End();
     }
-}
-
-void  Ui::render()
-{
-    // imgui render
-    ImGui::Render();
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
