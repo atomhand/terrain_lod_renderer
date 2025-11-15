@@ -30,7 +30,7 @@ void init(Engine::Application &window)
 	try
 	{
 		Engine::Shader shader = Engine::Shader("shaders/basic.vert", "shaders/basic.frag");
-		terrain_mesh = new TerrainMesh(TerrainConfig(32),shader);
+		terrain_mesh = new TerrainMesh(shader);
 	}
 	catch (exception &e)
 	{

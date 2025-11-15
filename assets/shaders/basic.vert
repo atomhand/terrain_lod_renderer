@@ -8,6 +8,7 @@ uniform mat4 projection;
 
 void main()
 {
+    /*
 	int index = gl_VertexID;
 
 	vec4 vertexPositions[6] = vec4[6](
@@ -21,4 +22,7 @@ void main()
         );
 
 	gl_Position = projection * view * vertexPositions[index];
+    */
+
+	gl_Position = projection * view * position;
 }

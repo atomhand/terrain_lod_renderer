@@ -2,33 +2,23 @@
 
 #include <glad/glad.h>
 #include "shader.h"
-#include "terrain_config.h"
 
 class TerrainMesh
 {
 private:
     GLuint positionBufferObject;
     GLuint vao;
-    
-    TerrainConfig terrain_config;
 public:
     Engine::Shader shader;
     void draw() {
         shader.use();
-        glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
-
+        glBindVertexArray(vao);
         glDrawArrays(GL_TRIANGLES, 0, 6);
-
-        glDisableVertexAttribArray(0);
+        glBindVertexArray(0);
     }
 
-
-
-    TerrainMesh(TerrainConfig terrain_config, Engine::Shader& shader) : shader(shader), terrain_config(terrain_config) {
+    TerrainMesh(Engine::Shader& shader) : shader(shader) {
         glGenVertexArrays(1, &vao);
-        glBindVertexArray(vao);
 
         float vertexPositions[] = {
             0.75f, 0.75f, 0.0f, 1.0f,
@@ -39,10 +29,21 @@ public:
             -0.75f, -0.75f, 0.0f, 1.0f,
         };
 
+        glBindVertexArray(vao);
+
         glGenBuffers(1, &positionBufferObject);
+
+        // Create and fill position buffer
         glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertexPositions), vertexPositions, GL_STATIC_DRAW);
+
+        // Bind to vertex array
+        glEnableVertexAttribArray(0); 
+        glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
+
+        // unbind
         glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
     }
     ~TerrainMesh() {
 
