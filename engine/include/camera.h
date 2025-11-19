@@ -28,5 +28,10 @@ namespace Engine
         glm::mat4 get_view() const {
             return transform;
         }
+
+        void updateViewport(float width, float height) {
+            this->width = width;
+            this->height = height;
+        }
     };
 }

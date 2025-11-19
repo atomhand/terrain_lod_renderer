@@ -8,7 +8,6 @@ struct RtsCamera {
 private:
     float zoom = 1.0;
 
-
 public:
     void update_zoom(float scroll_delta) {
         zoom = glm::clamp(zoom-scroll_delta*0.1f, 0.0f, 1.0f);

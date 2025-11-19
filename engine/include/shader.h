@@ -8,8 +8,8 @@ namespace Engine
 {
     class Shader
     {
-    public:
         GLuint programID;
+    public:
 
         Shader(const char* vertexPath, const char* fragmentPath);
 
