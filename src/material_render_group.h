@@ -13,9 +13,9 @@ struct MaterialRenderGroup
 
     float shininess = 8.0;
 
-    Mesh mesh;
+    Engine::Mesh mesh;
 
-    MaterialRenderGroup(Engine::Shader shader, Mesh mesh) : shader(shader), mesh(mesh) {
+    MaterialRenderGroup(Engine::Shader shader, Engine::Mesh mesh) : shader(shader), mesh(mesh) {
 
     };
 };

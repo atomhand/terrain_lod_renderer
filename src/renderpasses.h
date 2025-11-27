@@ -28,7 +28,7 @@ public:
             for(int i=0; i<group.transforms.size(); i++) {
                 auto transform = group.transforms[i];
                 
-                Mesh& mesh =group.mesh;
+                Engine::Mesh& mesh =group.mesh;
                 
                 group.shader.setMat4("model", transform);
 

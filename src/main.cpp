@@ -1,10 +1,11 @@
 #include <iostream>
+#include <utility>
 #include "shader.h"
 
 #include "demo_world.h"
 
 #include "application.h"
-#include "mesh.h"
+#include "shapes.h"
 #include "rts_camera.h"
 #include "world.h"
 
@@ -24,8 +25,8 @@ int main()
 	try
 	{
 		Engine::Shader shader = Engine::Shader("shaders/basic.vert", "shaders/basic.frag");
-		Mesh cubemesh = Mesh::Cube();
-		Mesh spheremesh = Mesh::Sphere(8,8);
+		Engine::Mesh cubemesh = Cube();
+		Engine::Mesh spheremesh = Sphere(8,8);
 
 		MaterialRenderGroup windmill = MaterialRenderGroup(shader,cubemesh);
 		MaterialRenderGroup duck = MaterialRenderGroup(shader,spheremesh);

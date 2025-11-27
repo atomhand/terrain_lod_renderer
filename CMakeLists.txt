@@ -9,6 +9,7 @@ set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
 add_subdirectory("extern/glfw")
 add_subdirectory("extern/glm")
+add_subdirectory("extern/assimp")
 
 add_subdirectory("engine")
 
@@ -16,7 +17,7 @@ add_executable(GpuProgrammingProject
     src/main.cpp
 )
 
-target_link_libraries(GpuProgrammingProject PRIVATE engine)
+target_link_libraries(GpuProgrammingProject PRIVATE engine assimp)
 
 # Copy asset folder to executing directory
 # TODO - Compress it
