@@ -26,6 +26,7 @@ int main()
 	try
 	{
 		Engine::Shader shader = Engine::Shader("shaders/basic.vert", "shaders/basic.frag");
+		Engine::Shader transparent_shader = Engine::Shader("shaders/transparent.vert", "shaders/transparent.frag");
 
 		world.meshes.push_back(Cube());
 		world.meshes.push_back(Sphere(8,8));
@@ -38,15 +39,17 @@ int main()
 		duck.shininess = 5.0;
 
 
-		MaterialRenderGroup crane = MaterialRenderGroup(shader,world.meshes[2]);
-		Engine::Texture crane_tex;
-		crane_tex.Import("textures/Tex_BlackCrownedCraneBodyB.TGA");
-		crane.textures.push_back(crane_tex);
+		MaterialRenderGroup crane = MaterialRenderGroup(transparent_shader,world.meshes[2]);
+		crane.textures.push_back(Engine::Texture::Import("textures/Tex_BlackCrownedCraneBodyB.TGA"));
+		crane.textures.push_back(Engine::Texture::Import("textures/Tex_BlackCrownedCraneBodyM.TGA"));
+		crane.textures.push_back(Engine::Texture::Import("textures/Tex_BlackCrownedCraneBodyN.TGA"));
+		//crane.transparent = true;
 
-		MaterialRenderGroup crane_feathers = MaterialRenderGroup(shader,world.meshes[3]);
-		Engine::Texture crane_feather_tex;
-		crane_feather_tex.Import("textures/Tex_BlackCrownedCraneFeatherB.TGA");
-		crane_feathers.textures.push_back(crane_feather_tex);
+		MaterialRenderGroup crane_feathers = MaterialRenderGroup(transparent_shader,world.meshes[3]);
+		crane_feathers.textures.push_back(Engine::Texture::Import("textures/Tex_BlackCrownedCraneFeatherB.TGA"));
+		crane_feathers.textures.push_back(Engine::Texture::Import("textures/Tex_BlackCrownedCraneFeatherM.TGA"));
+		crane_feathers.textures.push_back(Engine::Texture::Import("textures/Tex_BlackCrownedCraneFeatherN.TGA"));
+		crane_feathers.transparent = true;
 
 		world.material_render_groups.push_back(windmill);
 		world.material_render_groups.push_back(duck);

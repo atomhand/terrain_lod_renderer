@@ -5,13 +5,14 @@
 #include <filesystem>
 
 // Reference https://learnopengl.com/Getting-started/Textures
-void Engine::Texture::Import(const char* filePath) {    
+Engine::Texture Engine::Texture::Import(const char* filePath) {   
+    Engine::Texture tex; 
     std::filesystem::path path = std::filesystem::current_path();
 	path += "/assets/";
 	path += filePath;
 
 
-    glBindTexture(GL_TEXTURE_2D, data->textureObject);
+    glBindTexture(GL_TEXTURE_2D, tex.data->textureObject);
 
     // set filter/wrap options
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
@@ -32,4 +33,6 @@ void Engine::Texture::Import(const char* filePath) {
 
     glBindTexture(GL_TEXTURE_2D,0);
     stbi_image_free(data);
+
+    return tex;
 }

@@ -14,6 +14,8 @@ public:
     std::vector<glm::mat4x4> transforms;
     std::vector<glm::vec4> colours;
 
+    bool transparent;
+
     float shininess = 8.0;
 
     Engine::Mesh mesh;

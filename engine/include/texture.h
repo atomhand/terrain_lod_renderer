@@ -21,7 +21,7 @@ namespace Engine {
 
         std::shared_ptr<TextureData> data;
     public:
-        void Import(const char* path);
+        static Texture Import(const char* path);
 
         Texture() {
             data = std::make_shared<TextureData>();
