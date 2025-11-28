@@ -1,5 +1,7 @@
 #pragma once
 #include <glad/glad.h>
+#include <vector>
+#include <glm/glm.hpp>
 
 namespace Engine {
     class Mesh

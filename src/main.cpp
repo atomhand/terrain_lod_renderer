@@ -11,6 +11,8 @@
 
 #include "renderpasses.h"
 
+#include "assimp_wrapper.h"
+
 using namespace std;
 
 DemoWorld world;
@@ -27,13 +29,16 @@ int main()
 		Engine::Shader shader = Engine::Shader("shaders/basic.vert", "shaders/basic.frag");
 		Engine::Mesh cubemesh = Cube();
 		Engine::Mesh spheremesh = Sphere(8,8);
+		Engine::Mesh cranemesh = Engine::AssimpWrapper::ImportMesh("models/Anim_RedCrownedCraneFlap1Forward.FBX")[0];//Sphere(8,8);
 
 		MaterialRenderGroup windmill = MaterialRenderGroup(shader,cubemesh);
 		MaterialRenderGroup duck = MaterialRenderGroup(shader,spheremesh);
+		MaterialRenderGroup crane = MaterialRenderGroup(shader,cranemesh);
 		duck.shininess = 5.0;
 
 		world.material_render_groups.push_back(windmill);
 		world.material_render_groups.push_back(duck);
+		world.material_render_groups.push_back(crane);
 	}
 	catch (exception &e)
 	{
@@ -56,6 +61,10 @@ int main()
 
 		world.material_render_groups[1].transforms = world.duck.getTransforms();
 		world.material_render_groups[1].colours = world.duck.getColours();
+
+		glm::mat4 crane_transform =   glm::translate(glm::mat4(1.0f), glm::vec3(10.0,0.0,0.0)) * glm::rotate(glm::mat4(1.0f), -1.57f, glm::vec3(1.f,0.f,0.f)) *  glm::scale(glm::mat4(1.0f), glm::vec3(0.05,0.05,0.05));
+
+		world.material_render_groups[2].transforms = std::vector{crane_transform};
 
 		RenderPasses::preRender(world, app);
 		RenderPasses::materialRenderPass(world,app);

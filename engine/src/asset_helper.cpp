@@ -5,22 +5,22 @@
 #include <filesystem>
 
 /* Read a text file into a string*/
-string Engine::AssetHelper::readFile(const char *filePath)
+std::string Engine::AssetHelper::readFile(const char *filePath)
 {
-    filesystem::path path = filesystem::current_path();
+    std::filesystem::path path = std::filesystem::current_path();
 	path += "/assets/";
 	path += filePath;
 
-	string content;
-	ifstream fileStream(path, ios::in);
+	std::string content;
+	std::ifstream fileStream(path, std::ios::in);
 
 	if (!fileStream.is_open()) {
-		cerr << "Could not read file " << path.string() << ". File does not exist." << endl;
+		std::cerr << "Could not read file " << path.string() << ". File does not exist." << std::endl;
 		return "";
 	}
-	cout << "Reading file " << path.string() << endl;
+	std::cout << "Reading file " << path.string() << std::endl;
 
-	string line = "";
+	std::string line = "";
 	while (!fileStream.eof()) {
 		getline(fileStream, line);
 		content.append(line + "\n");

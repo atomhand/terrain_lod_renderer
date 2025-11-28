@@ -17,7 +17,7 @@ add_executable(GpuProgrammingProject
     src/main.cpp
 )
 
-target_link_libraries(GpuProgrammingProject PRIVATE engine assimp)
+target_link_libraries(GpuProgrammingProject PRIVATE engine)
 
 # Copy asset folder to executing directory
 # TODO - Compress it

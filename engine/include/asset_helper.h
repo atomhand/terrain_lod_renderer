@@ -1,12 +1,11 @@
 #pragma once
 
 #include <string>
-using namespace std;
 
 namespace Engine {
     class AssetHelper
     {
     public:
-        static string readFile(const char *filePath);
+        static std::string readFile(const char *filePath);
     };
 }
