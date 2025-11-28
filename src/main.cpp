@@ -26,7 +26,7 @@ int main()
 	try
 	{
 		Engine::Shader shader = Engine::Shader("shaders/basic.vert", "shaders/basic.frag");
-		Engine::Shader transparent_shader = Engine::Shader("shaders/transparent.vert", "shaders/transparent.frag");
+		Engine::Shader transparent_shader = Engine::Shader("shaders/normalmap.vert", "shaders/normalmap.frag");
 
 		world.meshes.push_back(Cube());
 		world.meshes.push_back(Sphere(8,8));
@@ -71,6 +71,9 @@ int main()
 		wind_angle += world.input.deltaTime * world.input.animSpeed;
 		world.windmill.update(wind_angle,world.input.deltaTime * world.input.animSpeed * 0.5f);
 		world.duck.update(world.input.deltaTime * world.input.animSpeed * 0.5f);
+
+		glm::vec4 duckPos = world.duck.getTransforms()[0] * glm::vec4(0.0,0.0,0.0,1.0);
+		world.lightPos = glm::vec4(duckPos.x,duckPos.y,duckPos.z,world.lightPos.w);
 
 		world.material_render_groups[0].transforms = world.windmill.getTransforms();
 		world.material_render_groups[0].colours = world.windmill.getColours();

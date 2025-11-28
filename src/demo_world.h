@@ -19,7 +19,7 @@ public:
     RtsCamera camera;
     Windmill windmill;
     Duck duck;
-    glm::vec4 lightDir = glm::vec4(glm::normalize(glm::vec3(1.0f,0.8f,0.0f)), 2.0f); // light intensity packed into W
+    glm::vec4 lightPos = glm::vec4(glm::normalize(glm::vec3(1.0f,0.8f,0.0f)), 2.0f); // light intensity packed into W
 
     Engine::Texture* testTex;
     

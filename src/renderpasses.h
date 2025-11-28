@@ -22,7 +22,8 @@ public:
         for(MaterialRenderGroup& group : world.material_render_groups) {
             group.shader.use();
             group.shader.setCamera(world.camera);
-            group.shader.setVec4("lightdir", glm::vec4(glm::normalize(glm::mat3(view) * glm::vec3(world.lightDir)),world.lightDir.w));
+
+            group.shader.setVec4("lightpos", view * glm::vec4(world.lightPos.x,world.lightPos.y,world.lightPos.z,1.0));
             group.shader.setFloat("shininess", group.shininess);
 
             if(group.transparent) {

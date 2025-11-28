@@ -28,6 +28,8 @@ namespace Engine {
 
                 std::vector<glm::vec3> verts;
                 std::vector<glm::vec3> normals;
+                std::vector<glm::vec3> tangents;
+                std::vector<glm::vec3> bitangents;
                 std::vector<glm::vec2> uvs;
                 std::vector<GLuint> indices;
 
@@ -43,7 +45,7 @@ namespace Engine {
                         int index = face->mIndices[i];
                         indices.push_back(index);
                     }
-                }
+                }                
 
                 unsigned int vertsc = (mesh->mNumVertices);
                 std::cout << "Mesh has " << vertsc << " verts" << std::endl;
@@ -53,10 +55,17 @@ namespace Engine {
                         auto normal = &mesh->mNormals[v];
                         normals.push_back(glm::vec3(normal->x,normal->y,normal->z));
                     }
-                    if(mesh->mTextureCoords != NULL) {
+                    if(mesh->mTextureCoords[0]) {
                         auto uv = &mesh->mTextureCoords[0][v];
                         uvs.push_back(glm::vec2(uv->x,uv->y));
                     }
+                    if(mesh->HasTangentsAndBitangents()) {
+                        auto tangent = &mesh->mTangents[v];
+                        auto bitangent = &mesh->mBitangents[v];
+                        tangents.push_back(glm::vec3(tangent->x,tangent->y,tangent->z));
+                        bitangents.push_back(glm::vec3(bitangent->x,bitangent->y,bitangent->z));
+                    }
+
                     auto vert = &mesh->mVertices[v];
                     verts.push_back(glm::vec3(vert->x,vert->y,vert->z));
 
@@ -72,6 +81,8 @@ namespace Engine {
                     outMesh.SetNormals(normals);
                 if(uvs.size() == verts.size())
                     outMesh.SetUvs(uvs);
+                if(tangents.size() == verts.size())
+                    outMesh.SetTangentsAndBitangents(tangents,bitangents);
                 outMesh.SetIndices(indices);
                 outMesh.Apply();
 

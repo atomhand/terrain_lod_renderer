@@ -6,16 +6,21 @@ layout(location = 1) in vec3 normal;
 
 uniform mat4 model, view, projection;
 uniform vec4 colour;
+uniform vec4 lightpos;
+uniform mat3 normalmatrix;
 
-out vec3 fnormal, fposition;
+out vec3 fnormal, fposition, flightdir;
 out vec4 fcolour;
 
 void main()
 {
-	int index = gl_VertexID;
-
-	gl_Position = (projection * view * model) * vec4(position,1.0);
-    fnormal = normal.xyz;
-    fposition = position.xyz;
+    vec4 position_h = vec4(position,1.0);
+    
+	mat4 mv_matrix = view * model;				// Calculate the model-view transformation
+    fposition = (mv_matrix * position_h).xyz;
+    fnormal = normalize(normalmatrix * normal);
+    flightdir = (lightpos.xyz / lightpos.w) - fposition;
     fcolour = colour;
+
+    gl_Position = (projection * view * model) * position_h;
 }
