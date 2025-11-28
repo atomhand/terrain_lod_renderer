@@ -8,8 +8,6 @@
 // (TODO - implement instanced rendering)
 struct MaterialRenderGroup
 {
-    //MaterialRenderGroup & operator=(const MaterialRenderGroup&) = delete;
-    //MaterialRenderGroup(const MaterialRenderGroup&) = delete;
 public:
     Engine::Shader shader;
     std::vector<Engine::Texture> textures;
@@ -18,12 +16,9 @@ public:
 
     float shininess = 8.0;
 
-    Engine::Mesh* mesh;
+    Engine::Mesh mesh;
 
-    MaterialRenderGroup(Engine::Shader shader, Engine::Mesh* mesh) : shader(shader), mesh(mesh) {
+    MaterialRenderGroup(Engine::Shader shader, Engine::Mesh mesh) : shader(shader), mesh(mesh) {
 
     };
-
-    ~MaterialRenderGroup() {
-    }
 };

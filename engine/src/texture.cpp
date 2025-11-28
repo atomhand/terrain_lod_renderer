@@ -11,7 +11,7 @@ void Engine::Texture::Import(const char* filePath) {
 	path += filePath;
 
 
-    glBindTexture(GL_TEXTURE_2D, textureObject);
+    glBindTexture(GL_TEXTURE_2D, data->textureObject);
 
     // set filter/wrap options
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
@@ -30,5 +30,6 @@ void Engine::Texture::Import(const char* filePath) {
         std::cout << "Failed to load texture at path " << path.string() << std::endl;
     }
 
+    glBindTexture(GL_TEXTURE_2D,0);
     stbi_image_free(data);
 }

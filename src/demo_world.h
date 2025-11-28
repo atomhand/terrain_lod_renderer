@@ -25,14 +25,5 @@ public:
     
     std::vector<MaterialRenderGroup> material_render_groups;
 
-    std::vector<Engine::Mesh*> meshes;
-
-    DemoWorld() {
-    }
-
-    ~DemoWorld() {
-        for(auto mesh : meshes) {
-            delete mesh;
-        }
-    }
+    std::vector<Engine::Mesh> meshes;
 };

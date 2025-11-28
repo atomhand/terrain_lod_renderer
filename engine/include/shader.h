@@ -33,9 +33,6 @@ namespace Engine
             glUniformMatrix3fv(glGetUniformLocation(programID, name.c_str()), 1, GL_FALSE, &mat[0][0]);
         }
 
-        
-
-
         void setCamera(const Camera &camera);
     };
 }

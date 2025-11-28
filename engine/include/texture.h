@@ -1,25 +1,34 @@
 #pragma once
+#include <memory>
 #include <glad/glad.h>
 
 namespace Engine {
     class Texture {
     private:
-        GLuint textureObject;
+        struct TextureData {
+            GLuint textureObject;
 
-        //Texture & operator=(const Texture&) = delete;
-        //Texture(const Texture&) = delete;
+            TextureData() {
+                glGenTextures(1, &textureObject);
+            }
+            ~TextureData() {
+                glDeleteTextures(1, &textureObject);
+            }
+
+            TextureData & operator=(const TextureData&) = delete;
+            TextureData(const TextureData&) = delete;
+        };
+
+        std::shared_ptr<TextureData> data;
     public:
         void Import(const char* path);
 
         Texture() {
-            glGenTextures(1, &textureObject);
-        }
-        ~Texture() {
-            //glDeleteTextures(1, &textureObject);
+            data = std::make_shared<TextureData>();
         }
 
         void bind() {
-            glBindTexture(GL_TEXTURE_2D,textureObject);
+            glBindTexture(GL_TEXTURE_2D,data->textureObject);
         }
     };
 }

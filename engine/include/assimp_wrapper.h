@@ -16,7 +16,7 @@ namespace Engine {
         static void RecursiveImport(
             const aiScene* scene,
             const aiNode* nd,
-            std::vector<Mesh*> &meshes)
+            std::vector<Mesh> &meshes)
         {
             unsigned int i;
             unsigned int n = 0, t, v;
@@ -66,14 +66,14 @@ namespace Engine {
 
                 std::cout << "Imported mesh with assimp, " << verts.size() << " verts, " << normals.size() << " normals, " << indices.size() << " indices" << std::endl;
 
-                Mesh* outMesh = new Mesh;
-                outMesh->SetVerts(verts);
+                Mesh outMesh;
+                outMesh.SetVerts(verts);
                 if(normals.size() == verts.size())
-                    outMesh->SetNormals(normals);
+                    outMesh.SetNormals(normals);
                 if(uvs.size() == verts.size())
-                    outMesh->SetUvs(uvs);
-                outMesh->SetIndices(indices);
-                outMesh->Apply();
+                    outMesh.SetUvs(uvs);
+                outMesh.SetIndices(indices);
+                outMesh.Apply();
 
                 meshes.push_back(outMesh);
             }
@@ -86,7 +86,7 @@ namespace Engine {
     public:
         // Import mesh from file
         // File path is provided relative to the assets directory
-        static std::vector<Mesh*> ImportMesh(const char *filePath) {
+        static std::vector<Mesh> ImportMesh(const char *filePath) {
             std::filesystem::path path = std::filesystem::current_path();
             path += "/assets/";
             path += filePath;
@@ -94,7 +94,7 @@ namespace Engine {
             std::cout << "importing " << path.string() << std::endl;
             const aiScene* scene = aiImportFile(path.string().c_str(),aiProcessPreset_TargetRealtime_MaxQuality);
 
-            std::vector<Mesh*> meshes;
+            std::vector<Mesh> meshes;
 
             RecursiveImport(scene, scene->mRootNode,meshes);
             
