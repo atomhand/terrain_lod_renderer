@@ -2,12 +2,12 @@
 #include <utility>
 #include "shader.h"
 
-#include "demo_world.h"
 
 #include "application.h"
 #include "shapes.h"
 #include "rts_camera.h"
 #include "world.h"
+#include "demo_world.h"
 
 #include "renderpasses.h"
 
@@ -15,14 +15,13 @@
 
 using namespace std;
 
-DemoWorld world;
-
 float wind_angle = 0.0;
+const char * title = "GPU Programming Coursework App";
+Engine::Application app = Engine::Application(1024,768,title);
+DemoWorld world;
 
 int main()
 {
-    const char * title = "GPU Programming Coursework App";
-	Engine::Application app = Engine::Application(1024,768,title);
 
 	try
 	{
@@ -30,16 +29,29 @@ int main()
 
 		world.meshes.push_back(Cube());
 		world.meshes.push_back(Sphere(8,8));
-		world.meshes.push_back(Engine::AssimpWrapper::ImportMesh("models/Anim_RedCrownedCraneFlap1Forward.FBX")[0]);
+		auto crane_meshes = Engine::AssimpWrapper::ImportMesh("models/Anim_RedCrownedCraneFlap1Forward.FBX");
+		world.meshes.push_back(crane_meshes[0]);
+		world.meshes.push_back(crane_meshes[1]);
 
 		MaterialRenderGroup windmill = MaterialRenderGroup(shader,world.meshes[0]);
 		MaterialRenderGroup duck = MaterialRenderGroup(shader,world.meshes[1]);
-		MaterialRenderGroup crane = MaterialRenderGroup(shader,world.meshes[2]);
 		duck.shininess = 5.0;
+
+
+		MaterialRenderGroup crane = MaterialRenderGroup(shader,world.meshes[2]);
+		Engine::Texture crane_tex;
+		crane_tex.Import("textures/Tex_BlackCrownedCraneBodyB.TGA");
+		crane.textures.push_back(crane_tex);
+
+		MaterialRenderGroup crane_feathers = MaterialRenderGroup(shader,world.meshes[3]);
+		Engine::Texture crane_feather_tex;
+		crane_feather_tex.Import("textures/Tex_BlackCrownedCraneFeatherB.TGA");
+		crane_feathers.textures.push_back(crane_feather_tex);
 
 		world.material_render_groups.push_back(windmill);
 		world.material_render_groups.push_back(duck);
 		world.material_render_groups.push_back(crane);
+		world.material_render_groups.push_back(crane_feathers);
 	}
 	catch (exception &e)
 	{
@@ -65,7 +77,11 @@ int main()
 
 		glm::mat4 crane_transform =   glm::translate(glm::mat4(1.0f), glm::vec3(10.0,0.0,0.0)) * glm::rotate(glm::mat4(1.0f), -1.57f, glm::vec3(1.f,0.f,0.f)) *  glm::scale(glm::mat4(1.0f), glm::vec3(0.05,0.05,0.05));
 
+		world.material_render_groups[2].colours = std::vector{glm::vec4(1.0,1.0,1.0,1.0)};
 		world.material_render_groups[2].transforms = std::vector{crane_transform};
+		
+		world.material_render_groups[3].colours = std::vector{glm::vec4(1.0,1.0,1.0,1.0)};
+		world.material_render_groups[3].transforms = std::vector{crane_transform};
 
 		RenderPasses::preRender(world, app);
 		RenderPasses::materialRenderPass(world,app);

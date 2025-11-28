@@ -3,6 +3,7 @@
 #include <glad/glad.h>
 #include <string>
 #include "camera.h"
+#include "texture.h"
 
 namespace Engine
 {
@@ -31,6 +32,8 @@ namespace Engine
         {
             glUniformMatrix3fv(glGetUniformLocation(programID, name.c_str()), 1, GL_FALSE, &mat[0][0]);
         }
+
+        
 
 
         void setCamera(const Camera &camera);

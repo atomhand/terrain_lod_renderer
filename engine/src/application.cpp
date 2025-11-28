@@ -110,6 +110,7 @@ Engine::Application::Application(int width, int height, const char *title) {
 #ifdef DEBUG
 	glfwOpenWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 #endif
+	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 
 	window = glfwCreateWindow(width, height, title, 0, 0);
 	if (!window){

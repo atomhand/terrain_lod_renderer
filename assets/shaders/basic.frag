@@ -4,6 +4,10 @@
 in vec3 fnormal, fposition;
 in vec4 fcolour;
 
+in vec2 fTexCoord;
+
+uniform sampler2D myTexture;
+
 uniform mat4 model, view, projection;
 uniform mat3 normalmatrix;
 uniform vec4 lightdir; // light intensity stored in W
@@ -21,7 +25,7 @@ void main()
 {
 	vec3 emissive = vec3(0);				// Create a vec3(0, 0, 0) for our emmissive light
 	vec4 position_h = vec4(fposition, 1.0);	// Convert the (x,y,z) position to homogeneous coords (x,y,z,w)
-	vec4 diffuse_albedo = fcolour;					// This is the vertex colour, used to handle the colourmode change
+	vec4 diffuse_albedo = fcolour * texture(myTexture,fTexCoord);					// This is the vertex colour, used to handle the colourmode change
 	vec3 light_dir3 = lightdir.xyz;
 
 	vec3 ambient = diffuse_albedo.xyz *0.2;

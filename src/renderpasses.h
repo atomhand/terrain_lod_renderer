@@ -19,11 +19,16 @@ public:
     static void materialRenderPass(DemoWorld& world, Engine::Application &app) {
         glEnable(GL_DEPTH_TEST);  
         glm::mat4 view = world.camera.get_view();
-        for(MaterialRenderGroup group : world.material_render_groups) {
+        for(MaterialRenderGroup& group : world.material_render_groups) {
             group.shader.setCamera(world.camera);
             group.shader.setVec4("lightdir", glm::vec4(glm::normalize(glm::mat3(view) * glm::vec3(world.lightDir)),world.lightDir.w));
             group.shader.setFloat("shininess", group.shininess);
             group.shader.use();
+
+            for(int i =0; i<group.textures.size(); i++) {
+                glActiveTexture(GL_TEXTURE0 + i);
+                group.textures[i].bind();
+            }
 
             for(int i=0; i<group.transforms.size(); i++) {
                 auto transform = group.transforms[i];
@@ -43,6 +48,11 @@ public:
                 glBindVertexArray(mesh->vao);
                 glDrawElements(GL_TRIANGLES, mesh->count(), GL_UNSIGNED_INT, nullptr);
                 glBindVertexArray(0);
+            }
+            
+            for(int i =0; i<group.textures.size(); i++) {
+                glActiveTexture(GL_TEXTURE0 + i);
+                glBindTexture(GL_TEXTURE_2D,0);
             }
         }
     }

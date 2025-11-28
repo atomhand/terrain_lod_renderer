@@ -28,6 +28,7 @@ namespace Engine {
 
                 std::vector<glm::vec3> verts;
                 std::vector<glm::vec3> normals;
+                std::vector<glm::vec2> uvs;
                 std::vector<GLuint> indices;
 
                 for (t = 0; t < mesh->mNumFaces; ++t) {
@@ -52,6 +53,10 @@ namespace Engine {
                         auto normal = &mesh->mNormals[v];
                         normals.push_back(glm::vec3(normal->x,normal->y,normal->z));
                     }
+                    if(mesh->mTextureCoords != NULL) {
+                        auto uv = &mesh->mTextureCoords[0][v];
+                        uvs.push_back(glm::vec2(uv->x,uv->y));
+                    }
                     auto vert = &mesh->mVertices[v];
                     verts.push_back(glm::vec3(vert->x,vert->y,vert->z));
 
@@ -60,7 +65,17 @@ namespace Engine {
 
 
                 std::cout << "Imported mesh with assimp, " << verts.size() << " verts, " << normals.size() << " normals, " << indices.size() << " indices" << std::endl;
-                meshes.push_back(new Mesh(verts,normals,indices));
+
+                Mesh* outMesh = new Mesh;
+                outMesh->SetVerts(verts);
+                if(normals.size() == verts.size())
+                    outMesh->SetNormals(normals);
+                if(uvs.size() == verts.size())
+                    outMesh->SetUvs(uvs);
+                outMesh->SetIndices(indices);
+                outMesh->Apply();
+
+                meshes.push_back(outMesh);
             }
 
             /* import all children */

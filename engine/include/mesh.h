@@ -9,11 +9,14 @@ namespace Engine {
         bool uvEnabled = false;
 
         GLsizei stride() {
-            return sizeof(glm::vec3) + (normalsEnabled ? sizeof(glm::vec3) : 0) + (uvEnabled ? sizeof(glm::vec3) : 0);
+            return sizeof(glm::vec3) + (normalsEnabled ? sizeof(glm::vec3) : 0) + (uvEnabled ? sizeof(glm::vec2) : 0);
         }
 
-        GLuint normalsOffset() {
+        GLsizei normalsOffset() {
             return sizeof(glm::vec3);
+        }
+        GLsizei uvOffset() {
+            return sizeof(glm::vec3) + (normalsEnabled ? sizeof(glm::vec3) : 0);
         }
 
         GLuint positionAttributeIndex() { return 0; }
@@ -54,6 +57,9 @@ namespace Engine {
             this->uvs = uvs;
             vertexFormat.uvEnabled = true;
         }
+        void SetIndices(std::vector<GLuint> indices) {
+            this->indices = indices;
+        }
 
         void Apply() {
             if(!generated) {
@@ -76,6 +82,16 @@ namespace Engine {
                     } else {
                         // Default value
                         data.push_back(0.f);
+                        data.push_back(0.f);
+                        data.push_back(0.f);
+                    }
+                }
+                if(vertexFormat.uvEnabled) {
+                    if(i < uvs.size()) {
+                        data.push_back(uvs[i].x);
+                        data.push_back(1.0 - uvs[i].y);
+                    } else {
+                        // Default value
                         data.push_back(0.f);
                         data.push_back(0.f);
                     }
@@ -104,6 +120,11 @@ namespace Engine {
                 glEnableVertexAttribArray(vertexFormat.normalAttributeIndex());
                 glVertexAttribPointer(vertexFormat.normalAttributeIndex(), 3, GL_FLOAT, GL_FALSE, vertexFormat.stride(), (const void*)vertexFormat.normalsOffset());
             }
+
+            if(vertexFormat.uvEnabled) {
+                glEnableVertexAttribArray(vertexFormat.uvAttributeIndex());
+                glVertexAttribPointer(vertexFormat.uvAttributeIndex(), 2, GL_FLOAT, GL_FALSE, vertexFormat.stride(), (const void*)vertexFormat.uvOffset());
+            }
             
             // indices
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
@@ -112,6 +133,8 @@ namespace Engine {
             glBindVertexArray(0);
             glBindBuffer(GL_ARRAY_BUFFER, 0);
         }
+
+        Mesh() {};
 
         Mesh(std::vector<glm::vec3> _vertexPositions, 
             std::vector<glm::vec3> _normals,    

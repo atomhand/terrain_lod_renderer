@@ -8,6 +8,7 @@
 #include <glad/glad.h>
 #include "material_render_group.h"
 #include "mesh.h"
+#include "texture.h"
 
 // Container for the demo data so it can easily be passed between parts of the application
 // As a future extension, the World class will have a dynamic registry (ECS pattern)
@@ -19,10 +20,15 @@ public:
     Windmill windmill;
     Duck duck;
     glm::vec4 lightDir = glm::vec4(glm::normalize(glm::vec3(1.0f,0.8f,0.0f)), 2.0f); // light intensity packed into W
+
+    Engine::Texture* testTex;
     
     std::vector<MaterialRenderGroup> material_render_groups;
 
     std::vector<Engine::Mesh*> meshes;
+
+    DemoWorld() {
+    }
 
     ~DemoWorld() {
         for(auto mesh : meshes) {
