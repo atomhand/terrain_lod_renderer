@@ -28,7 +28,7 @@ public:
             for(int i=0; i<group.transforms.size(); i++) {
                 auto transform = group.transforms[i];
                 
-                Engine::Mesh& mesh =group.mesh;
+                Engine::Mesh* mesh =group.mesh;
                 
                 group.shader.setMat4("model", transform);
 
@@ -40,8 +40,8 @@ public:
                 glm::mat3 normalmatrix = glm::transpose(glm::inverse(glm::mat3(view * transform)));                
                 group.shader.setMat3("normalmatrix", normalmatrix);
                 
-                glBindVertexArray(mesh.vao);
-                glDrawElements(GL_TRIANGLES, mesh.count(), GL_UNSIGNED_INT, nullptr);
+                glBindVertexArray(mesh->vao);
+                glDrawElements(GL_TRIANGLES, mesh->count(), GL_UNSIGNED_INT, nullptr);
                 glBindVertexArray(0);
             }
         }

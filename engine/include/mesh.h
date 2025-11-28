@@ -4,60 +4,126 @@
 #include <glm/glm.hpp>
 
 namespace Engine {
+    struct VertexFormat {
+        bool normalsEnabled = false;
+        bool uvEnabled = false;
+
+        GLsizei stride() {
+            return sizeof(glm::vec3) + (normalsEnabled ? sizeof(glm::vec3) : 0) + (uvEnabled ? sizeof(glm::vec3) : 0);
+        }
+
+        GLuint normalsOffset() {
+            return sizeof(glm::vec3);
+        }
+
+        GLuint positionAttributeIndex() { return 0; }
+        GLuint normalAttributeIndex() { return 1; }
+        GLuint uvAttributeIndex() { return 2; }
+    };
+
+
     class Mesh
     {
     private:
-        GLuint buffers[3];
+        GLuint vertexBuffer;
+        GLuint indexBuffer;
 
         std::vector<glm::vec3> verts;
+        std::vector<glm::vec2> uvs;
         std::vector<glm::vec3> normals;
         std::vector<GLuint> indices;
+        VertexFormat vertexFormat;
+
+        bool generated =false;
+
+        Mesh & operator=(const Mesh&) = delete;
+        Mesh(const Mesh&) = delete;
     public:
-        GLuint positionBufferObject() { return buffers[0]; }
-        GLuint normalsBufferObject() { return buffers[1]; }
-        GLuint indexBufferObject() { return buffers[2]; }
 
         GLsizei count() { return int(indices.size()); }
         GLuint vao;
 
-        Mesh(std::vector<glm::vec3> _vertexPositions, 
-            std::vector<glm::vec3> _normals,    
-            std::vector<GLuint> _indices) : verts(_vertexPositions) , normals(_normals), indices(_indices)
-        {
-            glGenBuffers(3, buffers);
-            
-            // fill buffer data
-            glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject());
-            glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(glm::vec3), verts.data(), GL_STATIC_DRAW);
+        void SetVerts(std::vector<glm::vec3> verts) {
+            this->verts = verts;
+        }
+        void SetNormals(std::vector<glm::vec3> normals) {
+            this->normals = normals;
+            vertexFormat.normalsEnabled = true;
+        }
+        void SetUvs(std::vector<glm::vec2> uvs) {
+            this->uvs = uvs;
+            vertexFormat.uvEnabled = true;
+        }
 
-            glBindBuffer(GL_ARRAY_BUFFER, normalsBufferObject());
-            glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(glm::vec3), normals.data(), GL_STATIC_DRAW);
+        void Apply() {
+            if(!generated) {
+                glGenBuffers(1, &vertexBuffer);
+                glGenBuffers(1, &indexBuffer);
+                glGenVertexArrays(1, &vao);
+                generated = true;
+            }
 
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferObject());
+            std::vector<float> data;
+            for(int i = 0; i<verts.size(); i++) {
+                data.push_back(verts[i].x);
+                data.push_back(verts[i].y);
+                data.push_back(verts[i].z);
+                if(vertexFormat.normalsEnabled) {
+                    if(i < normals.size()) {
+                        data.push_back(normals[i].x);
+                        data.push_back(normals[i].y);
+                        data.push_back(normals[i].z);
+                    } else {
+                        // Default value
+                        data.push_back(0.f);
+                        data.push_back(0.f);
+                        data.push_back(0.f);
+                    }
+                }
+            }
+
+            // vertex data buffer
+            glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+            glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
+
+            // index buffer
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
             
             // set up VAO
-            glGenVertexArrays(1, &vao);
             glBindVertexArray(vao);
 
             // positions
-            glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject());
-            glEnableVertexAttribArray(0); 
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+            glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+            glEnableVertexAttribArray(vertexFormat.positionAttributeIndex()); 
+            glVertexAttribPointer(vertexFormat.positionAttributeIndex(), 3, GL_FLOAT, GL_FALSE, vertexFormat.stride(), 0);
             
             // normals
-            glBindBuffer(GL_ARRAY_BUFFER, normalsBufferObject());
-            glEnableVertexAttribArray(1); 
-            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+            //glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+            if(vertexFormat.normalsEnabled) {
+                glEnableVertexAttribArray(vertexFormat.normalAttributeIndex());
+                glVertexAttribPointer(vertexFormat.normalAttributeIndex(), 3, GL_FLOAT, GL_FALSE, vertexFormat.stride(), (const void*)vertexFormat.normalsOffset());
+            }
             
             // indices
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferObject());
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
 
             // unbind
             glBindVertexArray(0);
             glBindBuffer(GL_ARRAY_BUFFER, 0);
         }
+
+        Mesh(std::vector<glm::vec3> _vertexPositions, 
+            std::vector<glm::vec3> _normals,    
+            std::vector<GLuint> _indices) : verts(_vertexPositions) , normals(_normals), indices(_indices)
+        {
+            vertexFormat.normalsEnabled = true;
+            Apply();
+        }
         ~Mesh() {
+            glDeleteVertexArrays(1,&vao);
+            glDeleteBuffers(1,&indexBuffer);
+            glDeleteBuffers(1,&vertexBuffer);
         }
     };
 }

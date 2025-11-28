@@ -27,13 +27,14 @@ int main()
 	try
 	{
 		Engine::Shader shader = Engine::Shader("shaders/basic.vert", "shaders/basic.frag");
-		Engine::Mesh cubemesh = Cube();
-		Engine::Mesh spheremesh = Sphere(8,8);
-		Engine::Mesh cranemesh = Engine::AssimpWrapper::ImportMesh("models/Anim_RedCrownedCraneFlap1Forward.FBX")[0];//Sphere(8,8);
 
-		MaterialRenderGroup windmill = MaterialRenderGroup(shader,cubemesh);
-		MaterialRenderGroup duck = MaterialRenderGroup(shader,spheremesh);
-		MaterialRenderGroup crane = MaterialRenderGroup(shader,cranemesh);
+		world.meshes.push_back(Cube());
+		world.meshes.push_back(Sphere(8,8));
+		world.meshes.push_back(Engine::AssimpWrapper::ImportMesh("models/Anim_RedCrownedCraneFlap1Forward.FBX")[0]);
+
+		MaterialRenderGroup windmill = MaterialRenderGroup(shader,world.meshes[0]);
+		MaterialRenderGroup duck = MaterialRenderGroup(shader,world.meshes[1]);
+		MaterialRenderGroup crane = MaterialRenderGroup(shader,world.meshes[2]);
 		duck.shininess = 5.0;
 
 		world.material_render_groups.push_back(windmill);
