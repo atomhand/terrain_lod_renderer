@@ -38,7 +38,7 @@ void Engine::Application::passInputs(World& world) {
 	world.input.deltaTime = currentFrame - lastFrameTime;
 	lastFrameTime = currentFrame;
 
-	if(numInput > 0.0) {
+	if(numInput >= 0.0) {
 		world.input.animSpeed = numInput;
 		numInput = -1.0;
 	}

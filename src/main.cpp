@@ -63,8 +63,8 @@ int main()
 		world.camera.update(world);
 
 		wind_angle += world.input.deltaTime * world.input.animSpeed;
-		windmill.update(wind_angle,world.input.deltaTime * world.input.animSpeed * 0.5f);
-		duck.update(world.input.deltaTime * world.input.animSpeed * 0.5f);
+		windmill.update(wind_angle,world.input.deltaTime * world.input.animSpeed * 0.2f);
+		duck.update(world.input.deltaTime * world.input.animSpeed * 0.2f);
 
 		world.scenegraph.PropagateTransforms();
 

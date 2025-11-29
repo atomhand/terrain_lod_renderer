@@ -11,7 +11,7 @@ namespace Engine {
         float yAxisKeyDelta;
         float xAxisKeyDelta;
 
-        float animSpeed = 1.0;
+        float animSpeed = 3.0;
 
         float deltaTime;
     };
