@@ -43,6 +43,7 @@ public:
             item->material->use();
             item->material->setCamera(world.camera);
             item->material->setModel(item->globalTransform);
+            item->material->shader.setFloat("time",world.time);
             for(int i =0; i<pointLights.size() && i < 4; i++) {
                 item->material->setLight(*pointLights[i], view, i);
             }
@@ -81,6 +82,7 @@ public:
             item->material->use();
             item->material->setCamera(world.camera);
             item->material->setModel(item->globalTransform);
+            item->material->shader.setFloat("time",world.time);
             for(int i =0; i<pointLights.size() && i < 4; i++) {
                 item->material->setLight(*pointLights[i], view, i);
             }

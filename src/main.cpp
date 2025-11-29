@@ -30,6 +30,8 @@ DemoWorld world;
 int main()
 {
 	Engine::DirectionalLight* sun = new Engine::DirectionalLight();
+	sun->direction= glm::normalize(glm::vec3(4.0,-2.0,4.0));
+	sun->color = glm::vec3(10.0);
 	world.scenegraph.SetParent(sun,world.scenegraph.root);
 
 	Duck duck;
@@ -78,6 +80,8 @@ int main()
 		RenderPasses::preRender(world, app);
 		RenderPasses::opaqueRenderPass(world,app);
 		RenderPasses::transparentRenderPass(world,app);
+
+		world.time = fmod(world.time + world.input.deltaTime * world.input.animSpeed, 1000.f);
 
 		app.frameEnd(world);
 	}

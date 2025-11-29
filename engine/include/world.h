@@ -22,5 +22,6 @@ namespace Engine {
     public:
         Input input;
         SceneGraph scenegraph;
+        float time;
     };
 }

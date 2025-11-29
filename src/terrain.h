@@ -101,6 +101,7 @@ class Terrain {
     Engine::Mesh waterMesh() {
         std::vector<glm::vec3> verts;
         std::vector<glm::vec3> normals;
+        //std::vector<glm::vec2> uvs;
         std::vector<GLuint> indices;
         indices.reserve(6 * (width-1)*(width-1));
         verts.reserve(width*width);
@@ -112,6 +113,8 @@ class Terrain {
                 float X = (float(x)-width/2.f) * scale;
                 float Z = (float(y)-width/2.f) * scale;
                 verts.push_back(glm::vec3(X,0.f,Z));
+
+                //uvs.push_back(glm::vec2(x / float(width-1), y / float(width-1)));
             }
         }
 
@@ -135,6 +138,7 @@ class Terrain {
         Engine::Mesh mesh;
         mesh.SetVerts(verts);
         mesh.SetIndices(indices);
+        //mesh.SetUvs(uvs);
         mesh.CalculateNormals();
         mesh.Apply();
         return mesh;
@@ -153,8 +157,11 @@ public:
 		terrainItem->localTransform = glm::mat4(1.0);
 		world.scenegraph.SetParent(terrainItem, world.scenegraph.root);
 
-        auto water_material = Engine::PbrMaterial(pbr_shader);
+        Engine::Shader water_shader = Engine::Shader("shaders/pbr.vert", "shaders/water_pbr.frag");
+        auto water_material = Engine::PbrMaterial(water_shader);
         water_material.roughness = 0.03;
+        water_material.textures.push_back(Engine::Texture::Import("textures/Foam_N.jpg"));
+        water_material.textures.push_back(Engine::Texture::Import("textures/SeaWaves_N.jpg"));
         RenderItem* waterItem = new RenderItem();
 		waterItem->mesh = waterMesh();
 		waterItem->material = std::make_shared<Engine::PbrMaterial>(water_material);
