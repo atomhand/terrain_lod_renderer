@@ -98,7 +98,7 @@ static Engine::Mesh Cube() {
     };
 
     std::vector<GLuint> indices;
-    for(int i=0; i<36; i++) {
+    for(int i=35; i>=0; i--) {
         indices.push_back(i);
     }
 
@@ -224,12 +224,12 @@ static Engine::Mesh Sphere(int w, int h) {
             auto i2 = j1 + (i+1) % w;
             auto i3 = j1 + i;
             indices.push_back(i0);
-            indices.push_back(i2);
             indices.push_back(i1);
+            indices.push_back(i2);
             
             indices.push_back(i0);
-            indices.push_back(i3);
             indices.push_back(i2);
+            indices.push_back(i3);
         }
     }
 
