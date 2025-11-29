@@ -188,6 +188,39 @@ namespace Engine {
             data->vertexFormat.hasTangents = true;
         }
 
+        void CalculateNormals() {
+            auto& normals = data->normals;
+            auto& verts = data->verts;
+            auto& indices = data->indices;
+
+            if(indices.size() % 3 != 0) {
+                std::cout << "Calculating normals error: Bad number of indices " << indices.size() << " is not divisible by 3" << std::endl;
+                data->vertexFormat.normalsEnabled = false;
+                normals.clear();
+                return;
+            }
+            normals.assign(verts.size(), glm::vec3(0.f));
+
+            for(int t=0; t<indices.size(); t+=3) {
+                GLuint i0 = indices[t], i1 = indices[t+1], i2 = indices[t+2];
+
+                glm::vec3 a = verts[i0];
+                glm::vec3 b = verts[i1];
+                glm::vec3 c = verts[i2];
+
+                glm::vec3 face_normal = glm::cross(b-a,c-a);
+
+                normals[i0] += face_normal;
+                normals[i1] += face_normal;
+                normals[i2] += face_normal;
+            }
+            for(int i=0; i<normals.size(); i++) {
+                normals[i] = glm::normalize(normals[i]);
+            }
+
+            data->vertexFormat.normalsEnabled = true;
+        }
+
         void Apply() {
             data->Apply();
         }

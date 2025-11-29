@@ -14,6 +14,7 @@
 #include "duck.h"
 #include "windmill.h"
 #include "crane.h"
+#include "terrain.h"
 
 #include "material.h"
 
@@ -34,10 +35,12 @@ int main()
 	Duck duck;
 	Windmill windmill;
 	Crane crane;
+	Terrain terrain(256,0.5f);
 
 	try
 	{
 		crane.Setup(world);
+		terrain.Setup(world);
 
 		Engine::Shader pbr_shader = Engine::Shader("shaders/pbr.vert", "shaders/pbr.frag");
 		auto pbr_material = Engine::PbrMaterial(pbr_shader);

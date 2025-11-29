@@ -4,7 +4,7 @@
 class RtsCamera : public Engine::Camera {
 private:
     float zoom = 1.0;
-    const float CAMERA_SPEED = 8.0;
+    const float CAMERA_SPEED = 16.0;
 
     glm::vec3 target;
 
@@ -13,7 +13,8 @@ private:
     }
 
     void update_transform() {
-        position = target + glm::vec3(0.0f,15.0f,-9.0f) * (zoom+0.1f);
+        float scale = 2.f * (zoom+0.1f);
+        position = target + glm::vec3(0.0f,15.0f,-9.0f) * scale;
         transform = glm::lookAt(position, target, glm::vec3(0.0f,1.0f,0.0f));
     }
 public:
@@ -21,7 +22,8 @@ public:
         update_zoom(world.input.scrollDelta);
         update_transform();
 
-        target += glm::vec3(-world.input.xAxisKeyDelta, 0.0, -world.input.yAxisKeyDelta)  * CAMERA_SPEED * world.input.deltaTime;
+        float scale = 2.f * (zoom+0.1f);
+        target += glm::vec3(-world.input.xAxisKeyDelta, 0.0, -world.input.yAxisKeyDelta)  * scale * CAMERA_SPEED * world.input.deltaTime;
     }
 };
 
