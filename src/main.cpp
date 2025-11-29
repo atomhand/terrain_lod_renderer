@@ -34,8 +34,7 @@ int main()
 
 	try
 	{
-		Engine::Shader transparent_shader = Engine::Shader("shaders/normalmap.vert", "shaders/normalmap.frag");
-		crane.Setup(world,transparent_shader);
+		crane.Setup(world);
 
 		Engine::Shader basic_shader = Engine::Shader("shaders/basic.vert", "shaders/basic.frag");
 		duck.Setup(world,basic_shader);

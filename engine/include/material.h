@@ -78,7 +78,7 @@ namespace Engine {
 
     struct PbrMaterial : public Material {
     public:
-        glm::vec3 albedo = glm::vec4(0.5,0.0,0.0,1.0);
+        glm::vec3 albedo = glm::vec3(1.0,1.0,1.0);
         float metallic = 0.f;
         float roughness = 0.5f;
         float ao = 1.f;
