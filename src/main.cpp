@@ -35,7 +35,6 @@ int main()
 	try
 	{
 		crane.Setup(world);
-
 		Engine::Shader basic_shader = Engine::Shader("shaders/basic.vert", "shaders/basic.frag");
 		duck.Setup(world,basic_shader);
 		windmill.Setup(world,basic_shader);
@@ -48,6 +47,10 @@ int main()
 		sphere->material = std::make_shared<Engine::PbrMaterial>(pbr_material);
 		sphere->localTransform = glm::translate(glm::mat4(1.0), glm::vec3(4.0,4.0,4.0)) * glm::scale(glm::mat4(1.0), glm::vec3(2.0,2.0,2.0));
 		world.scenegraph.SetParent(sphere, world.scenegraph.root);
+
+		Engine::PointLight* light = new Engine::PointLight();
+        light->color = glm::vec3(16.0,4.0,4.0);
+        world.scenegraph.SetParent(light,sphere);
 	}
 	catch (exception &e)
 	{
