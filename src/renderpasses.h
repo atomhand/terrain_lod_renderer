@@ -31,42 +31,23 @@ public:
         for(RenderItem* item : items) {
             if(item->renderPass != RenderPass::OPAQUE)
                 continue;
-
-            item->shader.use();
-            item->shader.setCamera(world.camera);
-
+            
+            // bind and configure material
+            item->material->use();
+            item->material->setCamera(world.camera);
+            item->material->setModel(item->globalTransform);
             for(int i =0; i<pointLights.size() && i < 4; i++) {
-                glm::vec4 pos = view * pointLights[i]->globalTransform * glm::vec4(0.f,0.f,0.f,1.f);
-                item->shader.setVec3("lightPositions[" + std::to_string(i) + "]", glm::vec3(pos)/pos.w);
-                item->shader.setVec3("lightColours[" + std::to_string(i) + "]", pointLights[i]->colour);
+                item->material->setLight(*pointLights[i], view, i);
             }
 
-            item->shader.setFloat("shininess", item->shininess);
-
-            for(int i =0; i<item->textures.size(); i++) {
-                glActiveTexture(GL_TEXTURE0 + i);
-                item->textures[i].bind();
-            }            
-            Engine::Mesh& mesh =item->mesh;
-            auto transform = item->globalTransform;
-            
-            item->shader.setMat4("model", transform);
-            item->shader.setVec4("colour", item->colour);
-
-            glm::mat3 normalmatrix = glm::transpose(glm::inverse(glm::mat3(view * transform)));                
-            item->shader.setMat3("normalmatrix", normalmatrix);
-            
+            // bind and draw mesh
+            Engine::Mesh& mesh =item->mesh;            
             glBindVertexArray(mesh.vao());
             glDrawElements(GL_TRIANGLES, mesh.count(), GL_UNSIGNED_INT, nullptr);
             glBindVertexArray(0);
-            
-            for(int i =0; i<item->textures.size(); i++) {
-                glActiveTexture(GL_TEXTURE0 + i);
-                glBindTexture(GL_TEXTURE_2D,0);
-            }
 
-            
-            glUseProgram(0);
+            // bind
+            item->material->unbind();
         }
     }
 
@@ -84,40 +65,22 @@ public:
             if(item->renderPass != RenderPass::TRANSPARENT)
                 continue;
 
-            item->shader.use();
-            item->shader.setCamera(world.camera);
-
+            // bind and configure material
+            item->material->use();
+            item->material->setCamera(world.camera);
+            item->material->setModel(item->globalTransform);
             for(int i =0; i<pointLights.size() && i < 4; i++) {
-                glm::vec4 pos = view * pointLights[i]->globalTransform * glm::vec4(0.f,0.f,0.f,1.f);
-                item->shader.setVec3("lightPositions[" + std::to_string(i) + "]", glm::vec3(pos)/pos.w);
-                item->shader.setVec3("lightColours[" + std::to_string(i) + "]", pointLights[i]->colour);
+                item->material->setLight(*pointLights[i], view, i);
             }
 
-            item->shader.setFloat("shininess", item->shininess);
-            for(int i =0; i<item->textures.size(); i++) {
-                glActiveTexture(GL_TEXTURE0 + i);
-                item->textures[i].bind();
-            }            
-            Engine::Mesh& mesh =item->mesh;
-            auto transform = item->globalTransform;
-            
-            item->shader.setMat4("model", transform);
-            item->shader.setVec4("colour", item->colour);
-
-            glm::mat3 normalmatrix = glm::transpose(glm::inverse(glm::mat3(view * transform)));                
-            item->shader.setMat3("normalmatrix", normalmatrix);
-            
+            // bind and draw mesh
+            Engine::Mesh& mesh =item->mesh;            
             glBindVertexArray(mesh.vao());
             glDrawElements(GL_TRIANGLES, mesh.count(), GL_UNSIGNED_INT, nullptr);
             glBindVertexArray(0);
-            
-            for(int i =0; i<item->textures.size(); i++) {
-                glActiveTexture(GL_TEXTURE0 + i);
-                glBindTexture(GL_TEXTURE_2D,0);
-            }
 
-            
-            glUseProgram(0);
+            // bind
+            item->material->unbind();
         }
     }
 };

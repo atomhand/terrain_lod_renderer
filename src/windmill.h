@@ -5,7 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
 #include "demo_world.h"
-#include "shader.h"
+#include "material.h"
 #include "render_item.h"
 #include "shapes.h"
 
@@ -58,17 +58,23 @@ public:
 
         Engine::Mesh cube = Cube();
 
+        std::shared_ptr<Engine::PhongMaterial> baseMaterial = std::make_shared<Engine::PhongMaterial>(shader);
+        baseMaterial->color = glm::vec4(0.1,0.1,0.1,1.0);
+
+        std::shared_ptr<Engine::PhongMaterial> bodyMaterial = std::make_shared<Engine::PhongMaterial>(shader);
+        bodyMaterial->color = glm::vec4(0.7,0.2,0.0,1.0);
+        
+        std::shared_ptr<Engine::PhongMaterial> bladeMaterial = std::make_shared<Engine::PhongMaterial>(shader);
+        bladeMaterial->color = glm::vec4(0.7,0.7,0.7,1.0);
         //
         RenderItem* base1 = new RenderItem();
-        base1->colour = glm::vec4(0.1,0.1,0.1,1.0);
-        base1->shader = shader;
+        base1->material = baseMaterial;
         base1->mesh = cube;
         base1->localTransform = glm::scale(glm::mat4(1.0), glm::vec3(BASE_WIDTH, BASE_HEIGHT, BASE_HEIGHT));
         world.scenegraph.SetParent(base1,container);
 
         RenderItem* base2 = new RenderItem();
-        base2->colour = glm::vec4(0.1,0.1,0.1,1.0);
-        base2->shader = shader;
+        base2->material = baseMaterial;
         base2->mesh = cube;
         base2->localTransform = glm::scale(glm::mat4(1.0), glm::vec3(BASE_HEIGHT, BASE_HEIGHT, BASE_WIDTH));
         world.scenegraph.SetParent(base2,container);
@@ -77,9 +83,8 @@ public:
         world.scenegraph.SetParent(bodyContainer,container);
 
         RenderItem* body = new RenderItem();
-        body->shader = shader;
+        body->material = bodyMaterial;
         body->mesh = cube;
-        body->colour = glm::vec4(0.7,0.2,0.0,1.0);
         body->localTransform = glm::scale(glm::mat4(1.0), glm::vec3(WIDTH, HEIGHT, WIDTH));
         world.scenegraph.SetParent(body,bodyContainer);
 
@@ -87,16 +92,14 @@ public:
         world.scenegraph.SetParent(bladesContainer,bodyContainer);
 
         RenderItem* blade1 = new RenderItem();
-        blade1->shader = shader;
+        blade1->material = bladeMaterial;
         blade1->mesh = cube;
-        blade1->colour = glm::vec4(0.7,0.7,0.7,1.0);
         blade1->localTransform = glm::scale(glm::mat4(1.0), glm::vec3(BLADES_THICKNESS, BLADES_WIDTH, BLADES_LENGTH));
         world.scenegraph.SetParent(blade1,bladesContainer);
 
         RenderItem* blade2 = new RenderItem();
-        blade2->shader = shader;
+        blade2->material = bladeMaterial;
         blade2->mesh = cube;
-        blade2->colour = glm::vec4(0.7,0.7,0.7,1.0);
         blade2->localTransform = glm::scale(glm::mat4(1.0), glm::vec3(BLADES_THICKNESS, BLADES_LENGTH, BLADES_WIDTH));
         world.scenegraph.SetParent(blade2,bladesContainer);
     }

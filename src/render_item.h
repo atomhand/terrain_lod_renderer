@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
-#include "shader.h"
+#include <memory>
+#include "material.h"
 #include "mesh.h"
 #include "texture.h"
 #include "scenegraph.h"
@@ -9,12 +10,8 @@ enum RenderPass { OPAQUE, TRANSPARENT };
 
 class RenderItem : public Engine::SceneNode {
 public:
-    Engine::Shader shader;
-    std::vector<Engine::Texture> textures;
-    glm::vec4 colour;
+    std::shared_ptr<Engine::Material> material;
     RenderPass renderPass;
-
-    float shininess = 8.0;
 
     Engine::Mesh mesh;
 };

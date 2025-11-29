@@ -14,9 +14,9 @@ layout(location = 3) in vec3 tangent;		// vertex tangent vector
 uniform mat4 model, view, projection;
 uniform vec3 lightPositions[4];
 
-// Output the vertex colour, the texture coordinate, the light direction and the view direction
+// Output the vertex color, the texture coordinate, the light direction and the view direction
 // which are needed in the fragment shader to calculate the normal mapped lighting
-out vec4 fcolour;
+out vec4 fcolor;
 out vec2 ftexcoord;
 out vec3 flightdir;
 out vec3 fviewdir;
@@ -25,19 +25,19 @@ out vec3 fviewdir;
 
 void main()
 {
-	// diffuse_colour is used to show how to combine colouring with the texture and normal mapping
-	vec4 diffuse_colour;			
+	// diffuse_color is used to show how to combine coloring with the texture and normal mapping
+	vec4 diffuse_color;			
 	vec4 position_h = vec4(position, 1.0);		// vertex position in homogeneous coordinates
 	vec4 tangent_h = vec4(tangent, 1.0);		// tangent vector in homogeneous coordinates
 
 	mat4 mv_matrix = view * model;
-	mat3 normalmatrix = mat3(transpose(inverse(mv_matrix)));
+	mat3 normalMatrix = mat3(transpose(inverse(mv_matrix)));
 
 	vec3 light_pos3 = lightPositions[0];	// Convert back from homogeneous coors to 3D coords	
 
 	// Calculate the normal, tangent and binormal vectors in model-view space
-	vec3 norm = normalize(normalmatrix * normal);
-	vec3 tang = normalize(normalmatrix * tangent);
+	vec3 norm = normalize(normalMatrix * normal);
+	vec3 tang = normalize(normalMatrix * tangent);
 	vec3 binormal = normalize(cross(norm, tang)) * tangent_h.w;
 
 	/* Define the matrix used to transform the light direction and view direction

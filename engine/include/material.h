@@ -1,0 +1,116 @@
+#pragma once
+#include "shader.h"
+#include "light.h"
+
+namespace Engine {
+    struct Material {
+    protected:
+        glm::mat4 view;
+    public:
+        Shader shader;
+        std::vector<Engine::Texture> textures;
+
+        virtual void use() {
+            shader.use();
+
+            for(int i =0; i<textures.size(); i++) {
+                glActiveTexture(GL_TEXTURE0 + i);
+                textures[i].bind();
+            }        
+        }
+
+        void setCamera(const Camera &camera) {
+            // set camera
+            view = camera.get_view();
+            shader.setMat4("view", view);
+            shader.setMat4("projection", camera.get_proj());
+
+        }
+
+        // setCamera must be called first
+        // This is virtual because different materials use world space vs view space lighting
+        virtual void setModel(const glm::mat4 &model) {
+            // set model          
+            shader.setMat4("model", model);
+            // normal matrix
+            glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(view * model)));                
+            shader.setMat3("normalMatrix", normalMatrix);
+        }
+
+        void unbind() {
+            for(int i =0; i<textures.size(); i++) {
+                glActiveTexture(GL_TEXTURE0 + i);
+                glBindTexture(GL_TEXTURE_2D,0);
+            }            
+            glUseProgram(0);
+        }
+
+        // This is virtual because different materials use world space vs view space lighting
+        virtual void setLight(PointLight& light, glm::mat4 view, int index) {
+            if(index > 4) {
+                std::cout << "Trying to set " << index << " lights to material, only 4 are suported";
+                return;
+            }
+
+            glm::vec4 pos = view * light.globalTransform * glm::vec4(0.f,0.f,0.f,1.f);
+            shader.setVec3("lightPositions[" + std::to_string(index) + "]", glm::vec3(pos)/pos.w);
+            shader.setVec3("lightColors[" + std::to_string(index) + "]", light.color);
+        }
+
+        Material(Shader shader) : shader(shader) {};
+    };
+    
+    struct PhongMaterial : public Material {
+    public:
+        glm::vec4 color = glm::vec4(1.0,1.0,0.0,1.0);
+        float shininess = 8.0;
+
+        void use() override {
+            Material::use();
+            shader.setVec4("color",color);
+            shader.setFloat("shininess",shininess);
+        }
+
+        // inherit constructor
+        using Material::Material;
+    };
+
+    struct PbrMaterial : public Material {
+    public:
+        glm::vec3 albedo = glm::vec4(0.5,0.0,0.0,1.0);
+        float metallic = 0.f;
+        float roughness = 0.5f;
+        float ao = 1.f;
+
+        void setLight(PointLight& light, glm::mat4 view, int index) override {
+            if(index >= 4) {
+                std::cout << "Trying to set " << index << " lights to material, only 4 are suported";
+                return;
+            }
+
+            glm::vec4 pos = light.globalTransform * glm::vec4(0.f,0.f,0.f,1.f);
+            shader.setVec3("lightPositions[" + std::to_string(index) + "]", glm::vec3(pos)/pos.w);
+            shader.setVec3("lightColors[" + std::to_string(index) + "]", light.color);
+        }
+
+        void setModel(const glm::mat4 &model) override {
+            // set model          
+            shader.setMat4("model", model);
+            // normal matrix
+            // configured for world space lighting
+            glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(model)));                
+            shader.setMat3("normalMatrix", normalMatrix);
+        }
+
+        void use() override {
+            Material::use();
+            shader.setVec3("albedo",albedo);
+            shader.setFloat("metallic",metallic);
+            shader.setFloat("roughness",roughness);
+            shader.setFloat("ao",ao);
+        }
+
+        // inherit constructor
+        using Material::Material;
+    };
+}

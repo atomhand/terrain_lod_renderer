@@ -45,26 +45,30 @@ public:
 
         Engine::Mesh mesh = Sphere(8,8);
 
+        Engine::PhongMaterial bodyMaterial(shader);
+        bodyMaterial.color = glm::vec4(0.4,0.2,0.0,1.0);
+        bodyMaterial.shininess = 5.0;
+
+        Engine::PhongMaterial headMaterial(shader);
+        headMaterial.color = glm::vec4(0.2,0.4,0.2,1.0);
+        headMaterial.shininess = 5.0;
+
         // body
         RenderItem* body = new RenderItem();
         body->mesh = mesh;
-        body->shininess = 5.0;
-        body->shader = shader;
+        body->material = std::make_shared<Engine::PhongMaterial>(bodyMaterial);
         body->localTransform = glm::scale(glm::mat4(1.0), glm::vec3(LENGTH, HEIGHT, WIDTH));
-        body->colour = glm::vec4(0.4,0.2,0.0,1.0);
         world.scenegraph.SetParent(body, duck);
 
         // head
         RenderItem* head = new RenderItem();
         head->mesh = mesh;
-        body->shininess = 5.0;
-        head->shader = shader;
+        head->material = std::make_shared<Engine::PhongMaterial>(headMaterial);
         head->localTransform = glm::translate(glm::mat4(1.0), glm::vec3(LENGTH/2.0,HEIGHT/2.0+HEAD_SIZE,0.0)) * glm::scale(glm::mat4(1.0), glm::vec3(HEAD_SIZE));
-        head->colour = glm::vec4(0.2,0.4,0.2,1.0);
         world.scenegraph.SetParent(head, duck);
 
         Engine::PointLight* light = new Engine::PointLight();
-        light->colour = glm::vec3(1.0,0.0,0.0);
+        light->color = glm::vec3(1.0,1.0,1.0);
         light->localTransform = glm::translate(glm::mat4(1.0f),glm::vec3(0.0,2.0,0.0)) * glm::mat4(1.f);
         world.scenegraph.SetParent(light,head);
     }

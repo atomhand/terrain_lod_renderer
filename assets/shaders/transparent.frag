@@ -1,8 +1,8 @@
 // Minimal fragment shader
 #version 420
 
-in vec3 fnormal, fposition;
-in vec4 fcolour;
+in vec3 fposition;
+in vec4 fcolor;
 
 in vec2 fTexCoord;
 in mat3 TBN;
@@ -12,7 +12,7 @@ layout(binding=1) uniform sampler2D alphaTex;
 layout(binding=2) uniform sampler2D normalTex;
 
 uniform mat4 model, view, projection;
-uniform mat3 normalmatrix;
+uniform mat3 normalMatrix;
 uniform vec4 lightpos; // light intensity stored in W
 
 uniform float shininess;
@@ -34,7 +34,7 @@ void main()
 		discard;
 	}
 
-	vec4 diffuse_albedo = fcolour * texture(albedoTex,fTexCoord);					// This is the vertex colour, used to handle the colourmode change
+	vec4 diffuse_albedo = fcolor * texture(albedoTex,fTexCoord);					// This is the vertex color, used to handle the colormode change
 	vec3 light_pos3 = lightpos.xyz;
 
 	vec3 ambient = diffuse_albedo.xyz *0.2;
@@ -45,22 +45,23 @@ void main()
 
 	vec3 normal = texture(normalTex, fTexCoord).rgb;
 	normal = normal * 2.0 - 1.0;
+	normal = normalize(TBN * normal); 
 
-	vec3 N = normal; //normalize(normalmatrix * fnormal);		// Modify the normals by the normal-matrix (i.e. to model-view (or eye) coordinates )
-	vec3 L = TBN * (light_pos3 - fposition);		// Calculate the vector from the light position to the vertex in eye space
+	vec3 N = normal; //normalize(normalMatrix * fnormal);		// Modify the normals by the normal-matrix (i.e. to model-view (or eye) coordinates )
+	vec3 L = (light_pos3 - fposition);		// Calculate the vector from the light position to the vertex in eye space
 	L = normalize(L);					// Normalise our light vector
 	
 	// Calculate the diffuse component
 	vec3 diffuse = lightpos.w * 0.1 * max(dot(N, L), 0.0) * diffuse_albedo.xyz;
 
 	// Calculate the specular component using Phong specular reflection
-	vec3 V = TBN * normalize((view * vec4(0.,0.,0.,1.)).xyz-P.xyz);	
+	vec3 V = normalize((view * vec4(0.,0.,0.,1.)).xyz-P.xyz);	
 	vec3 R = reflect(-L, N);
 	vec3 specular = lightpos.w * pow(max(dot(R, V), 0.0), shininess) * specular_albedo;
 
 	// (Distance attenuation removed, since it's not applicable to sunlight)
 
-	// Calculate the output colour, includung attenuation on the diffuse and specular components
+	// Calculate the output color, includung attenuation on the diffuse and specular components
 	// Note that you may want to exclude the ambient form the attenuation factor so objects
 	// are always visible, or include a global ambient
 	outputColor = vec4(((ambient + diffuse + specular) + emissive + global_ambient)  * alpha, alpha);

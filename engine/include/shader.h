@@ -31,7 +31,6 @@ namespace Engine
         }
     public:
         Shader(const char* vertexPath, const char* fragmentPath);
-        Shader() {};
 
         // use/active the shader
         void use();
@@ -54,7 +53,5 @@ namespace Engine
         {
             glUniformMatrix3fv(glGetUniformLocation(programId(), name.c_str()), 1, GL_FALSE, &mat[0][0]);
         }
-
-        void setCamera(const Camera &camera);
     };
 }

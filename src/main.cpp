@@ -15,6 +15,8 @@
 #include "windmill.h"
 #include "crane.h"
 
+#include "material.h"
+
 
 using namespace std;
 
@@ -38,6 +40,15 @@ int main()
 		Engine::Shader basic_shader = Engine::Shader("shaders/basic.vert", "shaders/basic.frag");
 		duck.Setup(world,basic_shader);
 		windmill.Setup(world,basic_shader);
+		
+		Engine::Shader pbr_shader = Engine::Shader("shaders/pbr.vert", "shaders/pbr.frag");
+		auto pbr_material = Engine::PbrMaterial(pbr_shader);
+
+		RenderItem* sphere = new RenderItem();
+		sphere->mesh = Sphere(32,32);
+		sphere->material = std::make_shared<Engine::PbrMaterial>(pbr_material);
+		sphere->localTransform = glm::translate(glm::mat4(1.0), glm::vec3(4.0,4.0,4.0)) * glm::scale(glm::mat4(1.0), glm::vec3(2.0,2.0,2.0));
+		world.scenegraph.SetParent(sphere, world.scenegraph.root);
 	}
 	catch (exception &e)
 	{
