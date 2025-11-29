@@ -55,9 +55,6 @@ int main()
 		windmill.update(wind_angle,world.input.deltaTime * world.input.animSpeed * 0.5f);
 		duck.update(world.input.deltaTime * world.input.animSpeed * 0.5f);
 
-		glm::vec4 duckPos = duck.main_transform() * glm::vec4(0.0,0.0,0.0,1.0);
-		world.lightPos = glm::vec4(glm::vec3(duckPos.x,duckPos.y,duckPos.z)/duckPos.w,world.lightPos.w);
-
 		world.scenegraph.PropagateTransforms();
 
 		RenderPasses::preRender(world, app);

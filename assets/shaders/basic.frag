@@ -4,11 +4,11 @@
 in vec3 fnormal, fposition, flightdir;
 in vec4 fcolour;
 
-uniform vec4 lightpos; // light intensity stored in W
-
 uniform float shininess;
 
 out vec4 outputColor;
+
+uniform vec3 lightColours[4];
 
 // Global lighting constants (for this vertex shader)
 vec3 specular_albedo = vec3(1.0, 0.8, 0.6);
@@ -28,12 +28,12 @@ void main()
 	vec3 L = normalize(flightdir);
 	
 	// Calculate the diffuse component
-	vec3 diffuse = lightpos.w * max(dot(N, L), 0.0) * diffuse_albedo.xyz;
+	vec3 diffuse = lightColours[0] * max(dot(N, L), 0.0) * diffuse_albedo.xyz;
 
 	// Calculate the specular component using Phong specular reflection
 	vec3 V = normalize(-fposition);	
 	vec3 R = reflect(-L, N);
-	vec3 specular = lightpos.w * pow(max(dot(R, V), 0.0), shininess) * specular_albedo;
+	vec3 specular = lightColours[0] * pow(max(dot(R, V), 0.0), shininess) * specular_albedo;
 
 	// Define attenuation constants. These could be uniforms for greater flexibility
 	float attenuation_k1 = 0.5;

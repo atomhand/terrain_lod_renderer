@@ -8,6 +8,7 @@
 #include "mesh.h"
 #include "render_item.h"
 #include "shapes.h"
+#include "light.h"
 
 class Duck {
 private:
@@ -61,5 +62,10 @@ public:
         head->localTransform = glm::translate(glm::mat4(1.0), glm::vec3(LENGTH/2.0,HEIGHT/2.0+HEAD_SIZE,0.0)) * glm::scale(glm::mat4(1.0), glm::vec3(HEAD_SIZE));
         head->colour = glm::vec4(0.2,0.4,0.2,1.0);
         world.scenegraph.SetParent(head, duck);
+
+        Engine::PointLight* light = new Engine::PointLight();
+        light->colour = glm::vec3(1.0,0.0,0.0);
+        light->localTransform = glm::translate(glm::mat4(1.0f),glm::vec3(0.0,2.0,0.0)) * glm::mat4(1.f);
+        world.scenegraph.SetParent(light,head);
     }
 };

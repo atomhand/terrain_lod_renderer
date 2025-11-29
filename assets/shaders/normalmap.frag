@@ -17,6 +17,8 @@ out vec4 FragColour;		// Output fragment colour
 
 uniform uint colourmode;	// Enables us to cycle through drawing modes to show the textures
 
+uniform vec3 lightColours[4];
+
 // Function to calculate per-vertex lighting
 vec3 phongModel( vec3 norm, vec3 diffcolour, vec3 speccolour ) 
 {
@@ -32,7 +34,7 @@ vec3 phongModel( vec3 norm, vec3 diffcolour, vec3 speccolour )
     float sDotN = max( dot(light_dir, norm), 0.0 );
 
 	// Calculate per-fragment diffuse reflection in tangent space
-    vec3 diffuse = diffcolour * sDotN;
+    vec3 diffuse = lightColours[0] * diffcolour * sDotN;
 	vec3 ambient = diffcolour  * 0.2;
 
 	// Calculate per-fragment specular colour 
@@ -42,7 +44,7 @@ vec3 phongModel( vec3 norm, vec3 diffcolour, vec3 speccolour )
 
     if( sDotN > 0.0 )
 	{
-        spec = pow( max( dot(r,view_dir), 0.0 ), 1.0) * speccolour;
+        spec = pow( max( dot(r,view_dir), 0.0 ), 1.0) * lightColours[0] * speccolour;
 	}
 
     return ambient + diffuse + spec;

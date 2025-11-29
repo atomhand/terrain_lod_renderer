@@ -12,7 +12,7 @@ layout(location = 3) in vec3 tangent;		// vertex tangent vector
 
 // Uniform variables passed in from the application
 uniform mat4 model, view, projection;
-uniform vec4 lightpos;
+uniform vec3 lightPositions[4];
 
 // Output the vertex colour, the texture coordinate, the light direction and the view direction
 // which are needed in the fragment shader to calculate the normal mapped lighting
@@ -33,7 +33,7 @@ void main()
 	mat4 mv_matrix = view * model;
 	mat3 normalmatrix = mat3(transpose(inverse(mv_matrix)));
 
-	vec3 light_pos3 = lightpos.xyz / lightpos.w;	// Convert back from homogeneous coors to 3D coords	
+	vec3 light_pos3 = lightPositions[0];	// Convert back from homogeneous coors to 3D coords	
 
 	// Calculate the normal, tangent and binormal vectors in model-view space
 	vec3 norm = normalize(normalmatrix * normal);

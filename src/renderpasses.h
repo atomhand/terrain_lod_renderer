@@ -3,6 +3,9 @@
 #include <glm/glm.hpp>
 #include "demo_world.h"
 #include "application.h"
+#include "light.h"
+
+
 
 class RenderPasses {
 public:
@@ -21,6 +24,7 @@ public:
         glm::mat4 view = world.camera.get_view();
 
         std::vector<RenderItem*> items = world.scenegraph.Filter<RenderItem>();
+        std::vector<Engine::PointLight*> pointLights = world.scenegraph.Filter<Engine::PointLight>();
 
         glDisable(GL_BLEND);
 
@@ -31,7 +35,12 @@ public:
             item->shader.use();
             item->shader.setCamera(world.camera);
 
-            item->shader.setVec4("lightpos", view * glm::vec4(world.lightPos.x,world.lightPos.y,world.lightPos.z,1.0));
+            for(int i =0; i<pointLights.size() && i < 4; i++) {
+                glm::vec4 pos = view * pointLights[i]->globalTransform * glm::vec4(0.f,0.f,0.f,1.f);
+                item->shader.setVec3("lightPositions[" + std::to_string(i) + "]", glm::vec3(pos)/pos.w);
+                item->shader.setVec3("lightColours[" + std::to_string(i) + "]", pointLights[i]->colour);
+            }
+
             item->shader.setFloat("shininess", item->shininess);
 
             for(int i =0; i<item->textures.size(); i++) {
@@ -66,6 +75,7 @@ public:
         glm::mat4 view = world.camera.get_view();
 
         std::vector<RenderItem*> items = world.scenegraph.Filter<RenderItem>();
+        std::vector<Engine::PointLight*> pointLights = world.scenegraph.Filter<Engine::PointLight>();
         
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
@@ -77,7 +87,12 @@ public:
             item->shader.use();
             item->shader.setCamera(world.camera);
 
-            item->shader.setVec4("lightpos", view * glm::vec4(world.lightPos.x,world.lightPos.y,world.lightPos.z,1.0));
+            for(int i =0; i<pointLights.size() && i < 4; i++) {
+                glm::vec4 pos = view * pointLights[i]->globalTransform * glm::vec4(0.f,0.f,0.f,1.f);
+                item->shader.setVec3("lightPositions[" + std::to_string(i) + "]", glm::vec3(pos)/pos.w);
+                item->shader.setVec3("lightColours[" + std::to_string(i) + "]", pointLights[i]->colour);
+            }
+
             item->shader.setFloat("shininess", item->shininess);
             for(int i =0; i<item->textures.size(); i++) {
                 glActiveTexture(GL_TEXTURE0 + i);

@@ -40,8 +40,11 @@ namespace Engine
         void setBool(const std::string &name, bool value) const;
         void setInt(const std::string &name, int value) const;
         void setFloat(const std::string &name, float value) const;
+        void setVec3(const std::string &name, glm::vec3 value) const {            
+            glUniform3fv(glGetUniformLocation(programId(), name.c_str()), 1, &value[0]); 
+        };
         void setVec4(const std::string &name, glm::vec4 value) const {            
-            glUniform4f(glGetUniformLocation(programId(), name.c_str()), value.x, value.y, value.z, value.w); 
+            glUniform4fv(glGetUniformLocation(programId(), name.c_str()), 1, &value[0]); 
         };
         void setMat4(const std::string &name, const glm::mat4 &mat) const
         {
