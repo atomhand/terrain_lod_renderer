@@ -1,12 +1,6 @@
 #pragma once
 #include "world.h"
 #include "rts_camera.h"
-#include <vector>
-#include <glm/glm.hpp>
-#include <glad/glad.h>
-#include "render_item.h"
-#include "mesh.h"
-#include "texture.h"
 
 // Container for the demo data so it can easily be passed between parts of the application
 // As a future extension, the World class will have a dynamic registry (ECS pattern)
@@ -14,5 +8,4 @@
 class DemoWorld : public Engine::World {
 public:
     RtsCamera camera;
-    Engine::Texture* testTex;
 };

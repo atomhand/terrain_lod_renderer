@@ -18,9 +18,13 @@ uniform float metallic;
 uniform float roughness;
 uniform float ao;
 
-// lights
+// point lights
 uniform vec3 lightPositions[4];
 uniform vec3 lightColors[4];
+
+// directional lights
+uniform vec3 lightDirections[4];
+uniform vec3 directionalLightColors[4];
 
 uniform vec3 viewPos;
 
@@ -67,6 +71,27 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
+vec3 outRadiance(vec3 L, vec3 V, vec3 N, vec3 F0, vec3 surfAlbedo, vec3 radiance) {
+    vec3 H = normalize(V + L);
+    
+    // cook-torrance brdf
+    float NDF = DistributionGGX(N, H, roughness);        
+    float G   = GeometrySmith(N, V, L, roughness);      
+    vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);       
+    
+    vec3 kS = F;
+    vec3 kD = vec3(1.0) - kS;
+    kD *= 1.0 - metallic;	  
+    
+    vec3 numerator    = NDF * G * F;
+    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+    vec3 specular     = numerator / denominator;  
+        
+    // add to outgoing radiance Lo
+    float NdotL = max(dot(N, L), 0.0);                
+    return (kD * surfAlbedo / PI + specular) * radiance * NdotL; 
+}
+
 void main()
 {
     float alpha = texture(alphaMap,TexCoords).x;
@@ -78,10 +103,10 @@ void main()
     vec3 N = normalize(TBN * tangentNormal);
     vec3 V = normalize(viewPos - WorldPos);
 
-    vec3 texAlbedo = albedo * texture(albedoTex,TexCoords).xyz;
+    vec3 surfAlbedo = albedo * texture(albedoTex,TexCoords).xyz;
 
     vec3 F0 = vec3(0.04); 
-    F0 = mix(F0, texAlbedo, metallic);
+    F0 = mix(F0, surfAlbedo, metallic);
 	           
     // reflectance equation
     vec3 Lo = vec3(0.0);
@@ -89,30 +114,21 @@ void main()
     {
         // calculate per-light radiance
         vec3 L = normalize(lightPositions[i] - WorldPos);
-        vec3 H = normalize(V + L);
         float distance    = length(lightPositions[i] - WorldPos);
         float attenuation = 1.0 / (distance * distance);
-        vec3 radiance     = lightColors[i] * attenuation;        
-        
-        // cook-torrance brdf
-        float NDF = DistributionGGX(N, H, roughness);        
-        float G   = GeometrySmith(N, V, L, roughness);      
-        vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);       
-        
-        vec3 kS = F;
-        vec3 kD = vec3(1.0) - kS;
-        kD *= 1.0 - metallic;	  
-        
-        vec3 numerator    = NDF * G * F;
-        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
-        vec3 specular     = numerator / denominator;  
-            
-        // add to outgoing radiance Lo
-        float NdotL = max(dot(N, L), 0.0);                
-        Lo += (kD * texAlbedo / PI + specular) * radiance * NdotL; 
-    }   
+        vec3 inRadiance     = lightColors[i] * attenuation;
+        Lo += outRadiance(L,V,N,F0,surfAlbedo,inRadiance);
+    }
+
+    // directional lights
+    for(int i = 0; i < 4; ++i) 
+    {
+        vec3 L = normalize(-lightDirections[i]);
+        vec3 inRadiance = directionalLightColors[i];
+        Lo += outRadiance(L,V,N,F0,surfAlbedo,inRadiance);
+    }
   
-    vec3 ambient = vec3(0.03) * texAlbedo * ao;
+    vec3 ambient = vec3(0.03) * surfAlbedo * ao;
     vec3 color = ambient + Lo;
 	
     color = color / (color + vec3(1.0));

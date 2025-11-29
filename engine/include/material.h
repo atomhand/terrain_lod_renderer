@@ -58,6 +58,17 @@ namespace Engine {
             shader.setVec3("lightColors[" + std::to_string(index) + "]", light.color);
         }
 
+        virtual void setLight(DirectionalLight& light, glm::mat4 view, int index) {
+            if(index > 4) {
+                std::cout << "Trying to set " << index << " lights to material, only 4 are suported";
+                return;
+            }
+
+            glm::vec3 dir = glm::mat3(view) * light.direction;
+            shader.setVec3("lightDirections[" + std::to_string(index) + "]", dir);
+            shader.setVec3("directionalLightColors[" + std::to_string(index) + "]", light.color);
+        }
+
         Material(Shader shader) : shader(shader) {};
     };
     
@@ -92,6 +103,16 @@ namespace Engine {
             glm::vec4 pos = light.globalTransform * glm::vec4(0.f,0.f,0.f,1.f);
             shader.setVec3("lightPositions[" + std::to_string(index) + "]", glm::vec3(pos)/pos.w);
             shader.setVec3("lightColors[" + std::to_string(index) + "]", light.color);
+        }
+
+        virtual void setLight(DirectionalLight& light, glm::mat4 view, int index) {
+            if(index > 4) {
+                std::cout << "Trying to set " << index << " lights to material, only 4 are suported";
+                return;
+            }
+
+            shader.setVec3("lightDirections[" + std::to_string(index) + "]", light.direction);
+            shader.setVec3("directionalLightColors[" + std::to_string(index) + "]", light.color);
         }
 
         void setModel(const glm::mat4 &model) override {

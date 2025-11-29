@@ -14,9 +14,11 @@ namespace Engine {
         std::shared_ptr<LightData> data;
     public:
         glm::vec3 color = glm::vec3(1.0,1.0,1.0);
+    };
 
-        PointLight() {
-
-        }
+    class DirectionalLight : public SceneNode {
+        public:
+            glm::vec3 color = glm::vec3(1.0,1.0,1.0);
+            glm::vec3 direction = glm::normalize(glm::vec3(4.0,-2.0,4.0));
     };
 }

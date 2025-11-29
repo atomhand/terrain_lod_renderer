@@ -28,6 +28,9 @@ DemoWorld world;
 
 int main()
 {
+	Engine::DirectionalLight* sun = new Engine::DirectionalLight();
+	world.scenegraph.SetParent(sun,world.scenegraph.root);
+
 	Duck duck;
 	Windmill windmill;
 	Crane crane;
@@ -35,7 +38,7 @@ int main()
 	try
 	{
 		crane.Setup(world);
-				
+
 		Engine::Shader pbr_shader = Engine::Shader("shaders/pbr.vert", "shaders/pbr.frag");
 		auto pbr_material = Engine::PbrMaterial(pbr_shader);
 		windmill.Setup(world,pbr_shader);

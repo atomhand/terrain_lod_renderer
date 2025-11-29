@@ -4,7 +4,7 @@
 #include "demo_world.h"
 #include "application.h"
 #include "light.h"
-
+#include "render_item.h"
 
 
 class RenderPasses {
@@ -25,6 +25,7 @@ public:
 
         std::vector<RenderItem*> items = world.scenegraph.Filter<RenderItem>();
         std::vector<Engine::PointLight*> pointLights = world.scenegraph.Filter<Engine::PointLight>();
+        std::vector<Engine::DirectionalLight*> directionalLights = world.scenegraph.Filter<Engine::DirectionalLight>();
 
         glDisable(GL_BLEND);
 
@@ -38,6 +39,9 @@ public:
             item->material->setModel(item->globalTransform);
             for(int i =0; i<pointLights.size() && i < 4; i++) {
                 item->material->setLight(*pointLights[i], view, i);
+            }
+            for(int i =0; i<directionalLights.size() && i < 4; i++) {
+                item->material->setLight(*directionalLights[i], view, i);
             }
 
             // bind and draw mesh
@@ -57,6 +61,7 @@ public:
 
         std::vector<RenderItem*> items = world.scenegraph.Filter<RenderItem>();
         std::vector<Engine::PointLight*> pointLights = world.scenegraph.Filter<Engine::PointLight>();
+        std::vector<Engine::DirectionalLight*> directionalLights = world.scenegraph.Filter<Engine::DirectionalLight>();
         
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
@@ -71,6 +76,9 @@ public:
             item->material->setModel(item->globalTransform);
             for(int i =0; i<pointLights.size() && i < 4; i++) {
                 item->material->setLight(*pointLights[i], view, i);
+            }
+            for(int i =0; i<directionalLights.size() && i < 4; i++) {
+                item->material->setLight(*directionalLights[i], view, i);
             }
 
             // bind and draw mesh
