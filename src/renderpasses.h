@@ -20,6 +20,12 @@ public:
     }
 
     static void opaqueRenderPass(DemoWorld& world, Engine::Application &app) {
+        if(world.input.wireFrame)
+            glPolygonMode( GL_FRONT_AND_BACK, GL_LINE);
+        else
+            glPolygonMode( GL_FRONT_AND_BACK, GL_FILL);
+        
+        glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);  
         glm::mat4 view = world.camera.get_view();
 
@@ -56,6 +62,7 @@ public:
     }
 
     static void transparentRenderPass(DemoWorld& world, Engine::Application &app) {
+        glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);  
         glm::mat4 view = world.camera.get_view();
 

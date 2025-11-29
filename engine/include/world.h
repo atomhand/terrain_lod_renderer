@@ -14,6 +14,8 @@ namespace Engine {
         float animSpeed = 3.0;
 
         float deltaTime;
+
+        bool wireFrame = false;
     };
 
     class World {
