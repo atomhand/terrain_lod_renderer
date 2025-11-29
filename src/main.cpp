@@ -35,12 +35,11 @@ int main()
 	try
 	{
 		crane.Setup(world);
-		Engine::Shader basic_shader = Engine::Shader("shaders/basic.vert", "shaders/basic.frag");
-		duck.Setup(world,basic_shader);
-		windmill.Setup(world,basic_shader);
-		
+				
 		Engine::Shader pbr_shader = Engine::Shader("shaders/pbr.vert", "shaders/pbr.frag");
 		auto pbr_material = Engine::PbrMaterial(pbr_shader);
+		windmill.Setup(world,pbr_shader);
+		duck.Setup(world,pbr_shader);
 
 		RenderItem* sphere = new RenderItem();
 		sphere->mesh = Sphere(32,32);

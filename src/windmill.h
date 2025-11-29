@@ -52,21 +52,24 @@ public:
     }
 
     void Setup(DemoWorld& world, Engine::Shader shader) {
-        Engine::SceneNode* container = new Engine::SceneNode;
-        //container->localTransform = glm::translate(glm::mat4(1.0), glm::vec3(0.0,0.0,10.0));
-        world.scenegraph.SetParent(container, world.scenegraph.root);
+        // set up materials
+        std::shared_ptr<Engine::PbrMaterial> baseMaterial = std::make_shared<Engine::PbrMaterial>(shader);
+        baseMaterial->albedo = glm::vec3(0.1,0.1,0.1);
 
+        std::shared_ptr<Engine::PbrMaterial> bodyMaterial = std::make_shared<Engine::PbrMaterial>(shader);
+        bodyMaterial->albedo = glm::vec3(0.7,0.2,0.0);
+        bodyMaterial->roughness = 1.0;
+        
+        std::shared_ptr<Engine::PbrMaterial> bladeMaterial = std::make_shared<Engine::PbrMaterial>(shader);
+        bladeMaterial->albedo = glm::vec3(0.7,0.7,0.7);
+
+        // all components can share the same mesh
         Engine::Mesh cube = Cube();
 
-        std::shared_ptr<Engine::PhongMaterial> baseMaterial = std::make_shared<Engine::PhongMaterial>(shader);
-        baseMaterial->color = glm::vec4(0.1,0.1,0.1,1.0);
+        // instantiate components
+        Engine::SceneNode* container = new Engine::SceneNode;
+        world.scenegraph.SetParent(container, world.scenegraph.root);
 
-        std::shared_ptr<Engine::PhongMaterial> bodyMaterial = std::make_shared<Engine::PhongMaterial>(shader);
-        bodyMaterial->color = glm::vec4(0.7,0.2,0.0,1.0);
-        
-        std::shared_ptr<Engine::PhongMaterial> bladeMaterial = std::make_shared<Engine::PhongMaterial>(shader);
-        bladeMaterial->color = glm::vec4(0.7,0.7,0.7,1.0);
-        //
         RenderItem* base1 = new RenderItem();
         base1->material = baseMaterial;
         base1->mesh = cube;

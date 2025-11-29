@@ -29,7 +29,7 @@ namespace Engine {
         }
 
         // setCamera must be called first
-        // This is virtual because different materials use world space vs view space lighting
+        // Base function assumes view space lighting
         virtual void setModel(const glm::mat4 &model) {
             // set model          
             shader.setMat4("model", model);

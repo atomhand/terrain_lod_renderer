@@ -45,25 +45,25 @@ public:
 
         Engine::Mesh mesh = Sphere(8,8);
 
-        Engine::PhongMaterial bodyMaterial(shader);
-        bodyMaterial.color = glm::vec4(0.4,0.2,0.0,1.0);
-        bodyMaterial.shininess = 5.0;
+        Engine::PbrMaterial bodyMaterial(shader);
+        bodyMaterial.albedo = glm::vec3(0.4,0.2,0.0);
+        bodyMaterial.roughness = 0.1;
 
-        Engine::PhongMaterial headMaterial(shader);
-        headMaterial.color = glm::vec4(0.2,0.4,0.2,1.0);
-        headMaterial.shininess = 5.0;
+        Engine::PbrMaterial headMaterial(shader);
+        headMaterial.albedo = glm::vec3(0.2,0.4,0.2);
+        headMaterial.roughness = 0.1;
 
         // body
         RenderItem* body = new RenderItem();
         body->mesh = mesh;
-        body->material = std::make_shared<Engine::PhongMaterial>(bodyMaterial);
+        body->material = std::make_shared<Engine::PbrMaterial>(bodyMaterial);
         body->localTransform = glm::scale(glm::mat4(1.0), glm::vec3(LENGTH, HEIGHT, WIDTH));
         world.scenegraph.SetParent(body, duck);
 
         // head
         RenderItem* head = new RenderItem();
         head->mesh = mesh;
-        head->material = std::make_shared<Engine::PhongMaterial>(headMaterial);
+        head->material = std::make_shared<Engine::PbrMaterial>(headMaterial);
         head->localTransform = glm::translate(glm::mat4(1.0), glm::vec3(LENGTH/2.0,HEIGHT/2.0+HEAD_SIZE,0.0)) * glm::scale(glm::mat4(1.0), glm::vec3(HEAD_SIZE));
         world.scenegraph.SetParent(head, duck);
 
