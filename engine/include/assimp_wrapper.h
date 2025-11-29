@@ -20,7 +20,9 @@ namespace Engine {
         {
             unsigned int i;
             unsigned int n = 0, t, v;
-            aiMatrix4x4 m = nd->mTransformation;
+
+            // TODO - Apply the mesh transformation provided by Assimp
+            //aiMatrix4x4 m = nd->mTransformation;
 
             /* import all meshes assigned to this node */
             for (; n < nd->mNumMeshes; ++n) {
