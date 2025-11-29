@@ -5,13 +5,14 @@
 #include "texture.h"
 #include "scenegraph.h"
 
+enum RenderPass { OPAQUE, TRANSPARENT };
+
 class RenderItem : public Engine::SceneNode {
 public:
     Engine::Shader shader;
     std::vector<Engine::Texture> textures;
     glm::vec4 colour;
-
-    bool transparent;
+    RenderPass renderPass;
 
     float shininess = 8.0;
 

@@ -23,7 +23,7 @@ public:
 		crane_feathers->textures.push_back(Engine::Texture::Import("textures/Tex_BlackCrownedCraneFeatherB.TGA"));
 		crane_feathers->textures.push_back(Engine::Texture::Import("textures/Tex_BlackCrownedCraneFeatherM.TGA"));
 		crane_feathers->textures.push_back(Engine::Texture::Import("textures/Tex_BlackCrownedCraneFeatherN.TGA"));
-		crane_feathers->transparent = true;
-		world.scenegraph.SetParent(crane_feathers, world.scenegraph.root);
+		crane_feathers->renderPass = RenderPass::TRANSPARENT;
+		world.scenegraph.SetParent(crane_feathers, crane);
     }
 };
