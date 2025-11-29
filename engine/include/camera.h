@@ -7,7 +7,7 @@
 namespace Engine
 {
     class Camera {
-    protected:
+    protected:        
         glm::mat4x4 transform;
 
         float fov = 45.0f;
@@ -18,6 +18,8 @@ namespace Engine
         float width = 1024.f;
         float height = 768.f;
     public:
+        glm::vec3 position;
+
         void setFramebufferSize(int width, int height) {
             this->width = float(width);
             this->height = float(height);

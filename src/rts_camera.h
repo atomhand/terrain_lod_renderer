@@ -13,8 +13,8 @@ private:
     }
 
     void update_transform() {
-        glm::vec3 pos = target + glm::vec3(0.0f,15.0f,-9.0f) * (zoom+0.1f);
-        transform = glm::lookAt(pos, target, glm::vec3(0.0f,1.0f,0.0f));
+        position = target + glm::vec3(0.0f,15.0f,-9.0f) * (zoom+0.1f);
+        transform = glm::lookAt(position, target, glm::vec3(0.0f,1.0f,0.0f));
     }
 public:
     void update(Engine::World& world) {
