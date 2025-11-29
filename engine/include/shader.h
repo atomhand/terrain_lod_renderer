@@ -4,15 +4,34 @@
 #include <string>
 #include "camera.h"
 #include "texture.h"
+#include<memory>
 
 namespace Engine
 {
     class Shader
     {
-    public:
-        GLuint programID;
+    private:
+        struct ShaderId {
+            GLuint programId;
 
+            ShaderId() {                
+                programId = glCreateProgram();
+            }
+            ~ShaderId() {
+                glDeleteProgram(programId);
+            }
+        };
+
+        std::shared_ptr<ShaderId> data;
+
+        GLuint programId() const {
+            if(!data)
+                return 0;
+            return data->programId;
+        }
+    public:
         Shader(const char* vertexPath, const char* fragmentPath);
+        Shader() {};
 
         // use/active the shader
         void use();
@@ -22,15 +41,15 @@ namespace Engine
         void setInt(const std::string &name, int value) const;
         void setFloat(const std::string &name, float value) const;
         void setVec4(const std::string &name, glm::vec4 value) const {            
-            glUniform4f(glGetUniformLocation(programID, name.c_str()), value.x, value.y, value.z, value.w); 
+            glUniform4f(glGetUniformLocation(programId(), name.c_str()), value.x, value.y, value.z, value.w); 
         };
         void setMat4(const std::string &name, const glm::mat4 &mat) const
         {
-            glUniformMatrix4fv(glGetUniformLocation(programID, name.c_str()), 1, GL_FALSE, &mat[0][0]);
+            glUniformMatrix4fv(glGetUniformLocation(programId(), name.c_str()), 1, GL_FALSE, &mat[0][0]);
         }
         void setMat3(const std::string &name, const glm::mat3 &mat) const
         {
-            glUniformMatrix3fv(glGetUniformLocation(programID, name.c_str()), 1, GL_FALSE, &mat[0][0]);
+            glUniformMatrix3fv(glGetUniformLocation(programId(), name.c_str()), 1, GL_FALSE, &mat[0][0]);
         }
 
         void setCamera(const Camera &camera);

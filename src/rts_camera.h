@@ -17,7 +17,7 @@ private:
         transform = glm::lookAt(pos, target, glm::vec3(0.0f,1.0f,0.0f));
     }
 public:
-    void update(World& world) {
+    void update(Engine::World& world) {
         update_zoom(world.input.scrollDelta);
         update_transform();
 

@@ -5,6 +5,8 @@
 
 Engine::Shader::Shader(const char* vertexPath, const char* fragmentPath)
 {
+    data = std::make_shared<ShaderId>();
+
     std::string vertexCode = AssetHelper::readFile(vertexPath);
     std::string fragmentCode = AssetHelper::readFile(fragmentPath);
     const char* vShaderCode = vertexCode.c_str();
@@ -13,7 +15,7 @@ Engine::Shader::Shader(const char* vertexPath, const char* fragmentPath)
     GLuint vertex, fragment;
     int success;
     char infoLog[512];
-
+    
     // vertex Shader
     vertex = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertex, 1, &vShaderCode, NULL);
@@ -38,16 +40,17 @@ Engine::Shader::Shader(const char* vertexPath, const char* fragmentPath)
         std::cout << "ERROR::SHADER::SHADER::COMPILATION_FAILED\n" << infoLog << std::endl;
     };
 
+    GLuint id = programId();
+
     // shader Program
-    programID = glCreateProgram();
-    glAttachShader(programID, vertex);
-    glAttachShader(programID, fragment);
-    glLinkProgram(programID);
+    glAttachShader(id, vertex);
+    glAttachShader(id, fragment);
+    glLinkProgram(id);
     // print linking errors if any
-    glGetProgramiv(programID, GL_LINK_STATUS, &success);
+    glGetProgramiv(id, GL_LINK_STATUS, &success);
     if(!success)
     {
-        glGetProgramInfoLog(programID, 512, NULL, infoLog);
+        glGetProgramInfoLog(programId(), 512, NULL, infoLog);
         std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
     }
     
@@ -58,22 +61,22 @@ Engine::Shader::Shader(const char* vertexPath, const char* fragmentPath)
 
 void Engine::Shader::use()
 {
-    glUseProgram(programID);
+    glUseProgram(programId());
 }
 
 void Engine::Shader::setBool(const std::string &name, bool value) const
 {
-    glUniform1i(glGetUniformLocation(programID, name.c_str()), (int)value); 
+    glUniform1i(glGetUniformLocation(programId(), name.c_str()), (int)value); 
 }
 
 void Engine::Shader::setInt(const std::string &name, int value) const
 {
-    glUniform1i(glGetUniformLocation(programID, name.c_str()), value); 
+    glUniform1i(glGetUniformLocation(programId(), name.c_str()), value); 
 }
 
 void Engine::Shader::setFloat(const std::string &name, float value) const
 {    
-    glUniform1f(glGetUniformLocation(programID, name.c_str()), value); 
+    glUniform1f(glGetUniformLocation(programId(), name.c_str()), value); 
 }
 
 

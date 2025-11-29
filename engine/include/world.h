@@ -1,20 +1,24 @@
 #pragma once
 #include <glm/glm.hpp>
+#include "scenegraph.h"
 
-struct  Input {
-public:
-    glm::vec2 mousePos;
-    float scrollDelta;
+namespace Engine {
+    struct  Input {
+    public:
+        glm::vec2 mousePos;
+        float scrollDelta;
 
-    float yAxisKeyDelta;
-    float xAxisKeyDelta;
+        float yAxisKeyDelta;
+        float xAxisKeyDelta;
 
-    float animSpeed = 1.0;
+        float animSpeed = 1.0;
 
-    float deltaTime;
-};
+        float deltaTime;
+    };
 
-class World {
-public:
-    Input input;
-};
+    class World {
+    public:
+        Input input;
+        SceneGraph scenegraph;
+    };
+}
