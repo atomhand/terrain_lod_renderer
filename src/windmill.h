@@ -6,7 +6,7 @@
 #include <vector>
 #include "demo_world.h"
 #include "shader.h"
-#include "material_render_group.h"
+#include "render_item.h"
 #include "shapes.h"
 
 class Windmill {

@@ -4,7 +4,7 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include <glad/glad.h>
-#include "material_render_group.h"
+#include "render_item.h"
 #include "mesh.h"
 #include "texture.h"
 
@@ -18,6 +18,4 @@ public:
     glm::vec4 lightPos = glm::vec4(glm::normalize(glm::vec3(1.0f,0.8f,0.0f)), 2.0f); // light intensity packed into W
 
     Engine::Texture* testTex;
-    
-    std::vector<MaterialRenderGroup> material_render_groups;
 };

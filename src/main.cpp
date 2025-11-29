@@ -61,7 +61,6 @@ int main()
 		world.scenegraph.PropagateTransforms();
 
 		RenderPasses::preRender(world, app);
-		RenderPasses::materialRenderPass(world,app);
 		RenderPasses::itemsRenderPass(world,app);
 
 		app.frameEnd(world);
