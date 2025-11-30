@@ -13,7 +13,7 @@ private:
     }
 
     void update_transform() {
-        float scale = 2.f * (zoom+0.1f);
+        float scale = 4.f * (zoom+0.1f);
 
         glm::vec3 offset = glm::vec3(0.0f,15.0f,-9.0f) * scale;
         position = target + offset;

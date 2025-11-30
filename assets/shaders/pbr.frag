@@ -87,7 +87,7 @@ vec3 outRadiance(vec3 L, vec3 V, vec3 N, vec3 F0, vec3 surfAlbedo, vec3 radiance
     return (kD * surfAlbedo / PI + specular) * radiance * NdotL; 
 }
 
-float CalculateOcclusion(vec4 lightSpacePos) {
+float CalculateOcclusion(vec4 lightSpacePos, vec3 N, vec3 L) {
     vec3 ndc = lightSpacePos.xyz / lightSpacePos.w;
     // transform ndc to 0..1
     vec3 uv = ndc * 0.5 + 0.5;
@@ -100,7 +100,7 @@ float CalculateOcclusion(vec4 lightSpacePos) {
     if(fragDepth > 1.0)
         return 1.;
 
-    float bias = 0.005;
+    float bias = max(0.005 * (1.0 - dot(N, L)), 0.0002);   
     return (fragDepth - bias > occluderDepth ? 0.0 : 1.0);
 }
 
@@ -130,7 +130,7 @@ void main()
         vec4 lightSpacePos = directionLightMatrix * vec4(WorldPos,1.0);
 
         vec3 L = normalize(-lightDirections[i]);
-        vec3 inRadiance = directionalLightColors[i] * CalculateOcclusion(lightSpacePos);
+        vec3 inRadiance = directionalLightColors[i] * CalculateOcclusion(lightSpacePos,N,L);
         Lo += outRadiance(L,V,N,F0,albedo,inRadiance);
     } 
   
