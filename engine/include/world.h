@@ -1,6 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 #include "scenegraph.h"
+#include "camera.h"
 
 namespace Engine {
     struct  Input {
@@ -24,5 +25,15 @@ namespace Engine {
         Input input;
         SceneGraph scenegraph;
         float time;
+
+        float animDeltaTime() {
+            return input.deltaTime * input.animSpeed * 0.2f;
+        }
+
+        Camera& cameraMain() {
+            auto cameras = scenegraph.Filter<Camera>();
+            assert(cameras.size() > 0); // Can't be missing a main camera
+            return *cameras[0];
+        }
     };
 }

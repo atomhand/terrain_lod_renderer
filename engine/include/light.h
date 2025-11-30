@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include "scenegraph.h"
 #include "camera.h"
+#include "world.h"
 
 // Shadow map code partially adapted from https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping
 // Modified to use
@@ -58,21 +59,8 @@ namespace Engine {
         };
 
         std::shared_ptr<Data> data;
-    public:
-        glm::vec3 color = glm::vec3(1.0,1.0,1.0);
-        glm::vec3 direction = glm::normalize(glm::vec3(4.0,-2.0,4.0));
 
-        Texture depthMap() { return data-> depthMap; }
-
-        void PrepareRenderShadowmap() {
-            glViewport(0, 0, SHADOWMAP_WIDTH, SHADOWMAP_HEIGHT);
-            glBindFramebuffer(GL_FRAMEBUFFER, data->depthMapFBO);
-            glClear(GL_DEPTH_BUFFER_BIT);
-        }
-
-        glm::mat4 cachedLightSpaceMatrix;
-
-        glm::mat4 LightSpaceMatrix(Camera& camera) {
+        void MakeLightSpaceMatrix(Camera& camera) {
             glm::vec3 frustumCorners[8];
             glm::vec3 frustumCenter = camera.FrustumCorners(frustumCorners);
 
@@ -110,9 +98,26 @@ namespace Engine {
 
             glm::mat4 lightProjection = glm::ortho(xMin,xMax,yMin,yMax,zMin,zMax);
             
-            cachedLightSpaceMatrix = lightProjection * lightView;
-            return cachedLightSpaceMatrix;
+            lightSpaceMatrix = lightProjection * lightView;
         }
+    public:
+        glm::vec3 color = glm::vec3(1.0,1.0,1.0);
+        glm::vec3 direction = glm::normalize(glm::vec3(4.0,-2.0,4.0));
+
+        Texture depthMap() { return data-> depthMap; }
+
+        void Update(World& world) override {
+            auto cameras = world.scenegraph.Filter<Camera>();
+            MakeLightSpaceMatrix(*cameras[0]);
+        }
+
+        void PrepareRenderShadowmap() {
+            glViewport(0, 0, SHADOWMAP_WIDTH, SHADOWMAP_HEIGHT);
+            glBindFramebuffer(GL_FRAMEBUFFER, data->depthMapFBO);
+            glClear(GL_DEPTH_BUFFER_BIT);
+        }
+
+        glm::mat4 lightSpaceMatrix;
 
         DirectionalLight() {
             data = std::make_shared<Data>();

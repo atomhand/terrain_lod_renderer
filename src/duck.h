@@ -10,7 +10,7 @@
 #include "shapes.h"
 #include "light.h"
 
-class Duck {
+class Duck : public Engine::SceneNode {
 private:
     const float HEIGHT = 0.3f;
     const float WIDTH = 0.3f;
@@ -28,21 +28,16 @@ private:
     }
 
     Engine::SceneNode* duck;
+    Engine::Shader shader;
 public:
-    glm::mat4 main_transform() {
-        return duck->globalTransform;
+    Duck(Engine::Shader shader) : shader(shader) {};
+
+    void Update(Engine::World& world) override {
+        current_angle += world.animDeltaTime();
+        localTransform = glm::translate(glm::mat4(1.0), glm::vec3(CIRCLE_OFFSET,CIRCLE_ELEVATION,0.0)) * mainRotation() * glm::translate(glm::mat4(1.0), glm::vec3(0.0,0.0,CIRCLE_RADIUS));
     }
 
-    void update(float deltaTime) {
-        current_angle += deltaTime;
-        duck->localTransform = glm::translate(glm::mat4(1.0), glm::vec3(CIRCLE_OFFSET,CIRCLE_ELEVATION,0.0)) * mainRotation() * glm::translate(glm::mat4(1.0), glm::vec3(0.0,0.0,CIRCLE_RADIUS));
-    }
-
-    void Setup(DemoWorld& world, Engine::Shader shader) {
-        // root
-        duck = new Engine::SceneNode();
-        world.scenegraph.SetParent(duck, world.scenegraph.root);
-
+    void OnEnter(Engine::SceneGraph& sceneGraph) override {
         Engine::Mesh mesh = Sphere(8,8);
 
         Engine::PbrMaterial bodyMaterial(shader);
@@ -58,18 +53,18 @@ public:
         body->mesh = mesh;
         body->material = std::make_shared<Engine::PbrMaterial>(bodyMaterial);
         body->localTransform = glm::scale(glm::mat4(1.0), glm::vec3(LENGTH, HEIGHT, WIDTH));
-        world.scenegraph.SetParent(body, duck);
+        sceneGraph.SetParent(body, this);
 
         // head
         RenderItem* head = new RenderItem();
         head->mesh = mesh;
         head->material = std::make_shared<Engine::PbrMaterial>(headMaterial);
         head->localTransform = glm::translate(glm::mat4(1.0), glm::vec3(LENGTH/2.0,HEIGHT/2.0+HEAD_SIZE,0.0)) * glm::scale(glm::mat4(1.0), glm::vec3(HEAD_SIZE));
-        world.scenegraph.SetParent(head, duck);
+        sceneGraph.SetParent(head, this);
 
         Engine::PointLight* light = new Engine::PointLight();
         light->color = glm::vec3(1.0,1.0,1.0);
         light->localTransform = glm::translate(glm::mat4(1.0f),glm::vec3(0.0,2.0,0.0)) * glm::mat4(1.f);
-        world.scenegraph.SetParent(light,head);
+        sceneGraph.SetParent(light,head);
     }
 };

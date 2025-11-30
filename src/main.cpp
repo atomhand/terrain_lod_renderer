@@ -31,33 +31,34 @@ RenderItem* sphere;
 
 int main()
 {
-	Engine::DirectionalLight* sun = new Engine::DirectionalLight();
-	sun->direction= glm::normalize(glm::vec3(0.0,-1.,-8.0));
-	sun->color = glm::vec3(10.0);
-	world.scenegraph.SetParent(sun,world.scenegraph.root);
-
-	auto quad_mat = Engine::Material(Engine::Shader("shaders/fullscreen_quad.vert","shaders/fullscreen_quad.frag"));
-	quad_mat.textures.push_back(sun->depthMap());
-	testQuad = new RenderItem();
-	testQuad->mesh = BasicQuad();
-	testQuad->shadowEnabled = false;
-	testQuad->enabled = false;
-	testQuad->material = std::make_shared<Engine::Material>(quad_mat);
-	world.scenegraph.SetParent(testQuad,world.scenegraph.root);
-
-	Duck duck;
-	Windmill windmill;
-	Crane crane;
-	Terrain terrain(256,0.5f);
 
 	try
 	{
-		crane.Setup(world);
-		terrain.Setup(world);
+		// Main camera controller
+		world.scenegraph.SetParent(new RtsCameraController(), world.scenegraph.root);
 
+		// Sun
+		Engine::DirectionalLight* sun = new Engine::DirectionalLight();
+		sun->direction= glm::normalize(glm::vec3(0.0,-1.,-8.0));
+		sun->color = glm::vec3(10.0);
+		world.scenegraph.SetParent(sun,world.scenegraph.root);
+
+		// Fullscreen quad used for debug visualisation
+		auto quad_mat = Engine::Material(Engine::Shader("shaders/fullscreen_quad.vert","shaders/fullscreen_quad.frag"));
+		quad_mat.textures.push_back(sun->depthMap());
+		testQuad = new RenderItem();
+		testQuad->mesh = BasicQuad();
+		testQuad->shadowEnabled = false;
+		testQuad->enabled = false;
+		testQuad->material = std::make_shared<Engine::Material>(quad_mat);
+		world.scenegraph.SetParent(testQuad,world.scenegraph.root);
+
+		// Scene objects
 		Engine::Shader pbr_shader = Engine::Shader("shaders/pbr.vert", "shaders/pbr.frag");
-		windmill.Setup(world,pbr_shader);
-		duck.Setup(world,pbr_shader);
+		world.scenegraph.SetParent(new Duck(pbr_shader), world.scenegraph.root);
+		world.scenegraph.SetParent(new Windmill(pbr_shader), world.scenegraph.root);
+		world.scenegraph.SetParent(new Crane(), world.scenegraph.root);
+		world.scenegraph.SetParent(new Terrain(256,0.5f), world.scenegraph.root);
 
 		sphere = new RenderItem();
 		sphere->mesh = Sphere(32,32);
@@ -66,7 +67,7 @@ int main()
 		sphere->material = std::make_shared<Engine::PbrMaterial>(spheremat);
 		sphere->localTransform = glm::translate(glm::mat4(1.0), glm::vec3(4.0,4.0,4.0)) * glm::scale(glm::mat4(1.0), glm::vec3(2.0,2.0,2.0));
 		world.scenegraph.SetParent(sphere, world.scenegraph.root);
-
+		
 		Engine::PointLight* light = new Engine::PointLight();
         light->color = glm::vec3(16.0,4.0,4.0);
         world.scenegraph.SetParent(light,sphere);
@@ -78,14 +79,10 @@ int main()
 		exit(0);
 	}
 
-	world.cameraController.setup(world);
-
 	// event loop
 	while(!app.shouldClose()) {
 		app.frameStart(world);
 		testQuad->enabled = world.input.testQuad;
-
-		world.cameraController.update(world);
 
 		/*
 		glm::vec3 dummy[8];
@@ -93,12 +90,8 @@ int main()
 		sphere->localTransform = glm::translate(glm::mat4(1.),c);
 		*/
 
-		wind_angle += world.input.deltaTime * world.input.animSpeed;
-		windmill.update(wind_angle,world.input.deltaTime * world.input.animSpeed * 0.2f);
-		duck.update(world.input.deltaTime * world.input.animSpeed * 0.2f);
-
 		world.scenegraph.PropagateTransforms();
-		world.scenegraph.NodeTickUpdate();
+		world.scenegraph.NodeTickUpdate(world);
 
 		RenderPasses::DrawShadowMaps(world,app);
 

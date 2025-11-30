@@ -19,7 +19,7 @@ public:
         world.shadowShader.use();
         for(auto light : directionalLights) {
             light->PrepareRenderShadowmap();
-            world.shadowShader.setMat4("lightSpaceMatrix", light->LightSpaceMatrix(world.cameraMain()));
+            world.shadowShader.setMat4("lightSpaceMatrix", light->lightSpaceMatrix);
 
             // Draw meshes
             for(RenderItem* item : items) {

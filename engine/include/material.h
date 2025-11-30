@@ -51,7 +51,7 @@ namespace Engine {
             if(index == 0) {
                 glActiveTexture(GL_TEXTURE0 + 5);
                 light.depthMap().bind();
-                shader.setMat4("directionLightMatrix", light.cachedLightSpaceMatrix);
+                shader.setMat4("directionLightMatrix", light.lightSpaceMatrix);
             }
         }
 

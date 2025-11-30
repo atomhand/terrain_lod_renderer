@@ -7,6 +7,9 @@
 #include <glm/glm.hpp>
 
 namespace Engine {
+    class World;
+    class SceneGraph;
+
     class SceneNode {
     private:
         SceneNode & operator=(const SceneNode&) = delete;
@@ -19,7 +22,10 @@ namespace Engine {
         bool enabled = true;
 
         // This function is called every frame for each node
-        virtual void Update() {};
+        virtual void Update(World& world) {};
+
+        // Called when a node is added to the scene for the first time
+        virtual void OnEnter(SceneGraph& sceneGraph) {};
 
         SceneNode() {};
         virtual ~SceneNode() {};
@@ -58,17 +64,23 @@ namespace Engine {
         // the child from their old parent's list if they have one
         bool SetParent(SceneNode* item, SceneNode* newparent) {
             assert(item != root); // Cannot give the scene root a parent
+            assert(item != nullptr);
+            SceneNode* oldparent = item->parent;
+            if(newparent == oldparent) {
+                return false;
+            }
             // do not create cycles in the scene tree
             if(newparent != nullptr && SubtreeContains(item,newparent)) {
                 std::cout << "Error - attempted to make cyclic relationship in scene graph";
                 return false;
             }
+            
             // remove former parent
-            SceneNode* oldparent = item->parent;
+            item->parent = newparent;
+            if(newparent != nullptr)
+                newparent->children.push_back(item);
+            
             if(oldparent != nullptr) {
-                if(newparent == oldparent) {
-                    return false;
-                }
                 // erase child pointer from parent's children list
                 for(auto it = oldparent->children.begin(); it != oldparent->children.end(); ++it) {
                     if(*it == item) {
@@ -76,16 +88,17 @@ namespace Engine {
                         break;
                     }
                 }
+            } else {
+                // If there was no previous parent, called init on the new child
+                item->OnEnter(*this);
             }
-            item->parent = newparent;
-            if(newparent != nullptr)
-                newparent->children.push_back(item);
+
             return true;
         }
 
         // Call the update function on all scene nodes, skipping disabled nodes and their descendants
-        void NodeTickUpdate() {
-            root->Update();
+        void NodeTickUpdate(World& world) {
+            root->Update(world);
             // Depth first traversal
             std::stack<SceneNode*> toProcess;
             toProcess.push(root);
@@ -95,7 +108,7 @@ namespace Engine {
 
                 for(auto child : parent->children) {
                     if(child->enabled) {
-                        child->Update();
+                        child->Update(world);
                         if(child->children.size() > 0)
                             toProcess.push(child);
                     }
