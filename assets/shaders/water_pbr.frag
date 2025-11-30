@@ -8,6 +8,9 @@ in vec3 WorldPos;
 layout(binding=0) uniform sampler2D normalMap1;
 layout(binding=1) uniform sampler2D normalMap2;
 
+layout(binding=5) uniform sampler2DShadow shadowMap;
+layout(binding=6) uniform samplerCube irradianceMap;
+
 // material parameters
 uniform vec3 albedo;
 uniform float metallic;
@@ -23,6 +26,7 @@ uniform vec3 lightColors[4];
 // directional lights
 uniform vec3 lightDirections[4];
 uniform vec3 directionalLightColors[4];
+uniform mat4 directionLightMatrix;
 
 uniform vec3 viewPos;
 
@@ -88,6 +92,39 @@ vec3 outRadiance(vec3 L, vec3 V, vec3 N, vec3 F0, vec3 surfAlbedo, vec3 radiance
     return (kD * surfAlbedo / PI + specular) * radiance * NdotL; 
 }
 
+float CalculateOcclusion(vec4 lightSpacePos, vec3 N, vec3 L) {
+    vec3 ndc = lightSpacePos.xyz / lightSpacePos.w;
+    // transform ndc to 0..1
+    vec3 uv = ndc * 0.5 + 0.5;
+
+    // current fragment's depth from light's perspective
+    float fragDepth = uv.z;
+
+    // if frag is beyond our far depth, assume it's unoccluded
+    if(fragDepth > 1.0)
+        return 1.;
+
+    float bias = 0.01 * clamp(dot(N, L),0.,1.);
+    float occlusion = 0.0;
+
+    // Basic pcf filter
+
+    // kernel from https://www.opengl-tutorial.org/intermediate-tutorials/tutorial-16-shadow-mapping/#pcf
+    vec2 poissonDisk[4] = vec2[](
+        vec2( -0.94201624, -0.39906216 ),
+        vec2( 0.94558609, -0.76890725 ),
+        vec2( -0.094184101, -0.92938870 ),
+        vec2( 0.34495938, 0.29387760 )
+    );
+
+    vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+    for(int i =0; i<4; i++) {
+        occlusion += 0.25 * (1.0 - texture(shadowMap, vec3(uv.xy + poissonDisk[i] * texelSize,fragDepth-bias)).r);
+    }
+
+    return occlusion;
+}
+
 void main()
 {
     vec2 uv = WorldPos.xz / 16.0;
@@ -114,14 +151,23 @@ void main()
     }
 
     // directional lights
-    for(int i = 0; i < 4; ++i) 
+    for(int i = 0; i < 1; ++i) 
     {
+        vec4 lightSpacePos = directionLightMatrix * vec4(WorldPos,1.0);
+
         vec3 L = normalize(-lightDirections[i]);
-        vec3 inRadiance = directionalLightColors[i];
+        vec3 inRadiance = directionalLightColors[i] * (1.0-CalculateOcclusion(lightSpacePos,N,L));
         Lo += outRadiance(L,V,N,F0,albedo,inRadiance);
     } 
   
-    vec3 ambient = vec3(0.03) * albedo * ao;
+    // IBL Diffuse ambient term from https://learnopengl.com/PBR/IBL/Diffuse-irradiance
+    vec3 kS = fresnelSchlick(max(dot(N, V), 0.0), F0);
+    vec3 kD = 1.0 - kS;
+    kD *= 1.0 - metallic;	  
+    vec3 irradiance = texture(irradianceMap, N).rgb;
+    vec3 diffuse      = irradiance * albedo;
+    vec3 ambient = (kD * diffuse) * ao;
+
     vec3 color = ambient + Lo;
 	
     color = color / (color + vec3(1.0));

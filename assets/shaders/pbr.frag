@@ -1,5 +1,5 @@
 #version 420
-// Adapted from: https://learnopengl.com/PBR/Lighting
+// Adapted from: https://learnopengl.com/PBR/Lighting and https://learnopengl.com/PBR/IBL/Diffuse-irradiance
 
 out vec4 outputColor;
 in vec2 TexCoords;
@@ -7,6 +7,7 @@ in vec3 WorldPos;
 in vec3 Normal;
 
 layout(binding=5) uniform sampler2DShadow shadowMap;
+layout(binding=6) uniform samplerCube irradianceMap;
 
 // material parameters
 uniform vec3 albedo;
@@ -141,7 +142,7 @@ void main()
     }
 
     // directional lights
-    for(int i = 0; i < 4; ++i) 
+    for(int i = 0; i < 1; ++i) 
     {
         vec4 lightSpacePos = directionLightMatrix * vec4(WorldPos,1.0);
 
@@ -150,7 +151,14 @@ void main()
         Lo += outRadiance(L,V,N,F0,albedo,inRadiance);
     } 
   
-    vec3 ambient = vec3(0.03) * albedo * ao;
+    // IBL Diffuse ambient term from https://learnopengl.com/PBR/IBL/Diffuse-irradiance
+    vec3 kS = fresnelSchlick(max(dot(N, V), 0.0), F0);
+    vec3 kD = 1.0 - kS;
+    kD *= 1.0 - metallic;	  
+    vec3 irradiance = texture(irradianceMap, N).rgb;
+    vec3 diffuse      = irradiance * albedo;
+    vec3 ambient = (kD * diffuse) * ao;
+
     vec3 color = ambient + Lo;
 	
     color = color / (color + vec3(1.0));

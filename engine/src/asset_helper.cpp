@@ -1,8 +1,6 @@
 #include "asset_helper.h"
 #include <iostream>
 #include <fstream>
-#include <vector>
-#include <filesystem>
 
 /* Read a text file into a string*/
 std::string Engine::AssetHelper::readFile(const char *filePath)

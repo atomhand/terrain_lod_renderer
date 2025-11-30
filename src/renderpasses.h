@@ -13,7 +13,9 @@ public:
         std::vector<RenderItem*> items = world.scenegraph.Filter<RenderItem>();
         std::vector<Engine::DirectionalLight*> directionalLights = world.scenegraph.Filter<Engine::DirectionalLight>();
 
-        glEnable(GL_CULL_FACE);
+        // No face culling for shadows right now, because it doesn't work with my 
+        // non-manifold terrain mesh
+        glDisable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
 
         world.shadowShader.use();
@@ -39,43 +41,6 @@ public:
         glUseProgram(0);
     }
 
-    static void TestPass(DemoWorld& world, Engine::Application &app) {        
-        std::vector<RenderItem*> items = world.scenegraph.Filter<RenderItem>();
-        std::vector<Engine::DirectionalLight*> directionalLights = world.scenegraph.Filter<Engine::DirectionalLight>();
-
-        glEnable(GL_CULL_FACE);
-        glEnable(GL_DEPTH_TEST);
-
-        world.shadowShader.use();
-        for(auto light : directionalLights) {
-            light->PrepareRenderShadowmap();
-
-            // Draw meshes
-            for(RenderItem* item : items) {
-                if(!item->casts_shadow())
-                    continue;
-                
-                // bind and configure material
-                item->material->use();
-                item->material->setCamera(world.cameraMain());
-                item->material->setModel(item->globalTransform);
-
-                // bind and draw mesh
-                Engine::Mesh& mesh =item->mesh;            
-                glBindVertexArray(mesh.vao());
-                glDrawElements(GL_TRIANGLES, mesh.count(), GL_UNSIGNED_INT, nullptr);
-                glBindVertexArray(0);
-
-                // bind
-                item->material->unbind();
-            }
-
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        }
-        glUseProgram(0);
-    }
-
-
     static void PrepareMain(DemoWorld& world, Engine::Application &app) {
             // Rendering
         int display_w, display_h;
@@ -94,6 +59,7 @@ public:
         
         glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LEQUAL);
         glm::mat4 view = world.cameraMain().view();
 
         std::vector<RenderItem*> items = world.scenegraph.Filter<RenderItem>();
@@ -118,6 +84,8 @@ public:
                 item->material->setLight(*directionalLights[i], view, i);
             }
 
+            world.skybox.Bind(6);
+
             // bind and draw mesh
             Engine::Mesh& mesh =item->mesh;            
             glBindVertexArray(mesh.vao());
@@ -127,6 +95,11 @@ public:
             // bind
             item->material->unbind();
         }
+        
+        glDisable(GL_CULL_FACE);
+        glDepthMask(GL_FALSE);
+        world.skybox.DrawSkybox(world.cameraMain().view(),world.cameraMain().projection());
+        glDepthMask(GL_TRUE);
     }
 
     static void DrawTransparent(DemoWorld& world, Engine::Application &app) {

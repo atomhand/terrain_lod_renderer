@@ -67,7 +67,7 @@ int main()
 		sphere->material = std::make_shared<Engine::PbrMaterial>(spheremat);
 		sphere->localTransform = glm::translate(glm::mat4(1.0), glm::vec3(4.0,4.0,4.0)) * glm::scale(glm::mat4(1.0), glm::vec3(2.0,2.0,2.0));
 		world.scenegraph.SetParent(sphere, world.scenegraph.root);
-		
+
 		Engine::PointLight* light = new Engine::PointLight();
         light->color = glm::vec3(16.0,4.0,4.0);
         world.scenegraph.SetParent(light,sphere);
