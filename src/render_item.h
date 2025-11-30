@@ -14,4 +14,10 @@ public:
     RenderPass renderPass;
 
     Engine::Mesh mesh;
+
+    bool shadowEnabled = true;
+
+    bool casts_shadow() {
+        return shadowEnabled && renderPass == RenderPass::OPAQUE;
+    }
 };

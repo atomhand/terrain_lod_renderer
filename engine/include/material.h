@@ -113,6 +113,12 @@ namespace Engine {
 
             shader.setVec3("lightDirections[" + std::to_string(index) + "]", light.direction);
             shader.setVec3("directionalLightColors[" + std::to_string(index) + "]", light.color);
+
+            if(index == 0) {
+                glActiveTexture(GL_TEXTURE0 + 5);
+                light.depthMap().bind();
+                shader.setMat4("directionLightMatrix", light.cachedLightSpaceMatrix);
+            }
         }
 
         void setModel(const glm::mat4 &model) override {

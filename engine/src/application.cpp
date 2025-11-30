@@ -13,6 +13,7 @@ static float numInput = -1.0;
 static float lastFrameTime;
 
 static bool wireframe = false;
+static bool testQuad = false;
 
 void Engine::Application::cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
 	mousePos = glm::vec2((float)xpos,(float)ypos);
@@ -37,6 +38,7 @@ void Engine::Application::passInputs(World& world) {
 	scrollDelta = 0.f;
 
 	world.input.wireFrame = wireframe;
+	world.input.testQuad = testQuad;
 
 	float currentFrame = float(glfwGetTime());
 	world.input.deltaTime = currentFrame - lastFrameTime;
@@ -73,6 +75,8 @@ void Engine::Application::keyCallback(GLFWwindow* window, int k, int s, int acti
 
 	if (k == GLFW_KEY_C && action == GLFW_PRESS)
 		wireframe = !wireframe;
+	if (k == GLFW_KEY_Q && action == GLFW_PRESS)
+		testQuad = !testQuad;
 
 	if(k == GLFW_KEY_W && (action == GLFW_REPEAT || action == GLFW_PRESS))
 		yAxisKeyDelta += -1.0;

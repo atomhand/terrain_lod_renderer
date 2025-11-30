@@ -16,6 +16,7 @@ namespace Engine {
         float deltaTime;
 
         bool wireFrame = false;
+        bool testQuad = false;
     };
 
     class World {

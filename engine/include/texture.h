@@ -21,6 +21,7 @@ namespace Engine {
 
         std::shared_ptr<TextureData> data;
     public:
+        GLuint textureObject() { return data->textureObject; }
         static Texture Import(const char* path);
 
         Texture() {

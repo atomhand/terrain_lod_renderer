@@ -9,7 +9,74 @@
 
 class RenderPasses {
 public:
-    static void preRender(DemoWorld& world, Engine::Application &app) {
+    static void DrawShadowMaps(DemoWorld& world, Engine::Application &app) {        
+        std::vector<RenderItem*> items = world.scenegraph.Filter<RenderItem>();
+        std::vector<Engine::DirectionalLight*> directionalLights = world.scenegraph.Filter<Engine::DirectionalLight>();
+
+        glEnable(GL_CULL_FACE);
+        glEnable(GL_DEPTH_TEST);
+
+        world.shadowShader.use();
+        for(auto light : directionalLights) {
+            light->PrepareRenderShadowmap();
+            world.shadowShader.setMat4("lightSpaceMatrix", light->LightSpaceMatrix(world.camera));
+
+            // Draw meshes
+            for(RenderItem* item : items) {
+                if(!item->casts_shadow())
+                    continue;
+                
+                world.shadowShader.setMat4("model", item->globalTransform);
+
+                Engine::Mesh& mesh =item->mesh;            
+                glBindVertexArray(mesh.vao());
+                glDrawElements(GL_TRIANGLES, mesh.count(), GL_UNSIGNED_INT, nullptr);
+                glBindVertexArray(0);
+            }
+
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        }
+        glUseProgram(0);
+    }
+
+    static void TestPass(DemoWorld& world, Engine::Application &app) {        
+        std::vector<RenderItem*> items = world.scenegraph.Filter<RenderItem>();
+        std::vector<Engine::DirectionalLight*> directionalLights = world.scenegraph.Filter<Engine::DirectionalLight>();
+
+        glEnable(GL_CULL_FACE);
+        glEnable(GL_DEPTH_TEST);
+
+        world.shadowShader.use();
+        for(auto light : directionalLights) {
+            light->PrepareRenderShadowmap();
+
+            // Draw meshes
+            for(RenderItem* item : items) {
+                if(!item->casts_shadow())
+                    continue;
+                
+                // bind and configure material
+                item->material->use();
+                item->material->setCamera(world.camera);
+                item->material->setModel(item->globalTransform);
+
+                // bind and draw mesh
+                Engine::Mesh& mesh =item->mesh;            
+                glBindVertexArray(mesh.vao());
+                glDrawElements(GL_TRIANGLES, mesh.count(), GL_UNSIGNED_INT, nullptr);
+                glBindVertexArray(0);
+
+                // bind
+                item->material->unbind();
+            }
+
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        }
+        glUseProgram(0);
+    }
+
+
+    static void PrepareMain(DemoWorld& world, Engine::Application &app) {
             // Rendering
         int display_w, display_h;
         app.getFramebufferSize(display_w,display_h);
@@ -19,14 +86,14 @@ public:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 
-    static void opaqueRenderPass(DemoWorld& world, Engine::Application &app) {
+    static void DrawOpaque(DemoWorld& world, Engine::Application &app) {
         if(world.input.wireFrame)
             glPolygonMode( GL_FRONT_AND_BACK, GL_LINE);
         else
             glPolygonMode( GL_FRONT_AND_BACK, GL_FILL);
         
         glEnable(GL_CULL_FACE);
-        glEnable(GL_DEPTH_TEST);  
+        glEnable(GL_DEPTH_TEST);
         glm::mat4 view = world.camera.get_view();
 
         std::vector<RenderItem*> items = world.scenegraph.Filter<RenderItem>();
@@ -62,7 +129,7 @@ public:
         }
     }
 
-    static void transparentRenderPass(DemoWorld& world, Engine::Application &app) {
+    static void DrawTransparent(DemoWorld& world, Engine::Application &app) {
         glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);  
         glm::mat4 view = world.camera.get_view();

@@ -14,6 +14,7 @@ namespace Engine {
         glm::mat4 globalTransform;
         SceneNode* parent = nullptr;
         std::vector<SceneNode*> children;
+        bool enabled = true;
 
         SceneNode() {};
         virtual ~SceneNode() {};
@@ -50,6 +51,9 @@ namespace Engine {
         }
 
         template<DerivedFromSceneNode T> void FilterRecursive(SceneNode* subtree, std::vector<T*>& result) {
+            if(!subtree->enabled)
+                return;
+            
             if(T* t= dynamic_cast<T*>(subtree); t != nullptr) {
                 result.push_back(t);
             }

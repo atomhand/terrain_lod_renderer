@@ -6,6 +6,8 @@ in vec2 TexCoords;
 in vec3 WorldPos;
 in vec3 Normal;
 
+layout(binding=5) uniform sampler2D shadowMap;
+
 // material parameters
 uniform vec3 albedo;
 uniform float metallic;
@@ -19,6 +21,7 @@ uniform vec3 lightColors[4];
 // directional lights
 uniform vec3 lightDirections[4];
 uniform vec3 directionalLightColors[4];
+uniform mat4 directionLightMatrix;
 
 uniform vec3 viewPos;
 
@@ -84,6 +87,23 @@ vec3 outRadiance(vec3 L, vec3 V, vec3 N, vec3 F0, vec3 surfAlbedo, vec3 radiance
     return (kD * surfAlbedo / PI + specular) * radiance * NdotL; 
 }
 
+float CalculateOcclusion(vec4 lightSpacePos) {
+    vec3 ndc = lightSpacePos.xyz / lightSpacePos.w;
+    // transform ndc to 0..1
+    vec3 uv = ndc * 0.5 + 0.5;
+
+    float occluderDepth = texture(shadowMap, uv.xy).r;
+    // current fragment's depth from light's perspective
+    float fragDepth = uv.z;
+
+    // if frag is beyond our far depth, assume it's unoccluded
+    if(fragDepth > 1.0)
+        return 1.;
+
+    float bias = 0.005;
+    return (fragDepth - bias > occluderDepth ? 0.0 : 1.0);
+}
+
 void main()
 {		
     vec3 N = normalize(Normal);
@@ -107,8 +127,10 @@ void main()
     // directional lights
     for(int i = 0; i < 4; ++i) 
     {
+        vec4 lightSpacePos = directionLightMatrix * vec4(WorldPos,1.0);
+
         vec3 L = normalize(-lightDirections[i]);
-        vec3 inRadiance = directionalLightColors[i];
+        vec3 inRadiance = directionalLightColors[i] * CalculateOcclusion(lightSpacePos);
         Lo += outRadiance(L,V,N,F0,albedo,inRadiance);
     } 
   
