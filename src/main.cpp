@@ -98,6 +98,7 @@ int main()
 		duck.update(world.input.deltaTime * world.input.animSpeed * 0.2f);
 
 		world.scenegraph.PropagateTransforms();
+		world.scenegraph.NodeTickUpdate();
 
 		RenderPasses::DrawShadowMaps(world,app);
 
