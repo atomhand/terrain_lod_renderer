@@ -6,7 +6,7 @@ in vec2 TexCoords;
 in vec3 WorldPos;
 in vec3 Normal;
 
-layout(binding=5) uniform sampler2D shadowMap;
+layout(binding=5) uniform sampler2DShadow shadowMap;
 
 // material parameters
 uniform vec3 albedo;
@@ -92,7 +92,6 @@ float CalculateOcclusion(vec4 lightSpacePos, vec3 N, vec3 L) {
     // transform ndc to 0..1
     vec3 uv = ndc * 0.5 + 0.5;
 
-    float occluderDepth = texture(shadowMap, uv.xy).r;
     // current fragment's depth from light's perspective
     float fragDepth = uv.z;
 
@@ -100,8 +99,25 @@ float CalculateOcclusion(vec4 lightSpacePos, vec3 N, vec3 L) {
     if(fragDepth > 1.0)
         return 1.;
 
-    float bias = max(0.005 * (1.0 - dot(N, L)), 0.0002);   
-    return (fragDepth - bias > occluderDepth ? 0.0 : 1.0);
+    float bias = max(0.0075 * (1.0 - dot(N, -L)), 0.0005);   
+    float occlusion = 0.0;
+
+    // Basic pcf filter
+
+    // kernel from https://www.opengl-tutorial.org/intermediate-tutorials/tutorial-16-shadow-mapping/#pcf
+    vec2 poissonDisk[4] = vec2[](
+        vec2( -0.94201624, -0.39906216 ),
+        vec2( 0.94558609, -0.76890725 ),
+        vec2( -0.094184101, -0.92938870 ),
+        vec2( 0.34495938, 0.29387760 )
+    );
+
+    vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+    for(int i =0; i<4; i++) {
+        occlusion += 0.25 * (1.0 - texture(shadowMap, vec3(uv.xy + poissonDisk[i] * texelSize,fragDepth-bias)).r);
+    }
+
+    return occlusion;
 }
 
 void main()
@@ -130,7 +146,7 @@ void main()
         vec4 lightSpacePos = directionLightMatrix * vec4(WorldPos,1.0);
 
         vec3 L = normalize(-lightDirections[i]);
-        vec3 inRadiance = directionalLightColors[i] * CalculateOcclusion(lightSpacePos,N,L);
+        vec3 inRadiance = directionalLightColors[i] * (1.0-CalculateOcclusion(lightSpacePos,N,L));
         Lo += outRadiance(L,V,N,F0,albedo,inRadiance);
     } 
   
