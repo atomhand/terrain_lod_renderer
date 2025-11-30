@@ -7,9 +7,7 @@
 /* Read a text file into a string*/
 std::string Engine::AssetHelper::readFile(const char *filePath)
 {
-    std::filesystem::path path = std::filesystem::current_path();
-	path += "/assets/";
-	path += filePath;
+    std::filesystem::path path = assetPath(filePath);
 
 	std::string content;
 	std::ifstream fileStream(path, std::ios::in);

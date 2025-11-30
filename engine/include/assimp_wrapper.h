@@ -1,13 +1,15 @@
 #pragma once
-#include "mesh.h"
+
+#include <iostream>
+#include <vector>
+#include <filesystem>
 
 #include <assimp/cimport.h>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-#include <iostream>
-#include <vector>
-#include <filesystem>
+#include "mesh.h"
+#include "asset_helper.h"
 
 namespace Engine {
     class AssimpWrapper {
@@ -100,9 +102,7 @@ namespace Engine {
         // Import mesh from file
         // File path is provided relative to the assets directory
         static std::vector<Mesh> ImportMesh(const char *filePath) {
-            std::filesystem::path path = std::filesystem::current_path();
-            path += "/assets/";
-            path += filePath;
+            std::filesystem::path path = AssetHelper::assetPath(filePath);
 
             std::cout << "importing " << path.string() << std::endl;
             const aiScene* scene = aiImportFile(path.string().c_str(),aiProcessPreset_TargetRealtime_MaxQuality);

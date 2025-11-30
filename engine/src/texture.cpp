@@ -1,15 +1,15 @@
 #include <iostream>
-#include "texture.h"
+#include <filesystem>
+
 #include "stb_image.h"
 
-#include <filesystem>
+#include "asset_helper.h"
+#include "texture.h"
 
 // Reference https://learnopengl.com/Getting-started/Textures
 Engine::Texture Engine::Texture::Import(const char* filePath) {   
     Engine::Texture tex; 
-    std::filesystem::path path = std::filesystem::current_path();
-	path += "/assets/";
-	path += filePath;
+    std::filesystem::path path = AssetHelper::assetPath(filePath);
 
 
     glBindTexture(GL_TEXTURE_2D, tex.data->textureObject);
