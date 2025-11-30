@@ -5,7 +5,8 @@
 
 class DemoWorld : public Engine::World {
 public:
-    RtsCamera camera;
+    RtsCameraController cameraController;
+    Engine::Camera& cameraMain() { return cameraController.camera(); }
 
     Engine::Shader shadowShader;
 

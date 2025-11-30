@@ -4,35 +4,34 @@
 #include <glm/ext/matrix_transform.hpp> 
 #include <glm/ext/matrix_clip_space.hpp> // glm::perspective
 #include <iostream>
+#include "scenegraph.h"
 
 namespace Engine
 {
-
-    class Camera {
+    class Camera : public SceneNode {
     protected:        
-        glm::mat4x4 transform;
-
-        float fov = 45.0f;
-
-        float near= 0.1f;
-        float far = 100.f;
-        
         float width = 1024.f;
         float height = 768.f;
     public:
-        glm::vec3 position;
+        float fov = 45.0f;
+        float near= 0.1f;
+        float far = 100.f;
 
         void setFramebufferSize(int width, int height) {
             this->width = float(width);
             this->height = float(height);
         }
 
-        glm::mat4 get_proj() const {
+        glm::mat4 projection() const {
             return glm::perspective(glm::radians(fov), width/height, near, far);
         }
 
-        glm::mat4 get_view() const {
-            return transform;
+        glm::mat4 view() const {
+            return glm::inverse(globalTransform);
+        }
+
+        glm::vec3 position() const {
+            return view() * glm::vec4(0.,0.,0.,1.);
         }
 
         glm::vec3 FrustumCorners(glm::vec3 (&corners)[8]) {
@@ -47,7 +46,7 @@ namespace Engine
                 glm::vec3(1.0,1.0,1.0), //111
             };
 
-            glm::mat4 invCamera = glm::inverse(get_proj() * get_view());
+            glm::mat4 invCamera = glm::inverse(projection() * view());
 
             for(int i =0; i<8; i++) {
                 glm::vec4 h = invCamera * glm::vec4(cube[i], 1.0);

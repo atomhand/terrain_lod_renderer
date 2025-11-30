@@ -27,6 +27,7 @@ Engine::Application app = Engine::Application(1024,768,title);
 DemoWorld world;
 
 RenderItem* testQuad;
+RenderItem* sphere;
 
 int main()
 {
@@ -58,7 +59,7 @@ int main()
 		windmill.Setup(world,pbr_shader);
 		duck.Setup(world,pbr_shader);
 
-		RenderItem* sphere = new RenderItem();
+		sphere = new RenderItem();
 		sphere->mesh = Sphere(32,32);
 		sphere->material = std::make_shared<Engine::PbrMaterial>(Engine::PbrMaterial(pbr_shader));
 		sphere->localTransform = glm::translate(glm::mat4(1.0), glm::vec3(4.0,4.0,4.0)) * glm::scale(glm::mat4(1.0), glm::vec3(2.0,2.0,2.0));
@@ -75,12 +76,20 @@ int main()
 		exit(0);
 	}
 
+	world.cameraController.setup(world);
+
 	// event loop
 	while(!app.shouldClose()) {
 		app.frameStart(world);
 		testQuad->enabled = world.input.testQuad;
 
-		world.camera.update(world);
+		world.cameraController.update(world);
+
+		/*
+		glm::vec3 dummy[8];
+		auto c = world.cameraMain().FrustumCorners(dummy);
+		sphere->localTransform = glm::translate(glm::mat4(1.),c);
+		*/
 
 		wind_angle += world.input.deltaTime * world.input.animSpeed;
 		windmill.update(wind_angle,world.input.deltaTime * world.input.animSpeed * 0.2f);

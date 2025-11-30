@@ -19,7 +19,7 @@ public:
         world.shadowShader.use();
         for(auto light : directionalLights) {
             light->PrepareRenderShadowmap();
-            world.shadowShader.setMat4("lightSpaceMatrix", light->LightSpaceMatrix(world.camera));
+            world.shadowShader.setMat4("lightSpaceMatrix", light->LightSpaceMatrix(world.cameraMain()));
 
             // Draw meshes
             for(RenderItem* item : items) {
@@ -57,7 +57,7 @@ public:
                 
                 // bind and configure material
                 item->material->use();
-                item->material->setCamera(world.camera);
+                item->material->setCamera(world.cameraMain());
                 item->material->setModel(item->globalTransform);
 
                 // bind and draw mesh
@@ -80,7 +80,7 @@ public:
             // Rendering
         int display_w, display_h;
         app.getFramebufferSize(display_w,display_h);
-        world.camera.setFramebufferSize(display_w,display_h);
+        world.cameraMain().setFramebufferSize(display_w,display_h);
         glViewport(0, 0, display_w, display_h);
         glClearColor(0.1f,0.1f,0.25f,1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -94,7 +94,7 @@ public:
         
         glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
-        glm::mat4 view = world.camera.get_view();
+        glm::mat4 view = world.cameraMain().view();
 
         std::vector<RenderItem*> items = world.scenegraph.Filter<RenderItem>();
         std::vector<Engine::PointLight*> pointLights = world.scenegraph.Filter<Engine::PointLight>();
@@ -108,7 +108,7 @@ public:
             
             // bind and configure material
             item->material->use();
-            item->material->setCamera(world.camera);
+            item->material->setCamera(world.cameraMain());
             item->material->setModel(item->globalTransform);
             item->material->shader.setFloat("time",world.time);
             for(int i =0; i<pointLights.size() && i < 4; i++) {
@@ -132,7 +132,7 @@ public:
     static void DrawTransparent(DemoWorld& world, Engine::Application &app) {
         glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);  
-        glm::mat4 view = world.camera.get_view();
+        glm::mat4 view = world.cameraMain().view();
 
         std::vector<RenderItem*> items = world.scenegraph.Filter<RenderItem>();
         std::vector<Engine::PointLight*> pointLights = world.scenegraph.Filter<Engine::PointLight>();
@@ -147,7 +147,7 @@ public:
 
             // bind and configure material
             item->material->use();
-            item->material->setCamera(world.camera);
+            item->material->setCamera(world.cameraMain());
             item->material->setModel(item->globalTransform);
             item->material->shader.setFloat("time",world.time);
             for(int i =0; i<pointLights.size() && i < 4; i++) {

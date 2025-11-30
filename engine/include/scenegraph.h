@@ -36,9 +36,9 @@ namespace Engine {
             return false;
         }
 
-        void PropagateTransformsRecursive(SceneNode* subtree) {
-            for(auto child : subtree->children) {
-                child->globalTransform = subtree->globalTransform * child->localTransform;
+        void PropagateTransformsRecursive(SceneNode* parent) {
+            for(auto child : parent->children) {
+                child->globalTransform = parent->globalTransform * child->localTransform;
                 PropagateTransformsRecursive(child);
             }
         }
@@ -80,6 +80,9 @@ namespace Engine {
             // remove former parent
             SceneNode* oldparent = item->parent;
             if(oldparent != nullptr) {
+                if(newparent == oldparent) {
+                    return false;
+                }
                 // erase child pointer from parent's children list
                 for(auto it = oldparent->children.begin(); it != oldparent->children.end(); ++it) {
                     if(*it == item) {

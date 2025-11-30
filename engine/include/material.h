@@ -21,10 +21,10 @@ namespace Engine {
 
         void setCamera(const Camera &camera) {
             // set camera
-            view = camera.get_view();
-            shader.setVec3("viewPos", camera.position);
+            view = camera.view();
+            shader.setVec3("viewPos", camera.position());
             shader.setMat4("view", view);
-            shader.setMat4("projection", camera.get_proj());
+            shader.setMat4("projection", camera.projection());
 
         }
 
