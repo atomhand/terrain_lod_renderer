@@ -5,6 +5,11 @@
 #include "scenegraph.h"
 #include "camera.h"
 
+// Shadow map code partially adapted from https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping
+// Modified to use
+// -- Opengl shadow sampler instead of standard texture sampler
+// -- Adaptive frustum calculation
+
 namespace Engine {
     class PointLight : public SceneNode {
     private:
@@ -71,11 +76,15 @@ namespace Engine {
             glm::vec3 frustumCorners[8];
             glm::vec3 frustumCenter = camera.FrustumCorners(frustumCorners);
 
+            // Light is looking towards the center of the frustum
             glm::mat4 lightView = glm::lookAt(  frustumCenter-direction,
                                                 frustumCenter,
                                                 glm::vec3(0.f,1.f,0.f));
 
-            // Transform frustum corners into the light's coordinate system
+            // Light projection is chosen to tightly fit around the corners
+            // of the view frustum
+
+            // Transform view frustum corners into the light's coordinate system
             for(int i=0; i<8; i++)
                 frustumCorners[i] = lightView * glm::vec4(frustumCorners[i],1.0);
 

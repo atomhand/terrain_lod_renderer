@@ -1,5 +1,5 @@
 #version 420
-// Written with reference to: https://learnopengl.com/PBR/Lighting
+// Adapted from: https://learnopengl.com/PBR/Lighting
 
 out vec4 outputColor;
 in vec2 TexCoords;
