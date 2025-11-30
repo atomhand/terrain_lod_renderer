@@ -160,12 +160,13 @@ public:
         Engine::Shader water_shader = Engine::Shader("shaders/pbr.vert", "shaders/water_pbr.frag");
         auto water_material = Engine::PbrMaterial(water_shader);
         water_material.roughness = 0.03;
-        water_material.textures.push_back(Engine::Texture::Import("textures/Foam_N.jpg"));
-        water_material.textures.push_back(Engine::Texture::Import("textures/SeaWaves_N.jpg"));
+        water_material.textures.push_back(Engine::Texture::Import("textures/waterN1.jpg"));
+        water_material.textures.push_back(Engine::Texture::Import("textures/waterN2.jpg"));
+        water_material.ao = 0.;
+        water_material.albedo = glm::vec3(1.,1.,1.);
         RenderItem* waterItem = new RenderItem();
 		waterItem->mesh = waterMesh();
 		waterItem->material = std::make_shared<Engine::PbrMaterial>(water_material);
-		waterItem->localTransform = glm::mat4(1.0);
 		world.scenegraph.SetParent(waterItem, world.scenegraph.root);
     }
 

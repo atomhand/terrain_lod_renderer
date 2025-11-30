@@ -97,8 +97,7 @@ namespace Engine {
             // add margin
             // These constants are a hack
             zMax += 150.f;
-            // Min doesn't seem to need a margin in practice
-            //zMin -= 50.f;
+            zMin -= 50.f;
 
             glm::mat4 lightProjection = glm::ortho(xMin,xMax,yMin,yMax,zMin,zMax);
             

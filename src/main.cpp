@@ -32,7 +32,7 @@ RenderItem* sphere;
 int main()
 {
 	Engine::DirectionalLight* sun = new Engine::DirectionalLight();
-	sun->direction= glm::normalize(glm::vec3(4.0,-2.0,4.0));
+	sun->direction= glm::normalize(glm::vec3(0.0,-1.,-8.0));
 	sun->color = glm::vec3(10.0);
 	world.scenegraph.SetParent(sun,world.scenegraph.root);
 
@@ -61,7 +61,9 @@ int main()
 
 		sphere = new RenderItem();
 		sphere->mesh = Sphere(32,32);
-		sphere->material = std::make_shared<Engine::PbrMaterial>(Engine::PbrMaterial(pbr_shader));
+		auto spheremat = Engine::PbrMaterial(pbr_shader);
+		spheremat.roughness = 0.03;
+		sphere->material = std::make_shared<Engine::PbrMaterial>(spheremat);
 		sphere->localTransform = glm::translate(glm::mat4(1.0), glm::vec3(4.0,4.0,4.0)) * glm::scale(glm::mat4(1.0), glm::vec3(2.0,2.0,2.0));
 		world.scenegraph.SetParent(sphere, world.scenegraph.root);
 

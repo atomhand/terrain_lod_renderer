@@ -90,12 +90,11 @@ vec3 outRadiance(vec3 L, vec3 V, vec3 N, vec3 F0, vec3 surfAlbedo, vec3 radiance
 
 void main()
 {
-    vec2 uv = WorldPos.xz / 8.0;
-    float anim = sin(time*0.25) * 0.5;
+    vec2 uv = WorldPos.xz / 16.0;
+    float anim = (time*0.25) * 0.5;
 
     vec3 n1 = texture(normalMap1,uv + vec2(0.25,0.25)*anim).xzy * 2.0 - 1.0;
     vec3 n2 = texture(normalMap2,uv + vec2(-0.25,0.25)*anim).xzy * 2.0 - 1.0;
-
     vec3 N = normalize(n1 + n2);
     vec3 V = normalize(viewPos - WorldPos);
 
