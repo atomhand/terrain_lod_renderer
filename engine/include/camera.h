@@ -55,7 +55,7 @@ namespace Engine
             }
 
             // returns frustum center
-            glm::vec4 hc = invCamera * glm::vec4(0.,0.,0.0,1.);
+            glm::vec4 hc = invCamera * glm::vec4(0.,0.,0.,1.);
             return glm::vec3(hc) / hc.w;
         }
     };

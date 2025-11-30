@@ -99,7 +99,7 @@ float CalculateOcclusion(vec4 lightSpacePos, vec3 N, vec3 L) {
     if(fragDepth > 1.0)
         return 1.;
 
-    float bias = max(0.0075 * (1.0 - dot(N, -L)), 0.0005);   
+    float bias = 0.01 * clamp(dot(N, L),0.,1.);
     float occlusion = 0.0;
 
     // Basic pcf filter

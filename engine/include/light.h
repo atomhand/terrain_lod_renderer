@@ -77,7 +77,7 @@ namespace Engine {
 
             // Transform frustum corners into the light's coordinate system
             for(int i=0; i<8; i++)
-                frustumCorners[i] =  glm::vec4(frustumCorners[i],1.0);
+                frustumCorners[i] = lightView * glm::vec4(frustumCorners[i],1.0);
 
             float xMin, xMax, yMin, yMax, zMin, zMax;
             xMin = yMin = zMin = std::numeric_limits<float>::max();
@@ -94,10 +94,11 @@ namespace Engine {
                 zMax = std::max(zMax,p.z);
             }
 
-            float margin = 10.f;
-            zMax += margin;
-            zMin -= margin;
-            //zMin = std::max(0.1f,zMin);
+            // add margin
+            // These constants are a hack
+            zMax += 150.f;
+            // Min doesn't seem to need a margin in practice
+            //zMin -= 50.f;
 
             glm::mat4 lightProjection = glm::ortho(xMin,xMax,yMin,yMax,zMin,zMax);
             

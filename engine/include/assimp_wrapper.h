@@ -13,7 +13,7 @@ namespace Engine {
     class AssimpWrapper {
     private:
         // from https://github.com/assimp/assimp/blob/master/samples/SimpleOpenGL/Sample_SimpleOpenGL.c
-        static void RecursiveImport(
+        static void RecursiveImportMesh(
             const aiScene* scene,
             const aiNode* nd,
             std::vector<Mesh> &meshes)
@@ -93,7 +93,7 @@ namespace Engine {
 
             /* import all children */
             for (n = 0; n < nd->mNumChildren; ++n) {
-                RecursiveImport(scene, nd->mChildren[n], meshes);
+                RecursiveImportMesh(scene, nd->mChildren[n], meshes);
             }
         }
     public:
@@ -109,7 +109,7 @@ namespace Engine {
 
             std::vector<Mesh> meshes;
 
-            RecursiveImport(scene, scene->mRootNode,meshes);
+            RecursiveImportMesh(scene, scene->mRootNode,meshes);
             
             return meshes;
         }
