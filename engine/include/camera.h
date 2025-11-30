@@ -31,7 +31,7 @@ namespace Engine
         }
 
         glm::vec3 position() const {
-            return view() * glm::vec4(0.,0.,0.,1.);
+            return globalTransform * glm::vec4(0.,0.,0.,1.);
         }
 
         glm::vec3 FrustumCorners(glm::vec3 (&corners)[8]) {
