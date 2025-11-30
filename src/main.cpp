@@ -18,6 +18,7 @@
 
 #include "material.h"
 
+#include "sphere_grid.h"
 
 using namespace std;
 
@@ -39,7 +40,7 @@ int main()
 
 		// Sun
 		Engine::DirectionalLight* sun = new Engine::DirectionalLight();
-		sun->direction= glm::normalize(glm::vec3(0.0,-1.,-8.0));
+		sun->direction= glm::normalize(glm::vec3(0.0,-1.,-4.0));
 		sun->color = glm::vec3(10.0);
 		world.scenegraph.SetParent(sun,world.scenegraph.root);
 
@@ -59,6 +60,7 @@ int main()
 		world.scenegraph.SetParent(new Windmill(pbr_shader), world.scenegraph.root);
 		world.scenegraph.SetParent(new Crane(), world.scenegraph.root);
 		world.scenegraph.SetParent(new Terrain(256,0.5f), world.scenegraph.root);
+		world.scenegraph.SetParent(new PbrSphereGrid(8,8), world.scenegraph.root);
 
 		sphere = new RenderItem();
 		sphere->mesh = Sphere(32,32);
