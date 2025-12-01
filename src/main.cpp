@@ -37,7 +37,7 @@ int main()
 
 		// Sun
 		Engine::DirectionalLight* sun = new Engine::DirectionalLight();
-		sun->direction= glm::normalize(glm::vec3(2.0,-4.,4.0));
+		sun->direction= glm::normalize(glm::vec3(2.0,-2.,-4.0));
 		sun->color = glm::vec3(100.0);
 		world.scenegraph.SetParent(sun,world.scenegraph.root);
 

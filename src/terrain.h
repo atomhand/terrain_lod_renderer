@@ -38,7 +38,7 @@ class Terrain : public Engine::SceneNode {
 
         float center = fwidth/2.f;
         float sq_d = std::min(1.0f, (x*x + z*z)/(center*center));
-        result = (result)*(1.0-sq_d) + 0.5 * (result+1.0) * sq_d;
+        result = (result)*(1.0f-sq_d) + 0.5f * (1.f + result) * sq_d;
 
         float threshold = 0.75;
         float boost = 2.0f;
@@ -49,29 +49,27 @@ class Terrain : public Engine::SceneNode {
         return heightScale * result;
     }
 
-    Engine::Mesh terrainMesh() {
+    int chunkWidth = 16;
+
+    Engine::Mesh MakeTerrainMesh(int startX, int startY) {
         std::vector<glm::vec3> verts;
         std::vector<glm::vec3> normals;
         std::vector<GLuint> indices;
-        indices.reserve(6 * (width-1)*(width-1));
-        verts.reserve(width*width);
-        normals.reserve(width*width);
 
         int y;
-        for(y=0; y<width; y++) {            
-            for(int x=0; x<width; x++) {
-                float X = (float(x)-width/2.f) * scale;
-                float Z = (float(y)-width/2.f) * scale;
-                verts.push_back(glm::vec3(X,Height(X,Z),Z));
+        for(y=0; y<chunkWidth+1; y++) {            
+            for(int x=0; x<chunkWidth+1; x++) {
+                int idx = (startX+x) + (startY+y) * (width+1);
+                verts.push_back(glm::vec3(x * scale,heightMap[idx],y * scale));
             }
         }
 
-        for(y=0; y<width-1; y++) {            
-            for(int x=0; x<width-1; x++) {
-                GLuint i00 = x + y*width;
-                GLuint i10 = (x+1) + y*width;
-                GLuint i01 = x + (y+1)*width;
-                GLuint i11 = (x+1) + (y+1)*width;
+        for(y=0; y<chunkWidth; y++) {            
+            for(int x=0; x<chunkWidth; x++) {
+                GLuint i00 = x + y*(chunkWidth+1);
+                GLuint i10 = (x+1) + y*(chunkWidth+1);
+                GLuint i01 = x + (y+1)*(chunkWidth+1);
+                GLuint i11 = (x+1) + (y+1)*(chunkWidth+1);
 
                 // Choose the diagonal to split the quad along
 
@@ -109,32 +107,24 @@ class Terrain : public Engine::SceneNode {
         return mesh;
     }
 
-    Engine::Mesh waterMesh() {
+    Engine::Mesh MakeWaterMesh() {
         std::vector<glm::vec3> verts;
         std::vector<glm::vec3> normals;
-        //std::vector<glm::vec2> uvs;
         std::vector<GLuint> indices;
-        indices.reserve(6 * (width-1)*(width-1));
-        verts.reserve(width*width);
-        normals.reserve(width*width);
 
         int y;
-        for(y=0; y<width; y++) {            
-            for(int x=0; x<width; x++) {
-                float X = (float(x)-width/2.f) * scale;
-                float Z = (float(y)-width/2.f) * scale;
-                verts.push_back(glm::vec3(X,0.f,Z));
-
-                //uvs.push_back(glm::vec2(x / float(width-1), y / float(width-1)));
+        for(y=0; y<chunkWidth+1; y++) {            
+            for(int x=0; x<chunkWidth+1; x++) {
+                verts.push_back(glm::vec3(x * scale,0.f,y * scale));
             }
         }
 
-        for(y=0; y<width-1; y++) {            
-            for(int x=0; x<width-1; x++) {
-                GLuint i00 = x + y*width;
-                GLuint i10 = (x+1) + y*width;
-                GLuint i01 = x + (y+1)*width;
-                GLuint i11 = (x+1) + (y+1)*width;
+        for(y=0; y<chunkWidth; y++) {            
+            for(int x=0; x<chunkWidth; x++) {
+                GLuint i00 = x + y*(chunkWidth+1);
+                GLuint i10 = (x+1) + y*(chunkWidth+1);
+                GLuint i01 = x + (y+1)*(chunkWidth+1);
+                GLuint i11 = (x+1) + (y+1)*(chunkWidth+1);
 
                 indices.push_back(i00);
                 indices.push_back(i01);
@@ -157,6 +147,14 @@ class Terrain : public Engine::SceneNode {
 public:
 
     void OnEnter(Engine::SceneGraph& sceneGraph) override {
+        
+        Engine::Shader water_shader = Engine::Shader("shaders/pbr.vert", "shaders/water_pbr.frag");
+        auto water_material = Engine::PbrMaterial(water_shader);
+        water_material.roughness = 0.03;
+        water_material.textures.push_back(Engine::Texture::Import("textures/waterN1.jpg"));
+        water_material.textures.push_back(Engine::Texture::Import("textures/waterN2.jpg"));
+        water_material.albedo = glm::vec3(0.465f, 0.797f, 0.991f);
+
         Engine::Shader pbr_shader = Engine::Shader("shaders/pbr.vert", "shaders/terrain_pbr.frag");
 
 		auto terrain_material = Engine::PbrMaterial(pbr_shader);
@@ -166,26 +164,43 @@ public:
         terrain_material.textures.push_back(Engine::Texture::Import("textures/grass2/rocky_terrain_02_nor_gl_2k.png"));
         //terrain_material.textures.push_back(Engine::Texture::Import("textures/sand/coast_sand_01_diff_2k.jpg"));
         //terrain_material.textures.push_back(Engine::Texture::Import("textures/sand/coast_sand_01_nor_gl_2k.png"));
-        RenderItem* terrainItem = new RenderItem();
-		terrainItem->mesh = terrainMesh();
-		terrainItem->material = std::make_shared<Engine::PbrMaterial>(terrain_material);
-		terrainItem->localTransform = glm::mat4(1.0);
-        terrainItem->enableCulling = false;
-		sceneGraph.SetParent(terrainItem, this);
 
-        Engine::Shader water_shader = Engine::Shader("shaders/pbr.vert", "shaders/water_pbr.frag");
-        auto water_material = Engine::PbrMaterial(water_shader);
-        water_material.roughness = 0.03;
-        water_material.textures.push_back(Engine::Texture::Import("textures/waterN1.jpg"));
-        water_material.textures.push_back(Engine::Texture::Import("textures/waterN2.jpg"));
-        water_material.albedo = glm::vec3(0.465f, 0.797f, 0.991f);
-        RenderItem* waterItem = new RenderItem();
-		waterItem->mesh = waterMesh();
-		waterItem->material = std::make_shared<Engine::PbrMaterial>(water_material);
-        waterItem->enableCulling = false;
-		sceneGraph.SetParent(waterItem, this);
+        auto terrain_mat_pointer = std::make_shared<Engine::PbrMaterial>(terrain_material);
+        auto water_mat_pointer = std::make_shared<Engine::PbrMaterial>(water_material);
+
+        Engine::Mesh waterMesh = MakeWaterMesh();
+
+        int chunks = width/chunkWidth;
+        for(int x=0; x<chunks; x++)
+            for(int y=0; y<chunks; y++) {
+                float X = (x*chunkWidth-width/2.f) * scale;
+                float Z = (y*chunkWidth-width/2.f) * scale;
+
+                RenderItem* terrainItem = new RenderItem();                
+                terrainItem->mesh = MakeTerrainMesh(x*chunkWidth,y*chunkWidth);
+                terrainItem->material = terrain_mat_pointer;
+                terrainItem->localTransform = glm::translate(glm::mat4(1.0),glm::vec3(X,0.0,Z));
+                sceneGraph.SetParent(terrainItem, this);
+        
+                RenderItem* waterItem = new RenderItem();
+                waterItem->mesh = waterMesh;
+                waterItem->material = water_mat_pointer;
+                waterItem->shadowEnabled = false;
+                waterItem->localTransform = glm::translate(glm::mat4(1.0),glm::vec3(X,0.0,Z));
+		        sceneGraph.SetParent(waterItem, this);
+            }
     }
 
+    std::vector<float> heightMap;
+
     // width specified in number of verts per side
-    Terrain(int width, float scale) : width(width), scale(scale) {};
+    Terrain(int width, float scale) : width(width), scale(scale) {
+        for(int y=0; y<width+1; y++) {
+            for(int x=0; x<width+1; x++) {
+                float X = (x-width/2.f) * scale;
+                float Z = (y-width/2.f) * scale;
+                heightMap.push_back(Height(X,Z));
+            }
+        }
+    };
 };

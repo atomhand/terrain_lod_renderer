@@ -72,7 +72,7 @@ namespace Engine {
 
         // Build the light space matrix
         // This should be called once per frame, 
-        void MakeLightSpaceMatrix(Camera& camera, std::vector<AABB> &shadowReceivers, std::vector<AABB> &shadowCasters, std::vector<glm::mat4> &receiverTransforms,std::vector<glm::mat4> &casterTransforms) {
+        std::vector<size_t> MakeLightSpaceMatrix(Camera& camera, std::vector<AABB> &shadowReceivers, std::vector<AABB> &shadowCasters, std::vector<glm::mat4> &receiverTransforms,std::vector<glm::mat4> &casterTransforms) {
             glm::vec3 frustumCorners[8];
             glm::vec3 frustumCenter = camera.FrustumCorners(frustumCorners);
 
@@ -104,21 +104,29 @@ namespace Engine {
                     zMax = std::max(zMax,-p.z);
                 }
             }
+
+            lightProjection = glm::ortho(xMin,xMax,yMin,yMax,zMin,zMax);
             
+            std::vector<size_t> outShadowCasters;
             // TODO - shadowcasters should be culled against the projection
-            for(int iCaster =0; iCaster<shadowCasters.size(); iCaster++) {
+            for(size_t iCaster =0; iCaster<shadowCasters.size(); iCaster++) {
                 shadowCasters[iCaster].Corners(corners);
                 glm::mat4 MV = lightView * casterTransforms[iCaster];
-                for(int i =0; i<8; i++) {
-                    // Transform AABB corners into the light's coordinate system
-                    glm::vec3 p = MV * corners[i];
-                    zMin = std::min(zMin,-p.z);
-                    zMax = std::max(zMax,-p.z);
-                }
+                glm::mat4 MVP = lightProjection * MV;
+                if(FrustumAABBTestIgnoreZ(MVP, shadowCasters[iCaster])) {
+                    outShadowCasters.push_back(iCaster);
+                    for(int i =0; i<8; i++) {
+                        // Transform AABB corners into the light's coordinate system
+                        glm::vec3 p = MV * corners[i];
+                        zMin = std::min(zMin,-p.z);
+                        zMax = std::max(zMax,-p.z);
+                    }
+                }                
             }
 
             lightProjection = glm::ortho(xMin,xMax,yMin,yMax,zMin,zMax);
             lightSpaceMatrix = lightProjection * lightView;
+            return outShadowCasters;
         }
 
         void PrepareRenderShadowmap() {

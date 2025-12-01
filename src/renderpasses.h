@@ -194,13 +194,14 @@ private:
 
         world.shadowShader.use();
         for(auto light : directionalLights) {
-            light->MakeLightSpaceMatrix(*cameraMain, shadowReceiverAABBs, shadowCasterAABBs, shadowReceiverTransforms, shadowCasterTransforms);
+            auto culledShadowCasters = light->MakeLightSpaceMatrix(*cameraMain, shadowReceiverAABBs, shadowCasterAABBs, shadowReceiverTransforms, shadowCasterTransforms);
 
             light->PrepareRenderShadowmap();
             world.shadowShader.setMat4("lightSpaceMatrix", light->lightSpaceMatrix);
 
             // Draw meshes
-            for(RenderItem* item : shadowCasters) {                
+            for(size_t id : culledShadowCasters) {
+                RenderItem* item = shadowCasters[id];               
                 world.shadowShader.setMat4("model", item->globalTransform);
 
                 Engine::Mesh& mesh =item->mesh;            
