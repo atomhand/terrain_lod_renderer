@@ -59,6 +59,8 @@ public:
         
         glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
+
+        // using LEQUAL depth test lets us use a simple trick to draw the skybox
         glDepthFunc(GL_LEQUAL);
         glm::mat4 view = world.cameraMain().view();
 

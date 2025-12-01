@@ -10,6 +10,8 @@ layout(binding=1) uniform sampler2D normalMap2;
 
 layout(binding=5) uniform sampler2DShadow shadowMap;
 layout(binding=6) uniform samplerCube irradianceMap;
+layout(binding=7) uniform samplerCube prefilterMap;
+layout(binding=8) uniform sampler2D brdfLUT;
 
 // material parameters
 uniform vec3 albedo;
@@ -71,6 +73,11 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
 vec3 outRadiance(vec3 L, vec3 V, vec3 N, vec3 F0, vec3 surfAlbedo, vec3 radiance) {
     vec3 H = normalize(V + L);
     
@@ -104,7 +111,7 @@ float CalculateOcclusion(vec4 lightSpacePos, vec3 N, vec3 L) {
     if(fragDepth > 1.0)
         return 1.;
 
-    float bias = 0.01 * clamp(dot(N, L),0.,1.);
+    float bias = 0.005;
     float occlusion = 0.0;
 
     // Basic pcf filter
@@ -132,8 +139,10 @@ void main()
 
     vec3 n1 = texture(normalMap1,uv + vec2(0.25,0.25)*anim).xzy * 2.0 - 1.0;
     vec3 n2 = texture(normalMap2,uv + vec2(-0.25,0.25)*anim).xzy * 2.0 - 1.0;
+
     vec3 N = normalize(n1 + n2);
     vec3 V = normalize(viewPos - WorldPos);
+    vec3 R = reflect(-V, N);
 
     vec3 F0 = vec3(0.04); 
     F0 = mix(F0, albedo, metallic);
@@ -161,12 +170,22 @@ void main()
     } 
   
     // IBL Diffuse ambient term from https://learnopengl.com/PBR/IBL/Diffuse-irradiance
-    vec3 kS = fresnelSchlick(max(dot(N, V), 0.0), F0);
+    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+
+    vec3 kS = F;
     vec3 kD = 1.0 - kS;
-    kD *= 1.0 - metallic;	  
+    kD *= 1.0 - metallic;
+
     vec3 irradiance = texture(irradianceMap, N).rgb;
-    vec3 diffuse      = irradiance * albedo;
-    vec3 ambient = (kD * diffuse) * ao;
+    vec3 diffuse    = irradiance * albedo;
+
+    // Specular IBL
+    const float MAX_REFLECTION_LOD = 4.0;
+    vec3 prefilteredColor = textureLod(prefilterMap, R,  roughness * MAX_REFLECTION_LOD).rgb;    
+    vec2 brdf  = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
+    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+
+    vec3 ambient = (kD * diffuse + specular) * ao;
 
     vec3 color = ambient + Lo;
 	
