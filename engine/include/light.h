@@ -118,8 +118,10 @@ namespace Engine {
                     for(int i =0; i<8; i++) {
                         // Transform AABB corners into the light's coordinate system
                         glm::vec3 p = MV * corners[i];
+
+                        // Shadow casters are only relevant for setting the near plane
                         zMin = std::min(zMin,-p.z);
-                        zMax = std::max(zMax,-p.z);
+                        //zMax = std::max(zMax,-p.z);
                     }
                 }                
             }

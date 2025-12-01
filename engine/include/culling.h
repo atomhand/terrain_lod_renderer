@@ -45,23 +45,20 @@ namespace Engine {
 
     // Approximately tests whether the AABB intersects the frustum
     // defined by the input matrix
-    // Method adapted from https://bruop.github.io/frustum_culling/
     bool FrustumAABBTest(glm::mat4& MVP, const AABB& aabb) {
         glm::vec4 corners[8];
         aabb.Corners(corners);
 
-        bool inside = false;
-
-        for (size_t corner_idx = 0; corner_idx < 8; corner_idx++) {
-            // Transform vertex
+        for (size_t corner_idx = 0; corner_idx < 8; corner_idx++) {            
+            // Project vertex to clip space
             glm::vec4 corner = MVP * corners[corner_idx];
             // Check vertex against clip space bounds
-            inside = inside ||
-                (-corner.w < corner.x && corner.x < corner.w) &&
-                (-corner.w < corner.y && corner.y < corner.w) &&
-                (0.0f < corner.z && corner.z < corner.w);
+            if (std::abs(corner.x )< corner.w &&
+                std::abs(corner.y) < corner.w &&
+                0.0f < corner.z && corner.z < corner.w)
+                return true;
         }
-        return inside;
+        return false;
     }
 
     // As FrustumAABBTest, but the near and far plane are ignored.
@@ -69,16 +66,14 @@ namespace Engine {
         glm::vec4 corners[8];
         aabb.Corners(corners);
 
-        bool inside = false;
-
         for (size_t corner_idx = 0; corner_idx < 8; corner_idx++) {
-            // Transform vertex
+            // Project vertex to clip space
             glm::vec4 corner = MVP * corners[corner_idx];
             // Check vertex against clip space bounds
-            inside = inside ||
-                (-corner.w < corner.x && corner.x < corner.w) &&
-                (-corner.w < corner.y && corner.y < corner.w);
+            if (std::abs(corner.x )< corner.w &&
+                std::abs(corner.y) < corner.w)
+                return true;
         }
-        return inside;
+        return false;
     }
 }
