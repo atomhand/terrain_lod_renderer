@@ -162,8 +162,7 @@ public:
         water_material.roughness = 0.03;
         water_material.textures.push_back(Engine::Texture::Import("textures/waterN1.jpg"));
         water_material.textures.push_back(Engine::Texture::Import("textures/waterN2.jpg"));
-        water_material.ao = 0.;
-        water_material.albedo = glm::vec3(1.,1.,1.);
+        water_material.albedo = glm::vec3(0.0,0.0,0.5);
         RenderItem* waterItem = new RenderItem();
 		waterItem->mesh = waterMesh();
 		waterItem->material = std::make_shared<Engine::PbrMaterial>(water_material);
