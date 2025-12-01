@@ -34,8 +34,19 @@ class Terrain : public Engine::SceneNode {
             freq *= 2.f;
             amp *= 0.5f;
         }
+        result /= normalise_sum;
 
-        return heightScale * result / normalise_sum;
+        float center = fwidth/2.f;
+        float sq_d = std::min(1.0f, (x*x + z*z)/(center*center));
+        result = (result)*(1.0-sq_d) + 0.5 * (result+1.0) * sq_d;
+
+        float threshold = 0.75;
+        float boost = 2.0f;
+        if(result > threshold) {
+            result = (result-threshold)*boost + threshold;
+        }
+
+        return heightScale * result;
     }
 
     Engine::Mesh terrainMesh() {
@@ -146,11 +157,15 @@ class Terrain : public Engine::SceneNode {
 public:
 
     void OnEnter(Engine::SceneGraph& sceneGraph) override {
-        Engine::Shader pbr_shader = Engine::Shader("shaders/pbr.vert", "shaders/pbr.frag");
+        Engine::Shader pbr_shader = Engine::Shader("shaders/pbr.vert", "shaders/terrain_pbr.frag");
 
 		auto terrain_material = Engine::PbrMaterial(pbr_shader);
         terrain_material.roughness = 1.0;
         terrain_material.albedo = glm::vec3(0.2,0.5,0.2);
+        terrain_material.textures.push_back(Engine::Texture::Import("textures/grass2/rocky_terrain_02_diff_2k.jpg"));
+        terrain_material.textures.push_back(Engine::Texture::Import("textures/grass2/rocky_terrain_02_nor_gl_2k.png"));
+        //terrain_material.textures.push_back(Engine::Texture::Import("textures/sand/coast_sand_01_diff_2k.jpg"));
+        //terrain_material.textures.push_back(Engine::Texture::Import("textures/sand/coast_sand_01_nor_gl_2k.png"));
         RenderItem* terrainItem = new RenderItem();
 		terrainItem->mesh = terrainMesh();
 		terrainItem->material = std::make_shared<Engine::PbrMaterial>(terrain_material);
@@ -162,7 +177,7 @@ public:
         water_material.roughness = 0.03;
         water_material.textures.push_back(Engine::Texture::Import("textures/waterN1.jpg"));
         water_material.textures.push_back(Engine::Texture::Import("textures/waterN2.jpg"));
-        water_material.albedo = glm::vec3(0.0,0.0,0.5);
+        water_material.albedo = glm::vec3(0.465f, 0.797f, 0.991f);
         RenderItem* waterItem = new RenderItem();
 		waterItem->mesh = waterMesh();
 		waterItem->material = std::make_shared<Engine::PbrMaterial>(water_material);
