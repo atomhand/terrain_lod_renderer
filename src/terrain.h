@@ -49,6 +49,26 @@ class Terrain : public Engine::SceneNode {
         return heightScale * result;
     }
 
+    float SampleHeightmap(int x, int z) {
+        int idx = x + z * (width+1);
+        return heightMap[idx];
+    }
+
+    glm::vec3 GetPos(int x, int z) {
+        return glm::vec3(x*scale,SampleHeightmap(x,z),z*scale);
+    }
+
+    // Calculate vertex normals directly from heightmap
+    // This avoids the issue of seams along the chunks that would arise from calculating face normals
+    // formula from https://www.reddit.com/r/opengl/comments/8myqys/normals_of_a_heightmap_terrain/dzrpya2/
+    glm::vec3 Normal(int x, int y) {
+        glm::vec3 L = x > 0 ? GetPos(x-1,y) : GetPos(x,y);
+        glm::vec3 R = x <= chunkWidth ? GetPos(x+1,y) : GetPos(x,y);
+        glm::vec3 U = y > 0 ? GetPos(x,y-1) : GetPos(x,y);
+        glm::vec3 D = y <= chunkWidth ? GetPos(x,y+1) : GetPos(x,y);
+        return glm::normalize(glm::cross(R-L,U-D));
+    }
+
     int chunkWidth = 16;
 
     Engine::Mesh MakeTerrainMesh(int startX, int startY) {
@@ -61,6 +81,7 @@ class Terrain : public Engine::SceneNode {
             for(int x=0; x<chunkWidth+1; x++) {
                 int idx = (startX+x) + (startY+y) * (width+1);
                 verts.push_back(glm::vec3(x * scale,heightMap[idx],y * scale));
+                normals.push_back(Normal(x+startX,y+startY));
             }
         }
 
@@ -102,7 +123,7 @@ class Terrain : public Engine::SceneNode {
         Engine::Mesh mesh;
         mesh.SetVerts(verts);
         mesh.SetIndices(indices);
-        mesh.CalculateNormals();
+        mesh.SetNormals(normals);
         mesh.Apply();
         return mesh;
     }
@@ -116,6 +137,7 @@ class Terrain : public Engine::SceneNode {
         for(y=0; y<chunkWidth+1; y++) {            
             for(int x=0; x<chunkWidth+1; x++) {
                 verts.push_back(glm::vec3(x * scale,0.f,y * scale));
+                normals.push_back(glm::vec3(0.,1.,0.));
             }
         }
 
@@ -139,8 +161,7 @@ class Terrain : public Engine::SceneNode {
         Engine::Mesh mesh;
         mesh.SetVerts(verts);
         mesh.SetIndices(indices);
-        //mesh.SetUvs(uvs);
-        mesh.CalculateNormals();
+        mesh.SetNormals(normals);
         mesh.Apply();
         return mesh;
     }
