@@ -1,6 +1,5 @@
 #pragma once
 #include "world.h"
-#include "rts_camera.h"
 #include "shader.h"
 #include "environment_map.h"
 

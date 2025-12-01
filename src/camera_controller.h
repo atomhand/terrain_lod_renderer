@@ -1,7 +1,7 @@
 #pragma once
 #include "camera.h"
 
-class RtsCameraController : public Engine::SceneNode {
+class CameraController : public Engine::SceneNode {
 private:
     float zoom = 1.0;
     const float CAMERA_SPEED = 16.0;

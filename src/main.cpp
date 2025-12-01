@@ -7,7 +7,7 @@
 #include "assimp_wrapper.h"
 #include "renderpasses.h"
 
-#include "rts_camera.h"
+#include "camera_controller.h"
 #include "world.h"
 #include "demo_world.h"
 
@@ -22,21 +22,20 @@
 
 using namespace std;
 
-float wind_angle = 0.0;
 const char * title = "GPU Programming Coursework App";
 Engine::Application app = Engine::Application(1024,768,title);
 DemoWorld world;
 
-RenderItem* testQuad;
-RenderItem* sphere;
-
 int main()
 {
+	RenderPasses renderPasses;
 
+	RenderItem* testQuad;
+	RenderItem* sphere;
 	try
 	{
 		// Main camera controller
-		world.scenegraph.SetParent(new RtsCameraController(), world.scenegraph.root);
+		world.scenegraph.SetParent(new CameraController(), world.scenegraph.root);
 
 		// Sun
 		Engine::DirectionalLight* sun = new Engine::DirectionalLight();
@@ -95,11 +94,7 @@ int main()
 		world.scenegraph.PropagateTransforms();
 		world.scenegraph.NodeTickUpdate(world);
 
-		RenderPasses::DrawShadowMaps(world,app);
-
-		RenderPasses::PrepareMain(world, app);
-		RenderPasses::DrawOpaque(world,app);
-		RenderPasses::DrawTransparent(world,app);
+		renderPasses.RunAll(world,app);
 
 		world.time = fmod(world.time + world.input.deltaTime * world.input.animSpeed, 1000.f);
 

@@ -30,10 +30,10 @@ namespace Engine {
             return input.deltaTime * input.animSpeed * 0.2f;
         }
 
-        Camera& cameraMain() {
+        Camera* cameraMain() {
             auto cameras = scenegraph.Filter<Camera>();
             assert(cameras.size() > 0); // Can't be missing a main camera
-            return *cameras[0];
+            return cameras[0];
         }
     };
 }
