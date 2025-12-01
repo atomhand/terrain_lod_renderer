@@ -6,7 +6,6 @@
 out vec4 outputColor;
 in vec2 TexCoords;
 in mat3 TBN;
-//in vec3 Normal;
 
 layout(binding=0) uniform sampler2D albedoTex;
 layout(binding=1) uniform sampler2D alphaMap;

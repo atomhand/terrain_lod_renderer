@@ -6,6 +6,7 @@
 // https://learnopengl.com/PBR/IBL/Specular-IBL
 
 in vec3 WorldPos;
+in vec3 Normal;
 
 // camera uniforms
 uniform vec3 viewPos;
@@ -110,7 +111,8 @@ float CalculateOcclusion(vec4 lightSpacePos, vec3 N, vec3 L) {
     if(fragDepth > 1.0)
         return 1.;
 
-    float bias = 0.01 * clamp(dot(N, L),0.,1.);
+    // Bias is caled based on the light angle and geometry normal
+    float bias = 0.01 * clamp(dot(Normal, L),0.,1.);
     float occlusion = 0.0;
 
     // Basic pcf filter

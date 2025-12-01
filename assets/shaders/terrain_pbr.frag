@@ -4,7 +4,6 @@
 
 out vec4 outputColor;
 in vec2 TexCoords;
-in vec3 Normal;
 
 layout(binding=0) uniform sampler2D diffuseTex;
 layout(binding=1) uniform sampler2D normalMap;

@@ -3,7 +3,6 @@
 
 out vec4 outputColor;
 in vec2 TexCoords;
-in vec3 Normal;
 
 #include "pbr_shared.glsl"
 

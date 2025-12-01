@@ -9,7 +9,7 @@ layout(location = 4) in vec3 aBitangent;
 
 out vec2 TexCoords;
 out vec3 WorldPos;
-//out vec3 Normal;
+out vec3 Normal;
 out mat3 TBN;
 
 uniform mat4 projection;
