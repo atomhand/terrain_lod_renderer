@@ -45,7 +45,7 @@ namespace Engine {
 
     // Approximately tests whether the AABB intersects the frustum
     // defined by the input matrix
-    bool FrustumAABBTest(glm::mat4& MVP, const AABB& aabb) {
+    static bool FrustumAABBTest(glm::mat4& MVP, const AABB& aabb) {
         glm::vec4 corners[8];
         aabb.Corners(corners);
 
@@ -62,7 +62,7 @@ namespace Engine {
     }
 
     // As FrustumAABBTest, but the near and far plane are ignored.
-    bool FrustumAABBTestIgnoreZ(glm::mat4& MVP, const AABB& aabb) {
+    static bool FrustumAABBTestIgnoreZ(glm::mat4& MVP, const AABB& aabb) {
         glm::vec4 corners[8];
         aabb.Corners(corners);
 

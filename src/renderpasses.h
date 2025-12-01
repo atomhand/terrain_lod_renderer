@@ -6,7 +6,10 @@
 #include "light.h"
 #include "render_item.h"
 #include "culling.h"
+#include "render_item.h"
 
+using Engine::RenderItem;
+using Engine::RenderPass;
 // 
 class RenderPasses {
 public:
@@ -59,7 +62,6 @@ public:
 private:    
     GLuint debugDepthBuffer;
 
-    std::vector<RenderItem*> renderItems;
     std::vector<Engine::PointLight*> pointLights;
     std::vector<Engine::DirectionalLight*> directionalLights;
 
@@ -83,34 +85,40 @@ private:
     void RetrieveData(DemoWorld& world) {
         cameraMain = world.cameraMain();
 
-        renderItems = world.scenegraph.Filter<RenderItem>();
-        pointLights = world.scenegraph.Filter<Engine::PointLight>();
-        directionalLights = world.scenegraph.Filter<Engine::DirectionalLight>();
-
+        pointLights.clear();
+        directionalLights.clear();
         opaqueItems.clear();
         transparentItems.clear();
         shadowCasters.clear();
 
+        auto nodes = world.scenegraph.AllNodes();
         glm::mat4 VP = cameraMain->projection() * cameraMain->view();
 
-        for(RenderItem* item : renderItems) {
-            if(item->casts_shadow())
+        for(auto node : nodes) {
+            if(RenderItem* item= dynamic_cast<RenderItem*>(node); item != nullptr) {
+                if(item->casts_shadow())
                 shadowCasters.push_back(item);
 
-            if(item->enableCulling) {
-                glm::mat4 MVP = VP * item->globalTransform;
-                bool frustumTest = Engine::FrustumAABBTest(MVP, item->mesh.aabb);
-                if(!frustumTest)
-                    continue;
-            }
+                if(item->enableCulling) {
+                    glm::mat4 MVP = VP * item->globalTransform;
+                    bool frustumTest = Engine::FrustumAABBTest(MVP, item->mesh.aabb);
+                    if(!frustumTest)
+                        continue;
+                }
 
-            switch(item->renderPass) {
-                case RenderPass::OPAQUE:
-                    opaqueItems.push_back(item);
-                    break;
-                case RenderPass::TRANSPARENT:
-                    transparentItems.push_back(item);
-                    break;
+                switch(item->renderPass) {
+                    case RenderPass::OPAQUE:
+                        opaqueItems.push_back(item);
+                        break;
+                    case RenderPass::TRANSPARENT:
+                        transparentItems.push_back(item);
+                        break;
+                }
+            }
+            else if(Engine::DirectionalLight* t= dynamic_cast<Engine::DirectionalLight*>(node); t != nullptr) {
+                directionalLights.push_back(t);
+            }  else if(Engine::PointLight* t= dynamic_cast<Engine::PointLight*>(node); t != nullptr) {
+                pointLights.push_back(t);
             }
         }
     }
@@ -142,7 +150,17 @@ private:
             debugWireframeShader.setMat4("projection", glm::ortho(-32.,32.,-32.,32.,0.1,256.));
         }
 
-        for(auto item : renderItems) {
+        // draw AABBS for items that survived culling
+        for(auto item : opaqueItems) {
+            auto aabb = item->mesh.aabb;
+            glm::vec3 extent = aabb.max - aabb.min;
+            glm::vec3 offset = aabb.min + (extent / 2.f);
+            glm::mat4 aabbT = item->globalTransform* glm::translate(glm::mat4(1.0),offset) * glm::scale(glm::mat4(1.0), extent/2.f);
+            
+            debugWireframeShader.setMat4("model", aabbT);
+            Engine::DrawUtil::DrawCube();
+        }
+        for(auto item : transparentItems) {
             auto aabb = item->mesh.aabb;
             glm::vec3 extent = aabb.max - aabb.min;
             glm::vec3 offset = aabb.min + (extent / 2.f);
@@ -175,26 +193,17 @@ private:
         glDisable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
 
-        std::vector<Engine::AABB> shadowReceiverAABBs;
-        std::vector<Engine::AABB> shadowCasterAABBs;
-        std::vector<glm::mat4> shadowCasterTransforms;
-        std::vector<glm::mat4> shadowReceiverTransforms;
+        std::vector<RenderItem*> shadowReceivers;
         for(auto item : opaqueItems) {
-            shadowReceiverTransforms.push_back(item->globalTransform);
-            shadowReceiverAABBs.push_back(item->mesh.aabb);
+            shadowReceivers.push_back(item);
         }
         for(auto item : transparentItems) {
-            shadowReceiverTransforms.push_back(item->globalTransform);
-            shadowReceiverAABBs.push_back(item->mesh.aabb);
-        }   
-        for(auto item : shadowCasters) {
-            shadowCasterTransforms.push_back(item->globalTransform);
-            shadowCasterAABBs.push_back(item->mesh.aabb);
+            shadowReceivers.push_back(item);
         }
 
         world.shadowShader.use();
         for(auto light : directionalLights) {
-            auto culledShadowCasters = light->MakeLightSpaceMatrix(*cameraMain, shadowReceiverAABBs, shadowCasterAABBs, shadowReceiverTransforms, shadowCasterTransforms);
+            auto culledShadowCasters = light->MakeLightSpaceMatrix(*cameraMain, shadowReceivers, shadowCasters);
 
             light->PrepareRenderShadowmap();
             world.shadowShader.setMat4("lightSpaceMatrix", light->lightSpaceMatrix);
@@ -232,9 +241,8 @@ private:
         if(world.input.testQuad == 1) {
             glBindTexture(GL_TEXTURE_2D,debugCameraOutput.textureObject());
         } else {
-            auto lights = world.scenegraph.Filter<Engine::DirectionalLight>();
-            if(lights.size() > 0) {
-                glBindTexture(GL_TEXTURE_2D,lights[0]->depthMap().textureObject());
+            if(directionalLights.size() > 0) {
+                glBindTexture(GL_TEXTURE_2D,directionalLights[0]->depthMap().textureObject());
             }
         }
 

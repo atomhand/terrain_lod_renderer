@@ -189,6 +189,28 @@ namespace Engine {
             return Filter<T>(root);
         }
 
+        // Returns a list of all nodes
+        std::vector<SceneNode*> AllNodes() {
+            std::vector<SceneNode*> result{root};
+            // Depth first traversal
+            std::stack<SceneNode*> toProcess;
+            toProcess.push(root);
+            while(!toProcess.empty()) {
+                SceneNode* parent = toProcess.top();
+                toProcess.pop();
+
+                for(auto child : parent->children) {
+                    if(child->enabled) {
+                        result.push_back(child);
+                        if(child->children.size() > 0)
+                            toProcess.push(child);
+                    }
+                }         
+            }
+
+            return result;
+        }
+
         SceneGraph() {
             root = new SceneNode();
         }
