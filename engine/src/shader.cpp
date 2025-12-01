@@ -1,5 +1,6 @@
 #include "shader.h"
 #include "asset_helper.h"
+#include "stb_include.h"
 
 #include <iostream>
 
@@ -7,11 +8,23 @@ Engine::Shader::Shader(const char* vertexPath, const char* fragmentPath)
 {
     data = std::make_shared<ShaderId>();
 
-    std::string vertexCode = AssetHelper::readFile(vertexPath);
-    std::string fragmentCode = AssetHelper::readFile(fragmentPath);
-    const char* vShaderCode = vertexCode.c_str();
-    const char* fShaderCode = fragmentCode.c_str();
+    // Process the relative paths into absolute paths
+    std::string shadersDirectory = AssetHelper::assetPath("shaders/").string();
+    std::string fullVertexPath = AssetHelper::assetPath(vertexPath).string();
+    std::string fullFragmentPath = AssetHelper::assetPath(fragmentPath).string();
+
+    // STB include 
+    char error[256];
+    char* vShaderCode = stb_include_file(fullVertexPath.c_str(), "", shadersDirectory.c_str(), error);
+    if(!vShaderCode) {
+        std::cout << "ERROR::SHADER::VERTEX::LOADING_FAILED\n" << error << std::endl;
+    }
+    char* fShaderCode = stb_include_file(fullFragmentPath.c_str(), "", shadersDirectory.c_str(), error);
+    if(!fShaderCode) {
+        std::cout << "ERROR::SHADER::VERTEX::LOADING_FAILED\n" << error << std::endl;
+    }
     
+    // Attempt to compile the shaders
     GLuint vertex, fragment;
     int success;
     char infoLog[512];
@@ -25,8 +38,9 @@ Engine::Shader::Shader(const char* vertexPath, const char* fragmentPath)
     if(!success)
     {
         glGetShaderInfoLog(vertex, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << vertexPath << "\n" << infoLog << std::endl;
     };
+    free(vShaderCode);
 
      // fragment Shader
     fragment = glCreateShader(GL_FRAGMENT_SHADER);
@@ -37,8 +51,9 @@ Engine::Shader::Shader(const char* vertexPath, const char* fragmentPath)
     if(!success)
     {
         glGetShaderInfoLog(fragment, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::SHADER::COMPILATION_FAILED\n" << infoLog << std::endl;
+        std::cout << "ERROR::SHADER::SHADER::COMPILATION_FAILED\n" << fragmentPath << "\n" << infoLog << std::endl;
     };
+    free(fShaderCode);
 
     GLuint id = programId();
 
@@ -51,7 +66,7 @@ Engine::Shader::Shader(const char* vertexPath, const char* fragmentPath)
     if(!success)
     {
         glGetProgramInfoLog(programId(), 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << vertexPath << "\n" << fragmentPath << "\n" << infoLog << std::endl;
     }
     
     // delete the shaders as they're linked into our program now and no longer necessary

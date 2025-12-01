@@ -85,7 +85,7 @@ namespace Engine {
 
         void use() override {
             Material::use();
-            shader.setVec3("albedo",albedo);
+            shader.setVec3("matAlbedo",albedo);
             shader.setFloat("metallic",metallic);
             shader.setFloat("roughness",roughness);
             shader.setFloat("ao",ao);
