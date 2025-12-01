@@ -16,6 +16,7 @@ namespace Engine
         float fov = 45.0f;
         float near= 0.1f;
         float far = 100.f;
+        bool main = false;
 
         void setFramebufferSize(int width, int height) {
             this->width = float(width);

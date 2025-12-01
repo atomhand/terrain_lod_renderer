@@ -13,7 +13,7 @@ static float numInput = -1.0;
 static float lastFrameTime;
 
 static bool wireframe = false;
-static bool testQuad = false;
+static int testQuad = 0;
 
 void Engine::Application::cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
 	mousePos = glm::vec2((float)xpos,(float)ypos);
@@ -76,7 +76,7 @@ void Engine::Application::keyCallback(GLFWwindow* window, int k, int s, int acti
 	if (k == GLFW_KEY_C && action == GLFW_PRESS)
 		wireframe = !wireframe;
 	if (k == GLFW_KEY_Q && action == GLFW_PRESS)
-		testQuad = !testQuad;
+		testQuad = (testQuad+1) % 3;
 
 	if(k == GLFW_KEY_W && (action == GLFW_REPEAT || action == GLFW_PRESS))
 		yAxisKeyDelta += -1.0;

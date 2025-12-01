@@ -29,8 +29,6 @@ DemoWorld world;
 int main()
 {
 	RenderPasses renderPasses;
-
-	RenderItem* testQuad;
 	RenderItem* sphere;
 	try
 	{
@@ -39,19 +37,9 @@ int main()
 
 		// Sun
 		Engine::DirectionalLight* sun = new Engine::DirectionalLight();
-		sun->direction= glm::normalize(glm::vec3(0.0,-1.,-4.0));
-		sun->color = glm::vec3(10.0);
+		sun->direction= glm::normalize(glm::vec3(2.0,-4.,4.0));
+		sun->color = glm::vec3(100.0);
 		world.scenegraph.SetParent(sun,world.scenegraph.root);
-
-		// Fullscreen quad used for debug visualisation
-		auto quad_mat = Engine::Material(Engine::Shader("shaders/fullscreen_quad.vert","shaders/fullscreen_quad.frag"));
-		quad_mat.textures.push_back(sun->depthMap());
-		testQuad = new RenderItem();
-		testQuad->mesh = BasicQuad();
-		testQuad->shadowEnabled = false;
-		testQuad->enabled = false;
-		testQuad->material = std::make_shared<Engine::Material>(quad_mat);
-		world.scenegraph.SetParent(testQuad,world.scenegraph.root);
 
 		// Scene objects
 		Engine::Shader pbr_shader = Engine::Shader("shaders/pbr.vert", "shaders/pbr.frag");
@@ -80,10 +68,10 @@ int main()
 		exit(0);
 	}
 
+	renderPasses.Init(world);
 	// event loop
 	while(!app.shouldClose()) {
 		app.frameStart(world);
-		testQuad->enabled = world.input.testQuad;
 
 		/*
 		glm::vec3 dummy[8];

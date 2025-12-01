@@ -170,6 +170,7 @@ public:
 		terrainItem->mesh = terrainMesh();
 		terrainItem->material = std::make_shared<Engine::PbrMaterial>(terrain_material);
 		terrainItem->localTransform = glm::mat4(1.0);
+        terrainItem->enableCulling = false;
 		sceneGraph.SetParent(terrainItem, this);
 
         Engine::Shader water_shader = Engine::Shader("shaders/pbr.vert", "shaders/water_pbr.frag");
@@ -181,6 +182,7 @@ public:
         RenderItem* waterItem = new RenderItem();
 		waterItem->mesh = waterMesh();
 		waterItem->material = std::make_shared<Engine::PbrMaterial>(water_material);
+        waterItem->enableCulling = false;
 		sceneGraph.SetParent(waterItem, this);
     }
 

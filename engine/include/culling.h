@@ -1,0 +1,64 @@
+#pragma once
+#include <vector>
+#include <limits>
+#include "glm/glm.hpp"
+
+namespace Engine {
+    struct AABB {
+    public:
+        glm::vec3 min;
+        glm::vec3 max;
+
+        AABB(glm::vec3 min, glm::vec3 max) : min(min), max(max) {}
+        AABB() {
+            min = glm::vec3(std::numeric_limits<float>::max());
+            max = glm::vec3(std::numeric_limits<float>::min());
+        }
+        AABB(std::vector<glm::vec3> points) {
+            min = glm::vec3(std::numeric_limits<float>::max());
+            max = glm::vec3(std::numeric_limits<float>::min());
+
+            for(auto point : points)  {
+                min = glm::min(min,point);
+                max = glm::max(max,point);
+            }
+        }
+
+        static AABB Combine(AABB a, AABB b) {
+            return AABB(glm::min(a.min,b.min), glm::max(a.max,b.max));
+        }
+        static AABB Intersect(AABB a, AABB b) {
+            return AABB(glm::max(a.min,b.min), glm::min(a.max,b.max));
+        }
+
+        void Corners(glm::vec4 (&corners)[8]) const {
+            corners[0] = {min.x, min.y, min.z, 1.0};
+            corners[1] = {max.x, min.y, min.z, 1.0};
+            corners[2] = {min.x, max.y, min.z, 1.0};
+            corners[3] = {max.x, max.y, min.z, 1.0};
+            corners[4] = {min.x, min.y, max.z, 1.0};
+            corners[5] = {max.x, min.y, max.z, 1.0};
+            corners[6] = {min.x, max.y, max.z, 1.0};
+            corners[7] = {max.x, max.y, max.z, 1.0};
+        }
+    };
+
+    // Method adapted from https://bruop.github.io/frustum_culling/
+    bool FrustumAABBTest(glm::mat4& MVP, const AABB& aabb) {
+        glm::vec4 corners[8];
+        aabb.Corners(corners);
+
+        bool inside = false;
+
+        for (size_t corner_idx = 0; corner_idx < 8; corner_idx++) {
+            // Transform vertex
+            glm::vec4 corner = MVP * corners[corner_idx];
+            // Check vertex against clip space bounds
+            inside = inside ||
+                (-corner.w < corner.x && corner.x < corner.w) &&
+                (-corner.w < corner.y && corner.y < corner.w) &&
+                (0.0f < corner.z && corner.z < corner.w);
+        }
+        return inside;
+    }
+}

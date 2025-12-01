@@ -17,7 +17,7 @@ namespace Engine {
         float deltaTime;
 
         bool wireFrame = false;
-        bool testQuad = false;
+        int testQuad = 0;
     };
 
     class World {
@@ -33,6 +33,10 @@ namespace Engine {
         Camera* cameraMain() {
             auto cameras = scenegraph.Filter<Camera>();
             assert(cameras.size() > 0); // Can't be missing a main camera
+            for(auto camera : cameras) {
+                if(camera->main)
+                    return camera;
+            }
             return cameras[0];
         }
     };

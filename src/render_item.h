@@ -16,6 +16,7 @@ public:
     Engine::Mesh mesh;
 
     bool shadowEnabled = true;
+    bool enableCulling = true;
 
     bool casts_shadow() {
         return shadowEnabled && renderPass == RenderPass::OPAQUE;

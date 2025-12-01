@@ -4,6 +4,7 @@
 #include <memory>
 #include <stddef.h>
 #include <glm/glm.hpp>
+#include "culling.h"
 
 namespace Engine {
     struct VertexFormat {
@@ -161,6 +162,7 @@ namespace Engine {
 
         bool generated =false;
     public:
+        AABB aabb;
 
         GLsizei count() { return int(data->indices.size()); }
 
@@ -169,6 +171,7 @@ namespace Engine {
         }
 
         void SetVerts(std::vector<glm::vec3> verts) {
+            aabb = AABB(verts);
             data->verts = verts;
         }
         void SetNormals(std::vector<glm::vec3> normals) {

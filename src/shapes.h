@@ -240,26 +240,3 @@ static Engine::Mesh Sphere(int w, int h) {
     mesh.Apply();
     return mesh;
 }
-
-static Engine::Mesh BasicQuad() {
-    Engine::Mesh mesh;
-    mesh.SetVerts(
-        {
-            glm::vec3(-1.f,-1.f,0.f),
-            glm::vec3(1.f,-1.f,0.f),
-            glm::vec3(-1.f,1.f,0.f),
-            glm::vec3(1.f,1.f,0.f)
-        }
-    );
-    mesh.SetUvs(
-        {
-            glm::vec3(0.f,0.f,0.f),
-            glm::vec3(1.f,0.f,0.f),
-            glm::vec3(0.f,1.f,0.f),
-            glm::vec3(1.f,1.f,0.f)
-        }
-    );
-    mesh.SetIndices({0,1,3,0,3,2});
-    mesh.Apply();
-    return mesh;
-}

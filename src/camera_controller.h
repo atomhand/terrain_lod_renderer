@@ -17,6 +17,7 @@ private:
 
         float scale = 64.f * (zoom+0.1f);
         m_camera->localTransform = glm::translate(glm::mat4(1.), glm::vec3(0.,0.,scale));
+        m_camera->near = 1.0;
         m_camera->far = scale * 2.0;
     }
 
@@ -29,6 +30,7 @@ public:
         sceneGraph.SetParent(cameraPivot,this);
 
         m_camera = new Engine::Camera();
+        m_camera->main = true;
         sceneGraph.SetParent(m_camera,cameraPivot);
     }
 
