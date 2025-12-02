@@ -8,11 +8,10 @@ private:
 
     glm::vec3 target;
 
-    void update_zoom(float scrollDelta) {
-        zoom = glm::clamp(zoom-scrollDelta*0.1f, 0.0f, 1.0f);
-    }
+    float pitch;
+    float yaw;
 
-    void update_transforms() {
+    void CalcRtsCameraTransform() {
         localTransform = glm::translate(glm::mat4(1.), target);
 
         float scale = 64.f * (zoom+0.1f);
@@ -35,11 +34,15 @@ public:
     }
 
     void Update(Engine::World& world) override {
-        float scale = 2.f * (zoom+0.1f);
-        target += glm::vec3(world.input.xAxisKeyDelta, 0.0, world.input.yAxisKeyDelta)  * scale * CAMERA_SPEED * world.input.deltaTime;
-
-        update_zoom(world.input.scrollDelta);
-        update_transforms();
+        if(world.input.flyCamera) {
+            m_camera->main = false;
+        } else {            
+            m_camera->main = true;
+            float scale = 2.f * (zoom+0.1f);
+            target += glm::vec3(world.input.keyAxisDelta.x, 0.0, -world.input.keyAxisDelta.y)  * scale * CAMERA_SPEED * world.input.deltaTime;            
+            zoom = glm::clamp(zoom-world.input.scrollDelta*0.1f, 0.0f, 1.0f);
+            CalcRtsCameraTransform();
+        }
     }
 };
 

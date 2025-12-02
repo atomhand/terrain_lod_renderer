@@ -7,15 +7,16 @@ namespace Engine {
     struct  Input {
     public:
         glm::vec2 mousePos;
+        glm::vec2 mousePosDelta;
         float scrollDelta;
 
-        float yAxisKeyDelta;
-        float xAxisKeyDelta;
+        glm::vec2 keyAxisDelta;
 
         float animSpeed = 3.0;
 
         float deltaTime;
 
+        bool flyCamera = false;
         bool wireFrame = false;
         int testQuad = 0;
     };

@@ -1,22 +1,16 @@
 #include "application.h"
 #include <iostream>
 #include <GLFW/glfw3.h>
+#include "world.h"
 
-static double scrollDelta = 0.f;
-static glm::vec2 mousePos;
-
-static float yAxisKeyDelta;
-static float xAxisKeyDelta;
+static Engine::Input* input;
 
 static float numInput = -1.0;
-
 static float lastFrameTime;
 
-static bool wireframe = false;
-static int testQuad = 0;
-
 void Engine::Application::cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
-	mousePos = glm::vec2((float)xpos,(float)ypos);
+	input->mousePosDelta = glm::vec2((float)xpos,(float)ypos) - input->mousePos;
+	input->mousePos = glm::vec2((float)xpos,(float)ypos);
 };
 		
 /* Called whenever the window is resized. The new window size is given, in pixels. */
@@ -26,20 +20,6 @@ void Engine::Application::reshapeCallback(GLFWwindow* window, int w, int h)
 }
 
 void Engine::Application::passInputs(World& world) {
-	world.input.scrollDelta = (float)scrollDelta;
-	world.input.mousePos = mousePos;
-
-	world.input.xAxisKeyDelta = xAxisKeyDelta;	
-	world.input.yAxisKeyDelta = yAxisKeyDelta;
-
-	xAxisKeyDelta = 0.0;
-	yAxisKeyDelta = 0.0;
-
-	scrollDelta = 0.f;
-
-	world.input.wireFrame = wireframe;
-	world.input.testQuad = testQuad;
-
 	float currentFrame = float(glfwGetTime());
 	world.input.deltaTime = currentFrame - lastFrameTime;
 	lastFrameTime = currentFrame;
@@ -73,19 +53,12 @@ void Engine::Application::keyCallback(GLFWwindow* window, int k, int s, int acti
 	if (k == GLFW_KEY_0 && action == GLFW_PRESS)
 		numInput = 0.0;
 
+	if (k == GLFW_KEY_F && action == GLFW_PRESS)
+		input->flyCamera = !input->flyCamera;
 	if (k == GLFW_KEY_C && action == GLFW_PRESS)
-		wireframe = !wireframe;
+		input->wireFrame = !input->wireFrame;
 	if (k == GLFW_KEY_Q && action == GLFW_PRESS)
-		testQuad = (testQuad+1) % 3;
-
-	if(k == GLFW_KEY_W && (action == GLFW_REPEAT || action == GLFW_PRESS))
-		yAxisKeyDelta += -1.0;
-	if(k == GLFW_KEY_S && (action == GLFW_REPEAT || action == GLFW_PRESS))
-		yAxisKeyDelta += 1.0;
-	if(k == GLFW_KEY_A && (action == GLFW_REPEAT || action == GLFW_PRESS))
-		xAxisKeyDelta += -1.0;
-	if(k == GLFW_KEY_D && (action == GLFW_REPEAT || action == GLFW_PRESS))
-		xAxisKeyDelta += 1.0;
+		input->testQuad = (input->testQuad+1) % 3;
 
 	if (k == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GL_TRUE);
@@ -93,7 +66,7 @@ void Engine::Application::keyCallback(GLFWwindow* window, int k, int s, int acti
 
 void Engine::Application::scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
 {
-	scrollDelta += yoffset;
+	input->scrollDelta += yoffset;
 }
 
 /* An error callback function to output GLFW errors*/
@@ -171,7 +144,35 @@ bool Engine::Application::isIconified() {
 }
 
 void Engine::Application::frameStart(World& world) {
+	world.input.scrollDelta = 0.0;
+	world.input.mousePosDelta = glm::vec2(0.,0.); 
+	input = &world.input;
+	bool flyCam = input->flyCamera;
 	glfwPollEvents();
+
+	if(flyCam != input->flyCamera) {		
+		if(input->flyCamera) {
+			// cursor is hidden and locked while fly camera is active
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+			input->mousePosDelta = glm::vec2(0.,0.);
+		}
+		else
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	}
+
+	glm::vec2 keyAxisDelta = glm::vec2(0.0);	
+
+	if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+		keyAxisDelta.y += 1.0;
+	if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+		keyAxisDelta.y += -1.0;	
+	if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+		keyAxisDelta.x += -1.0;
+	if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+		keyAxisDelta.x += 1.0;
+	
+	input->keyAxisDelta = keyAxisDelta.x + keyAxisDelta.y > 0.f ? glm::normalize(keyAxisDelta) : keyAxisDelta;
+
 	passInputs(world);
 }
 

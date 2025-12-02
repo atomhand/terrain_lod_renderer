@@ -8,6 +8,7 @@
 #include "renderpasses.h"
 
 #include "camera_controller.h"
+#include "fly_camera.h"
 #include "world.h"
 #include "demo_world.h"
 
@@ -34,6 +35,7 @@ int main()
 	{
 		// Main camera controller
 		world.scenegraph.SetParent(new CameraController(), world.scenegraph.root);
+		world.scenegraph.SetParent(new FlyCamera(), world.scenegraph.root);
 
 		// Sun
 		Engine::DirectionalLight* sun = new Engine::DirectionalLight();

@@ -68,6 +68,7 @@ private:
     std::vector<RenderItem*> opaqueItems;
     std::vector<RenderItem*> transparentItems;
     std::vector<RenderItem*> shadowCasters;
+    std::vector<RenderItem*> shadowReceivers;
 
     Engine::Camera* cameraMain;
     Engine::Camera* debugCamera;
@@ -193,7 +194,7 @@ private:
         glDisable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
 
-        std::vector<RenderItem*> shadowReceivers;
+        shadowReceivers.clear();
         for(auto item : opaqueItems) {
             shadowReceivers.push_back(item);
         }
