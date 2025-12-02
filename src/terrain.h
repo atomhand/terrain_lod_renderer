@@ -180,9 +180,11 @@ public:
 
 		auto terrain_material = Engine::PbrMaterial(pbr_shader);
         terrain_material.roughness = 1.0;
-        terrain_material.albedo = glm::vec3(0.2,0.5,0.2);
-        terrain_material.textures.push_back(Engine::Texture::Import("textures/grass2/rocky_terrain_02_diff_2k.jpg"));
-        terrain_material.textures.push_back(Engine::Texture::Import("textures/grass2/rocky_terrain_02_nor_gl_2k.png"));
+        terrain_material.textures.push_back(Engine::Texture::Import("textures/grass/rocky_terrain_02_diff_2k.jpg"));
+        terrain_material.textures.push_back(Engine::Texture::Import("textures/grass/rocky_terrain_02_nor_gl_2k.png"));
+        terrain_material.textures.push_back(Engine::Texture::Import("textures/grass/rocky_terrain_02_arm_2k.jpg"));
+        //terrain_material.textures.push_back(Engine::Texture::Import("textures/sand/coast_sand_01_diff_2k.jpg"));
+        //terrain_material.textures.push_back(Engine::Texture::Import("textures/sand/coast_sand_01_nor_gl_2k.png"));
         //terrain_material.textures.push_back(Engine::Texture::Import("textures/sand/coast_sand_01_diff_2k.jpg"));
         //terrain_material.textures.push_back(Engine::Texture::Import("textures/sand/coast_sand_01_nor_gl_2k.png"));
 

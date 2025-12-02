@@ -31,7 +31,7 @@ namespace Engine {
 
     class DirectionalLight : public SceneNode {
     private:
-        static const unsigned int SHADOWMAP_WIDTH = 1024, SHADOWMAP_HEIGHT = 1024;
+        static const unsigned int SHADOWMAP_WIDTH = 2048, SHADOWMAP_HEIGHT = 2048;
         struct Data {
             GLuint depthMapFBO;
             Texture depthMap;
@@ -46,11 +46,12 @@ namespace Engine {
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOWMAP_WIDTH, SHADOWMAP_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_HALF_FLOAT, NULL);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 
                 // fragments outside the shadow map are assumed not to be occluded
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
                 float white[] = { 1.0f, 1.0f, 1.0f, 1.0f };
                 glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, white); 
 

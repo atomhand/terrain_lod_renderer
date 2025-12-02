@@ -7,6 +7,7 @@ in vec2 TexCoords;
 
 layout(binding=0) uniform sampler2D diffuseTex;
 layout(binding=1) uniform sampler2D normalMap;
+layout(binding=2) uniform sampler2D armMap; // ao, roughness, metalness
 
 // Reoriented Normal Mapping
 // http://discourse.selfshadow.com/t/blending-in-detail/21/18
@@ -21,18 +22,20 @@ vec3 rnmBlendUnpacked(vec3 n1, vec3 n2)
 vec3 getTint() {
     float slope = min(1.0,dot(Normal,vec3(0.,1.,0.)));
 
-    return mix(vec3(1.,1.,1.),vec3(0.5,0.25,0.25),1.0 - slope*slope);
+    return mix(vec3(1.,1.,1.),vec3(1.,0.25,0.25),1.0 - slope*slope);
 }
 
 void main()
 {
     // Triplanar mapping for normals
     // https://bgolus.medium.com/normal-mapping-for-a-triplanar-shader-10bf39dca05a
-
     vec3 blend = abs(Normal);
-    blend /= blend.x + blend.y + blend.z;
+    blend = max(blend - 0.4, 0);
+    blend /= dot(blend, vec3(1,1,1));
+    //vec3 blend = abs(Normal);
+     // blend /= blend.x + blend.y + blend.z;
 
-    float triplanarScale = 16.f;
+    float triplanarScale = 4.f;
     vec2 uvX = WorldPos.zy / triplanarScale;
     vec2 uvY = WorldPos.xz / triplanarScale;
     vec2 uvZ = WorldPos.xy / triplanarScale;
@@ -71,10 +74,16 @@ void main()
     vec3 albedoY = texture(diffuseTex, uvY).rgb;
     vec3 albedoZ = texture(diffuseTex, uvZ).rgb;
 
-    vec3 albedo = (blend.x * albedoX + blend.y * albedoY + blend.z * albedoZ) * getTint();
+    vec3 albedo = (blend.x * albedoX + blend.y * albedoY + blend.z * albedoZ) ;//* getTint();
+
+    vec3 armX = texture(armMap, uvX).rgb;
+    vec3 armY = texture(armMap, uvY).rgb;
+    vec3 armZ = texture(armMap, uvZ).rgb;
+
+    vec3 arm = (blend.x * armX + blend.y * armY + blend.z * armZ);
 	
     // lighting
-    vec3 color = CalculateLighting(N,albedo);
+    vec3 color = CalculateLighting(N,albedo,arm.x,arm.y,arm.z);
 
     outputColor = vec4(ToneMap(color),1.0);
 }

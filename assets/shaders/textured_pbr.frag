@@ -20,8 +20,8 @@ void main()
     vec3 tangentNormal = texture(normalMap,TexCoords).xyz * 2.0 - 1.0;
 
     vec3 N = normalize(TBN * tangentNormal);
-    vec3 albedo = matAlbedo * texture(albedoTex,TexCoords).xyz;
-    vec3 color = CalculateLighting(N,albedo);
+    vec3 albedo = mAlbedo * texture(albedoTex,TexCoords).xyz;
+    vec3 color = CalculateLighting(N,albedo,mAo,mRoughness,mMetallic);
     
     outputColor = vec4(ToneMap(color),1.0);
 }

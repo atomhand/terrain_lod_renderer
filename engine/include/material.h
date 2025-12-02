@@ -85,10 +85,10 @@ namespace Engine {
 
         void use() override {
             Material::use();
-            shader.setVec3("matAlbedo",albedo);
-            shader.setFloat("metallic",metallic);
-            shader.setFloat("roughness",roughness);
-            shader.setFloat("ao",ao);
+            shader.setVec3("mAlbedo",albedo);
+            shader.setFloat("mMetallic",metallic);
+            shader.setFloat("mRoughness",roughness);
+            shader.setFloat("mAo",ao);
         }
 
         // inherit constructor

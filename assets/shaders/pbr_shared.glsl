@@ -12,10 +12,10 @@ in vec3 Normal;
 uniform vec3 viewPos;
 
 // material parameters
-uniform vec3 matAlbedo;
-uniform float metallic;
-uniform float roughness;
-uniform float ao;
+uniform vec3 mAlbedo;
+uniform float mMetallic;
+uniform float mRoughness;
+uniform float mAo;
 
 // textures
 layout(binding=5) uniform sampler2DShadow shadowMap;
@@ -78,7 +78,7 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
-vec3 outRadiance(vec3 L, vec3 V, vec3 N, vec3 F0, vec3 albedo, vec3 radiance) {
+vec3 outRadiance(vec3 L, vec3 V, vec3 N, vec3 F0, vec3 albedo, vec3 radiance, float roughness, float metallic) {
     vec3 H = normalize(V + L);
     
     // cook-torrance brdf
@@ -99,6 +99,13 @@ vec3 outRadiance(vec3 L, vec3 V, vec3 N, vec3 F0, vec3 albedo, vec3 radiance) {
     return (kD * albedo / PI + specular) * radiance * NdotL; 
 }
 
+// Returns a random number based on a vec3 and an int.
+float random(vec3 seed, int i){
+	vec4 seed4 = vec4(seed,i);
+	float dot_product = dot(seed4, vec4(12.9898,78.233,45.164,94.673));
+	return fract(sin(dot_product) * 43758.5453);
+}
+
 float CalculateOcclusion(vec4 lightSpacePos, vec3 N, vec3 L) {
     vec3 ndc = lightSpacePos.xyz / lightSpacePos.w;
     // transform ndc to 0..1
@@ -113,27 +120,48 @@ float CalculateOcclusion(vec4 lightSpacePos, vec3 N, vec3 L) {
 
     // Bias is caled based on the light angle and geometry normal
     float bias = 0.01 * clamp(dot(Normal, L),0.,1.);
-    float occlusion = 0.0;
 
     // Basic pcf filter
 
     // kernel from https://www.opengl-tutorial.org/intermediate-tutorials/tutorial-16-shadow-mapping/#pcf
+    /*
     vec2 poissonDisk[4] = vec2[](
         vec2( -0.94201624, -0.39906216 ),
         vec2( 0.94558609, -0.76890725 ),
         vec2( -0.094184101, -0.92938870 ),
         vec2( 0.34495938, 0.29387760 )
     );
+    */
+    vec2 poissonDisk[16] = vec2[]( 
+        vec2( -0.94201624, -0.39906216 ), 
+        vec2( 0.94558609, -0.76890725 ), 
+        vec2( -0.094184101, -0.92938870 ), 
+        vec2( 0.34495938, 0.29387760 ), 
+        vec2( -0.91588581, 0.45771432 ), 
+        vec2( -0.81544232, -0.87912464 ), 
+        vec2( -0.38277543, 0.27676845 ), 
+        vec2( 0.97484398, 0.75648379 ), 
+        vec2( 0.44323325, -0.97511554 ), 
+        vec2( 0.53742981, -0.47373420 ), 
+        vec2( -0.26496911, -0.41893023 ), 
+        vec2( 0.79197514, 0.19090188 ), 
+        vec2( -0.24188840, 0.99706507 ), 
+        vec2( -0.81409955, 0.91437590 ), 
+        vec2( 0.19984126, 0.78641367 ), 
+        vec2( 0.14383161, -0.14100790 ) 
+    );
 
-    vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+    vec2 texelSize = 1.0 / textureSize(shadowMap, 0) * 2.0;
+    float occlusion = 0.0;
     for(int i =0; i<4; i++) {
-        occlusion += 0.25 * (1.0 - texture(shadowMap, vec3(uv.xy + poissonDisk[i] * texelSize,fragDepth-bias)).r);
+        int index = int(16.0*random(floor(WorldPos.xyz*1000.0), i))%16;
+        occlusion += 0.25 * (1.0 - texture(shadowMap, vec3(uv.xy + poissonDisk[index] * texelSize,fragDepth-bias)).r);
     }
 
     return occlusion;
 }
 
-vec3 DirectLightContribution(vec3 N, vec3 V, vec3 F0, vec3 albedo) {
+vec3 DirectLightContribution(vec3 N, vec3 V, vec3 F0, vec3 albedo, float roughness, float metallic) {
     vec3 Lo = vec3(0.0);
     for(int i = 0; i < 4; ++i) 
     {
@@ -142,7 +170,7 @@ vec3 DirectLightContribution(vec3 N, vec3 V, vec3 F0, vec3 albedo) {
         float distance    = length(lightPositions[i] - WorldPos);
         float attenuation = 1.0 / (distance * distance);
         vec3 inRadiance     = lightColors[i] * attenuation;
-        Lo += outRadiance(L,V,N,F0,albedo,inRadiance);
+        Lo += outRadiance(L,V,N,F0,albedo,inRadiance,roughness,metallic);
     }
 
     // directional lights
@@ -152,12 +180,12 @@ vec3 DirectLightContribution(vec3 N, vec3 V, vec3 F0, vec3 albedo) {
 
         vec3 L = normalize(-lightDirections[i]);
         vec3 inRadiance = directionalLightColors[i] * (1.0-CalculateOcclusion(lightSpacePos,N,L));
-        Lo += outRadiance(L,V,N,F0,albedo,inRadiance);
+        Lo += outRadiance(L,V,N,F0,albedo,inRadiance,roughness,metallic);
     }
     return Lo;
 }
 
-vec3 IBL(vec3 N, vec3 V, vec3 R, vec3 F0, vec3 albedo) {
+vec3 IBL(vec3 N, vec3 V, vec3 R, vec3 F0, vec3 albedo, float ao, float roughness, float metallic) {
     vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
 
     vec3 kS = F;
@@ -201,7 +229,7 @@ vec3 applyFog(vec3 col) {
     */
 }
 
-vec3 CalculateLighting(vec3 N, vec3 albedo) {
+vec3 CalculateLighting(vec3 N, vec3 albedo, float ao, float roughness, float metallic) {
     vec3 V = normalize(viewPos - WorldPos);
     vec3 R = reflect(-V, N);
 
@@ -209,11 +237,11 @@ vec3 CalculateLighting(vec3 N, vec3 albedo) {
     F0 = mix(F0, albedo, metallic);
                 
     // reflectance equation
-    vec3 Lo = DirectLightContribution(N,V,F0, albedo);
+    vec3 Lo = DirectLightContribution(N,V,F0, albedo,roughness,metallic);
 
     // IBL Diffuse ambient term from https://learnopengl.com/PBR/IBL/Diffuse-irradiance
 
-    vec3 ambient = IBL(N,V,R,F0, albedo);
+    vec3 ambient = IBL(N,V,R,F0, albedo, ao, roughness, metallic);
     return applyFog(ambient + Lo);
 }
 
