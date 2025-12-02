@@ -180,7 +180,7 @@ vec3 IBL(vec3 N, vec3 V, vec3 R, vec3 F0, vec3 albedo) {
 // Height fog formula from IQuilez
 // https://iquilezles.org/articles/fog/
 vec3 applyFog(vec3 col) {
-    float a = 0.05; // base fog intensity
+    float a = 0.01; // base fog intensity
     float b = 0.1; // height falloff term
 
     vec3 L = normalize(-lightDirections[0]);

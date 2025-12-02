@@ -20,7 +20,7 @@ class Terrain : public Engine::SceneNode {
     float Height(float x, float z) {
         float fwidth = width*scale;
 
-        float freq = 2.0 / fwidth;
+        float freq = 1.0 / 64.0;
         float amp = 1.0;
 
         float result = 0.f;
@@ -216,10 +216,11 @@ public:
 
     // width specified in number of verts per side
     Terrain(int width, float scale) : width(width), scale(scale) {
+        float fWidth = width*scale /2.f;
         for(int y=0; y<width+1; y++) {
             for(int x=0; x<width+1; x++) {
-                float X = (x-width/2.f) * scale;
-                float Z = (y-width/2.f) * scale;
+                float X = x * scale - fWidth;
+                float Z = y * scale - fWidth;
                 heightMap.push_back(Height(X,Z));
             }
         }

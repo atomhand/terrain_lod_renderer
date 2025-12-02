@@ -198,9 +198,7 @@ namespace Engine {
             backgroundShader.setMat4("view", view);
             backgroundShader.setMat4("projection", projection);
             glActiveTexture(GL_TEXTURE0);
-            //glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
-            //glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap); // display irradiance map
-            glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
             DrawUtil::DrawCube();
         }
 
