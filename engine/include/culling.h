@@ -10,10 +10,12 @@ namespace Engine {
         glm::vec3 max;
 
         AABB(glm::vec3 min, glm::vec3 max) : min(min), max(max) {}
+
         AABB() {
-            min = glm::vec3(std::numeric_limits<float>::max());
-            max = glm::vec3(std::numeric_limits<float>::min());
+            min = glm::vec3(999999.f);
+            max = glm::vec3(-999999.f);
         }
+
         AABB(std::vector<glm::vec3> points) {
             min = glm::vec3(std::numeric_limits<float>::max());
             max = glm::vec3(std::numeric_limits<float>::min());
@@ -48,14 +50,24 @@ namespace Engine {
     static bool FrustumAABBTest(glm::mat4& MVP, const AABB& aabb) {
         glm::vec4 corners[8];
         aabb.Corners(corners);
+        
+        AABB rotated = AABB(glm::vec3(1.f),glm::vec3(-1.f));
+        for (size_t corner_idx = 0; corner_idx < 8; corner_idx++) {
+            glm::vec4 cornerH = MVP * corners[corner_idx];
+            glm::vec3 corner = glm::vec3(cornerH) / cornerH.w;
 
+            rotated.min = glm::min(corner,rotated.min);
+            rotated.max = glm::max(corner,rotated.max);
+        }
+
+        rotated.Corners(corners);
         for (size_t corner_idx = 0; corner_idx < 8; corner_idx++) {            
             // Project vertex to clip space
-            glm::vec4 corner = MVP * corners[corner_idx];
+            glm::vec4 corner = corners[corner_idx];
             // Check vertex against clip space bounds
-            if (std::abs(corner.x )< corner.w &&
-                std::abs(corner.y) < corner.w &&
-                0.0f < corner.z && corner.z < corner.w)
+            if (-1.0f < corner.x && corner.x < 1.0f &&
+                -1.0f < corner.y && corner.y < 1.0 &&
+                0.0f < corner.z && corner.z < 1.0)
                 return true;
         }
         return false;
@@ -66,12 +78,22 @@ namespace Engine {
         glm::vec4 corners[8];
         aabb.Corners(corners);
 
+        AABB rotated = AABB(glm::vec3(1.f),glm::vec3(-1.f));
         for (size_t corner_idx = 0; corner_idx < 8; corner_idx++) {
+            glm::vec4 cornerH = MVP * corners[corner_idx];
+            glm::vec3 corner = glm::vec3(cornerH) / cornerH.w;
+
+            rotated.min = glm::min(corner,rotated.min);
+            rotated.max = glm::max(corner,rotated.max);
+        }
+
+        rotated.Corners(corners);
+        for (size_t corner_idx = 0; corner_idx < 8; corner_idx++) {            
             // Project vertex to clip space
-            glm::vec4 corner = MVP * corners[corner_idx];
+            glm::vec4 corner = corners[corner_idx];
             // Check vertex against clip space bounds
-            if (std::abs(corner.x )< corner.w &&
-                std::abs(corner.y) < corner.w)
+            if (-1.0f < corner.x && corner.x < 1.0f &&
+                -1.f < corner.y && corner.y < 1.0)
                 return true;
         }
         return false;

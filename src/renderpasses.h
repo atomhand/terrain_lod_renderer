@@ -95,14 +95,23 @@ private:
         auto nodes = world.scenegraph.AllNodes();
         glm::mat4 VP = cameraMain->projection() * cameraMain->view();
 
+        glm::vec3 cameraPos = cameraMain->position();
+
         for(auto node : nodes) {
             if(RenderItem* item= dynamic_cast<RenderItem*>(node); item != nullptr) {
                 if(item->casts_shadow())
-                shadowCasters.push_back(item);
+                    shadowCasters.push_back(item);
 
                 if(item->enableCulling) {
                     glm::mat4 MVP = VP * item->globalTransform;
-                    bool frustumTest = Engine::FrustumAABBTest(MVP, item->mesh.aabb);
+
+                    glm::vec3 max = item->globalTransform * glm::vec4(item->mesh.aabb.max,1.0);
+                    glm::vec3 min = item->globalTransform * glm::vec4(item->mesh.aabb.min,1.0);
+                    glm::vec3 center = (max+min)*0.5f;
+                    // Objects that are close enough to the camera (relative to the size of their AABB)
+                    // automatically pass the frustum test. This a compensation for the propensity
+                    // for my frustum test implementation to produce false negatives near the camera.
+                    bool frustumTest = glm::distance(cameraPos,center) < glm::distance(min,max) * 2.0 ||Engine::FrustumAABBTest(MVP, item->mesh.aabb);
                     if(!frustumTest)
                         continue;
                 }
