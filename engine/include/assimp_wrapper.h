@@ -49,10 +49,7 @@ namespace Engine {
                         int index = face->mIndices[i];
                         indices.push_back(index);
                     }
-                }                
-
-                unsigned int vertsc = (mesh->mNumVertices);
-                std::cout << "Mesh has " << vertsc << " verts" << std::endl;
+                }
 
                 for(v =0; v<mesh->mNumVertices; v++) {
                     if(mesh->mNormals != NULL) {
@@ -77,12 +74,12 @@ namespace Engine {
                 }
 
 
-                std::cout << "Imported mesh with assimp, " << verts.size() << " verts, " << normals.size() << " normals, " << indices.size() << " indices" << std::endl;
+                std::cout << "Imported mesh with assimp, " << verts.size() << " verts, " << uvs.size() << " uvs, " << normals.size() << " normals, " << indices.size() << " indices" << std::endl;
 
                 Mesh outMesh;
                 outMesh.SetVerts(verts);
                 if(normals.size() == verts.size())
-                    outMesh.SetNormals(normals);
+                    outMesh.SetNormals(normals); {}
                 if(uvs.size() == verts.size())
                     outMesh.SetUvs(uvs);
                 if(tangents.size() == verts.size())

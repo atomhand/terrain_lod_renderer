@@ -160,8 +160,8 @@ void Engine::Application::frameStart(World& world) {
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	}
 
-	glm::vec2 keyAxisDelta = glm::vec2(0.0);	
-
+	glm::vec2 keyAxisDelta = glm::vec2(0.0);
+	
 	if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 		keyAxisDelta.y += 1.0;
 	if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
