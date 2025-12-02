@@ -19,9 +19,10 @@ uniform mat3 normalMatrix;
 
 void main()
 {
-    TexCoords = aTexCoords;
+    // Hack because of backwards y uv on my specific model
+    TexCoords = aTexCoords * vec2(1,-1);
     WorldPos = vec3(model * vec4(aPos, 1.0));
-    //Normal = normalMatrix * aNormal;
+    Normal = normalMatrix * aNormal;
 
     vec3 T = normalize(vec3(model * vec4(aTangent,   0.0)));
     vec3 B = normalize(vec3(model * vec4(aBitangent, 0.0)));
