@@ -26,7 +26,7 @@ private:
 
         pos += CAMERA_SPEED * (cameraFront * keyDelta.y + cameraRight * keyDelta.x);
 
-        m_camera->far = 256.0;
+        m_camera->far = 512.0;
         m_camera->localTransform = glm::inverse(glm::lookAt(pos,pos+cameraFront,cameraUp));
     }
     Engine::Camera* m_camera;

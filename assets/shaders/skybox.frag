@@ -2,13 +2,24 @@
 
 #version 420
 out vec4 FragColor;
-in vec3 WorldPos;
+in vec3 SamplePos;
+in vec4 ClipPos;
 
 uniform samplerCube environmentMap;
 
+uniform mat4 projection;
+uniform mat4 view;
+
 void main()
-{		
-    vec3 envColor = texture(environmentMap, WorldPos).rgb;
+{
+    // sample environment map (skybox)
+    vec3 envColor = texture(environmentMap, SamplePos).rgb;
+    
+    vec4 worldPos = inverse(projection * view) * ClipPos;
+    worldPos/= worldPos.w;
+    vec3  fogColor  = vec3(0.5,0.6,0.7);
+    float threshold = 32.0;
+    envColor = mix(fogColor,envColor, clamp((worldPos.y-threshold)/threshold,0.0,1.0));
     
     // HDR tonemap and gamma correct
     envColor = envColor / (envColor + vec3(1.0));

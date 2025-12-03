@@ -208,23 +208,30 @@ vec3 IBL(vec3 N, vec3 V, vec3 R, vec3 F0, vec3 albedo, float ao, float roughness
 // Height fog formula from IQuilez
 // https://iquilezles.org/articles/fog/
 vec3 applyFog(vec3 col) {
-    float a = 0.01; // base fog intensity
-    float b = 0.1; // height falloff term
+    float a = 0.05; // base fog intensity
+    float b = 0.25; // height falloff term
 
     vec3 L = normalize(-lightDirections[0]);
 
     vec3 rd = normalize(WorldPos -viewPos);
     float t = length(WorldPos -viewPos);
 
-    float fogAmount = (a/b) * exp(-viewPos.y*b) * (1.0-exp(-t*rd.y*b))/rd.y;
-    vec3  fogColor  = vec3(0.5,0.6,0.7);
-    return mix( col, fogColor, min(1.,fogAmount) );
     /*
-    float fogAmount = 1.0 - exp(-dist*b);
-    float sunAmount = max(dot(V,L),0.0);
+    float sunAmount = max(dot(rd,L),0.0);
     vec3  fogColor  = mix( vec3(0.5,0.6,0.7), // blue
                            vec3(1.0,0.9,0.7), // yellow
                            pow(sunAmount,8.0) );
+    */
+    
+    float fogAmount = (a/b) * exp(-viewPos.y*b) * (1.0-exp(-t*rd.y*b))/rd.y;
+
+    float end = 512.0;
+    float start = 480.0;
+
+    vec3  fogColor  = vec3(0.5,0.6,0.7);
+    return mix( col, fogColor, clamp(fogAmount,0.,1.) );
+    /*
+    float fogAmount = 1.0 - exp(-dist*b);
     return mix( col, fogColor, fogAmount );
     */
 }
