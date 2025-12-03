@@ -16,6 +16,10 @@
 namespace Engine {
     class EnvironmentMap {
     private:
+        // disable copy, assign constructors
+        EnvironmentMap & operator=(const EnvironmentMap&) = delete;
+        EnvironmentMap(const EnvironmentMap&) = delete;
+
         const glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
         const glm::mat4 captureViews[6] =
         {
@@ -61,6 +65,7 @@ namespace Engine {
             stbi_set_flip_vertically_on_load(true);
             int width, height, nrComponents;
             float *data = stbi_loadf(path.string().c_str(), &width, &height, &nrComponents, 0);
+            assert(nrComponents == 3);
             if (data)
             {
                 glGenTextures(1, &hdrTexture);

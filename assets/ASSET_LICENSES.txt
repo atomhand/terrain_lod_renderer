@@ -29,9 +29,10 @@ Accessed at: https://sketchfab.com/3d-models/gisheregrus-nigricollis-3123f454f87
 
 --------------------------
 
-Citrus Orchard Road (Pure Sky)
+Environment maps
 CC0 License https://creativecommons.org/publicdomain/zero/1.0/
 Accessed at https://polyhaven.com/a/citrus_orchard_road_puresky
+            https://polyhaven.com/a/belfast_sunset_puresky
 
 ----------------------
 
