@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.16)
 project(GpuProgrammingProject LANGUAGES C CXX)
 set (CMAKE_CXX_STANDARD 20)
 
+add_compile_options("$<$<CONFIG:DEBUG>:-DDEBUG>")
+
 # GLFW build arguments - disable tests, examples and documentation
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
