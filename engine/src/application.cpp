@@ -203,10 +203,10 @@ void Engine::Application::frameStart(World& world) {
 	world.input.scrollDelta = 0.0;
 	world.input.mousePosDelta = glm::vec2(0.,0.); 
 	input = &world.input;
-	bool flyCam = input->flyCamera;
 	glfwPollEvents();
 
-	if(flyCam != input->flyCamera) {		
+	if(cursorLocked != input->flyCamera) {
+		cursorLocked = input->flyCamera;
 		if(input->flyCamera) {
 			// cursor is hidden and locked while fly camera is active
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);

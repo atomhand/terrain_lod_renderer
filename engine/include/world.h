@@ -16,7 +16,7 @@ namespace Engine {
 
         float deltaTime;
 
-        bool flyCamera = false;
+        bool flyCamera = true;
         bool wireFrame = false;
         int testQuad = 0;
     };

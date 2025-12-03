@@ -18,6 +18,8 @@ namespace Engine {
         int width;
         int height;
         const char *title;
+
+        bool cursorLocked;
         
         GLFWwindow* window;
         

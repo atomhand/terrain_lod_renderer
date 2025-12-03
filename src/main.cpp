@@ -7,7 +7,6 @@
 #include "assimp_wrapper.h"
 #include "renderpasses.h"
 
-#include "camera_controller.h"
 #include "fly_camera.h"
 #include "world.h"
 #include "demo_world.h"
@@ -34,13 +33,12 @@ int main()
 	try
 	{
 		// Main camera controller
-		world.scenegraph.SetParent(new CameraController(), world.scenegraph.root);
 		world.scenegraph.SetParent(new FlyCamera(), world.scenegraph.root);
 
 		// Sun
 		Engine::DirectionalLight* sun = new Engine::DirectionalLight();
 		sun->direction= glm::normalize(glm::vec3(-2.0,-1.,4.0));
-		sun->color = glm::vec3(60.0,40.,40.);
+		sun->color = glm::vec3(15.0,15.,15.);
 		world.scenegraph.SetParent(sun,world.scenegraph.root);
 
 		// Scene objects

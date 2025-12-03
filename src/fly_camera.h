@@ -8,7 +8,6 @@ private:
     const float CAMERA_SPEED = 256.0;
     float pitch;
     float yaw;
-    bool flyCamera = true;
 
     glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
     glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f); 
@@ -33,20 +32,20 @@ private:
 public:
     void OnEnter(Engine::SceneGraph& sceneGraph) override {
         m_camera = new Engine::Camera();
-        m_camera->main = false;
+        m_camera->main = true;
         sceneGraph.SetParent(m_camera,this);
+        CalcFlyCameraTransform(glm::vec2(0.));
     }
 
     void Update(Engine::World& world) override {
         if(world.input.flyCamera) {
-            m_camera->main = true;
             const float sensitivity = 0.05;
             yaw += world.input.mousePosDelta.x * sensitivity;
             pitch -= world.input.mousePosDelta.y * sensitivity;
             pitch = std::clamp(pitch,-89.f,89.f);
             CalcFlyCameraTransform(world.input.keyAxisDelta * world.input.deltaTime);
         } else {
-            m_camera->main = false;
+            //m_camera->main = false;
         }
     }
 };
