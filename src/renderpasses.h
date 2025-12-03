@@ -215,7 +215,7 @@ private:
         for(auto light : directionalLights) {
             auto culledShadowCasters = light->MakeLightSpaceMatrix(*cameraMain, shadowReceivers, shadowCasters);
 
-            light->PrepareRenderShadowmap();
+            light->shadowMap.PrepareFramebuffer();
             world.shadowShader.setMat4("lightSpaceMatrix", light->lightSpaceMatrix);
 
             // Draw meshes
@@ -252,7 +252,9 @@ private:
             glBindTexture(GL_TEXTURE_2D,debugCameraOutput.textureObject());
         } else {
             if(directionalLights.size() > 0) {
-                glBindTexture(GL_TEXTURE_2D,directionalLights[0]->depthMap().textureObject());
+                glBindTexture(GL_TEXTURE_2D,directionalLights[0]->shadowMap.depthMap());
+            } else {
+                glBindTexture(GL_TEXTURE_2D,0);
             }
         }
 

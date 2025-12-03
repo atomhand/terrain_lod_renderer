@@ -10,8 +10,8 @@ std::vector<size_t> Engine::DirectionalLight::MakeLightSpaceMatrix(Camera& camer
                             frustumCenter+direction,
                             glm::vec3(0.f,1.f,0.f));
 
-    // Light projection is chosen to tightly fit around the corners
-    // of the view frustum
+    // Light projection is chosen to tightly fit around the bounds of the shadow-receiving meshes
+    // The near plane also needs to be adjusted to make sure all shadow-casters within the projection
 
     float xMin, xMax, yMin, yMax, zMin, zMax;
     xMin = yMin = zMin = std::numeric_limits<float>::max();
@@ -36,21 +36,19 @@ std::vector<size_t> Engine::DirectionalLight::MakeLightSpaceMatrix(Camera& camer
 
     lightProjection = glm::ortho(xMin,xMax,yMin,yMax,zMin,zMax);
     
+    // Move the near plane so that all shadow casters (that are within the x,y bounds)
+    // are in front of the near plane
     std::vector<size_t> outShadowCasters;
-    // TODO - shadowcasters should be culled against the projection
     for(size_t iCaster =0; iCaster<shadowCasters.size(); iCaster++) {
         shadowCasters[iCaster]->aabb().Corners(corners);
         glm::mat4 MV = lightView * shadowCasters[iCaster]->globalTransform;
         glm::mat4 MVP = lightProjection * MV;
+        // We can skip shadowcasters that are outside the x,y bounds of the projection
         if(FrustumAABBTestIgnoreZ(MVP, shadowCasters[iCaster]->aabb())) {
             outShadowCasters.push_back(iCaster);
             for(int i =0; i<8; i++) {
-                // Transform AABB corners into the light's coordinate system
                 glm::vec3 p = MV * corners[i];
-
-                // Shadow casters are only relevant for setting the near plane
                 zMin = std::min(zMin,-p.z);
-                //zMax = std::max(zMax,-p.z);
             }
         }                
     }
