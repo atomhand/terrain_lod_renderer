@@ -35,14 +35,15 @@ void main()
     //vec3 blend = abs(Normal);
      // blend /= blend.x + blend.y + blend.z;
 
-    float triplanarScale = 4.f;
+    float triplanarScale = 16.f;
     vec2 uvX = WorldPos.zy / triplanarScale;
     vec2 uvY = WorldPos.xz / triplanarScale;
     vec2 uvZ = WorldPos.xy / triplanarScale;
 
-    vec3 tnormalX = texture(normalMap, uvX).xyz * 2.0 - 1.0;
-    vec3 tnormalY = texture(normalMap, uvY).xyz * 2.0 - 1.0;
-    vec3 tnormalZ = texture(normalMap, uvZ).xyz * 2.0 - 1.0;
+    // Input normal channels are not in the right order
+    vec3 tnormalX = texture(normalMap, uvX).xzy * 2.0 - 1.0;
+    vec3 tnormalY = texture(normalMap, uvY).xzy * 2.0 - 1.0;
+    vec3 tnormalZ = texture(normalMap, uvZ).xzy * 2.0 - 1.0;
 
     // Get absolute value of normal to ensure positive tangent "z" for blend
     vec3 absVertNormal = abs(Normal);
