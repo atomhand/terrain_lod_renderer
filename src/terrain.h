@@ -10,17 +10,180 @@
 
 
 class Terrain : public Engine::SceneNode {
+    class Chunk : public Engine::SceneNode {
+        float scale;        
+        RenderItem* land;
+        RenderItem* water;        
+        std::vector<float> heightMap;
+        bool generated;
+        int offsetX,offsetY;
+
+        float SampleHeightmap(int x, int z) {
+            int idx = (x+1) + (z+1) * (CHUNK_WIDTH+3);
+            return heightMap[idx];
+        }
+
+        glm::vec3 GetPos(int x, int z) {
+            return glm::vec3(x*scale,SampleHeightmap(x,z),z*scale);
+        }
+
+        // Calculate vertex normals directly from heightmap
+        // This avoids the issue of seams along the chunks that would arise from calculating face normals
+        // formula from https://www.reddit.com/r/opengl/comments/8myqys/normals_of_a_heightmap_terrain/dzrpya2/
+        glm::vec3 Normal(int x, int y) {
+            glm::vec3 L = GetPos(x-1,y);
+            glm::vec3 R = GetPos(x+1,y);
+            glm::vec3 U = GetPos(x,y-1);
+            glm::vec3 D = GetPos(x,y+1);
+            return glm::normalize(glm::cross(R-L,U-D));
+        }
+
+        Engine::Mesh MakeTerrainMesh() {
+            std::vector<glm::vec3> verts;
+            std::vector<glm::vec3> normals;
+            std::vector<GLuint> indices;
+
+            int y;
+            for(y=0; y<CHUNK_WIDTH+1; y++) {            
+                for(int x=0; x<CHUNK_WIDTH+1; x++) {
+                    verts.push_back(GetPos(x,y));
+                    normals.push_back(Normal(x,y));
+                }
+            }
+
+            for(y=0; y<CHUNK_WIDTH; y++) {            
+                for(int x=0; x<CHUNK_WIDTH; x++) {
+                    GLuint i00 = x + y*(CHUNK_WIDTH+1);
+                    GLuint i10 = (x+1) + y*(CHUNK_WIDTH+1);
+                    GLuint i01 = x + (y+1)*(CHUNK_WIDTH+1);
+                    GLuint i11 = (x+1) + (y+1)*(CHUNK_WIDTH+1);
+
+                    // Choose the diagonal to split the quad along
+
+                    // We choose the split that minimises the length
+                    // of the diagonal edge
+                    // (Hopefully this slightly improves the appearance)
+                    float e0 = std::abs(verts[i11].y - verts[i00].y);
+                    float e1 = std::abs(verts[i10].y - verts[i01].y);
+
+                    if(e0 < e1) {
+                        indices.push_back(i00);
+                        indices.push_back(i01);
+                        indices.push_back(i11);
+
+                        indices.push_back(i00);
+                        indices.push_back(i11);
+                        indices.push_back(i10);
+                    } else {
+                        indices.push_back(i01);
+                        indices.push_back(i11);
+                        indices.push_back(i10);
+
+                        indices.push_back(i01);
+                        indices.push_back(i10);
+                        indices.push_back(i00);
+                    }
+                }
+            }
+
+            Engine::Mesh mesh;
+            mesh.SetVerts(verts);
+            mesh.SetIndices(indices);
+            mesh.SetNormals(normals);
+            mesh.Apply();
+            return mesh;
+        }
+
+    public:
+        // returns true if the chunk needed to regenerate
+        bool Apply(int startX, int startZ, int endX, int endZ, int map_width, Terrain& terrain) {
+            int newOffsetX = offsetX;
+            int newOffsetY = offsetY;
+            while(newOffsetX > endX) {
+                newOffsetX -= map_width;
+            }
+            while(newOffsetX < startX) {
+                newOffsetX += map_width;
+            }
+            while(newOffsetY > endZ) {
+                newOffsetY -= map_width;
+            }
+             while(newOffsetY < startZ) {
+                newOffsetY += map_width;
+            }
+            if(generated && offsetX == newOffsetX && offsetY == newOffsetY) {
+                // skip if the chunk is already initialized to this position
+                return false;
+            }
+            offsetX = newOffsetX;
+            offsetY = newOffsetY;
+
+            scale = terrain.scale;
+            heightMap.assign((CHUNK_WIDTH+3)*(CHUNK_WIDTH+3),0.);
+            float fXOffset = offsetX * scale;
+            float fZOffset = offsetY * scale;
+
+            water->localTransform = glm::translate(glm::mat4(1.0),glm::vec3(fXOffset,0.0,fZOffset));
+            land->localTransform = glm::translate(glm::mat4(1.0),glm::vec3(fXOffset,0.0,fZOffset));
+
+            bool anyLand = false;
+            bool anyWater = false;
+
+            for(int z=0; z<CHUNK_WIDTH+3; z++)
+                for(int x=0; x<CHUNK_WIDTH+3; x++) {
+                    // extra offset of scale (1 cell) to account for the margin on the heightmap
+                    float X = x*scale + fXOffset - scale;
+                    float Z = z*scale + fZOffset - scale;
+                    float height = terrain.Height(X,Z);
+                    heightMap[x+z*(CHUNK_WIDTH+3)] = height;
+                    if(height > 0.f) {
+                        anyLand = true;
+                    } else {
+                        anyWater = true;
+                    }
+                }
+
+            land->enabled = anyLand;
+            water->enabled = anyWater;
+
+            if(anyLand) {
+                land->mesh = MakeTerrainMesh();
+            }
+
+            generated = true;
+            return true;
+        }
+
+        std::shared_ptr<Engine::PbrMaterial> terrainMaterial;
+        std::shared_ptr<Engine::PbrMaterial> waterMaterial;
+        Engine::Mesh waterMesh;
+
+        Chunk(int baseOffsetX,int baseOffsetY,std::shared_ptr<Engine::PbrMaterial> terrainMaterial, std::shared_ptr<Engine::PbrMaterial> waterMaterial, Engine::Mesh waterMesh)
+            : terrainMaterial(terrainMaterial), waterMaterial(waterMaterial), waterMesh(waterMesh), offsetX(baseOffsetX), offsetY(baseOffsetY) {
+            generated = false;
+        }
+
+        void OnEnter(Engine::SceneGraph& sceneGraph) override {            
+            water = new RenderItem();
+            land = new RenderItem();
+
+            water->material = waterMaterial;
+            water->mesh = waterMesh;
+            land->material = terrainMaterial;
+
+            sceneGraph.SetParent(water,this);
+            sceneGraph.SetParent(land,this);
+        }
+    };
+
     int width;
     float scale;
-    Engine::Mesh mesh;
+    static const int CHUNK_WIDTH = 32;
     FastNoiseLite noise;
-
-    float heightScale = 32.0;
+    float heightScale = 256.0;
 
     float Height(float x, float z) {
-        float fwidth = width*scale;
-
-        float freq = 0.5;
+        float freq = 1.0 / 16.0;
         float amp = 1.0;
 
         float result = 0.f;
@@ -35,97 +198,12 @@ class Terrain : public Engine::SceneNode {
             amp *= 0.5f;
         }
         result /= normalise_sum;
-
-        float center = fwidth/2.f;
-        float sq_d = std::min(1.0f, (x*x + z*z)/(center*center));
-        result = (result)*(1.0f-sq_d) + 0.5f * (1.f + result) * sq_d;
-
-        float threshold = 0.75;
-        float boost = 2.0f;
-        if(result > threshold) {
-            result = (result-threshold)*boost + threshold;
-        }
+        float fac = 3.0;
+        if(result > 0.f) result = pow(result,fac);
+        // Offset helps to reduce Z-fighting between terrain and water
+        result += 0.001;
 
         return heightScale * result;
-    }
-
-    float SampleHeightmap(int x, int z) {
-        int idx = x + z * (width+1);
-        return heightMap[idx];
-    }
-
-    glm::vec3 GetPos(int x, int z) {
-        return glm::vec3(x*scale,SampleHeightmap(x,z),z*scale);
-    }
-
-    // Calculate vertex normals directly from heightmap
-    // This avoids the issue of seams along the chunks that would arise from calculating face normals
-    // formula from https://www.reddit.com/r/opengl/comments/8myqys/normals_of_a_heightmap_terrain/dzrpya2/
-    glm::vec3 Normal(int x, int y) {
-        glm::vec3 L = x > 0 ? GetPos(x-1,y) : GetPos(x,y);
-        glm::vec3 R = x <= chunkWidth ? GetPos(x+1,y) : GetPos(x,y);
-        glm::vec3 U = y > 0 ? GetPos(x,y-1) : GetPos(x,y);
-        glm::vec3 D = y <= chunkWidth ? GetPos(x,y+1) : GetPos(x,y);
-        return glm::normalize(glm::cross(R-L,U-D));
-    }
-
-    int chunkWidth = 16;
-
-    Engine::Mesh MakeTerrainMesh(int startX, int startY) {
-        std::vector<glm::vec3> verts;
-        std::vector<glm::vec3> normals;
-        std::vector<GLuint> indices;
-
-        int y;
-        for(y=0; y<chunkWidth+1; y++) {            
-            for(int x=0; x<chunkWidth+1; x++) {
-                int idx = (startX+x) + (startY+y) * (width+1);
-                verts.push_back(glm::vec3(x * scale,heightMap[idx],y * scale));
-                normals.push_back(Normal(x+startX,y+startY));
-            }
-        }
-
-        for(y=0; y<chunkWidth; y++) {            
-            for(int x=0; x<chunkWidth; x++) {
-                GLuint i00 = x + y*(chunkWidth+1);
-                GLuint i10 = (x+1) + y*(chunkWidth+1);
-                GLuint i01 = x + (y+1)*(chunkWidth+1);
-                GLuint i11 = (x+1) + (y+1)*(chunkWidth+1);
-
-                // Choose the diagonal to split the quad along
-
-                // We choose the split that minimises the length
-                // of the diagonal edge
-                // (Hopefully this slightly improves the appearance)
-                float e0 = std::abs(verts[i11].y - verts[i00].y);
-                float e1 = std::abs(verts[i10].y - verts[i01].y);
-
-                if(e0 < e1) {
-                    indices.push_back(i00);
-                    indices.push_back(i01);
-                    indices.push_back(i11);
-
-                    indices.push_back(i00);
-                    indices.push_back(i11);
-                    indices.push_back(i10);
-                } else {
-                    indices.push_back(i01);
-                    indices.push_back(i11);
-                    indices.push_back(i10);
-
-                    indices.push_back(i01);
-                    indices.push_back(i10);
-                    indices.push_back(i00);
-                }
-            }
-        }
-
-        Engine::Mesh mesh;
-        mesh.SetVerts(verts);
-        mesh.SetIndices(indices);
-        mesh.SetNormals(normals);
-        mesh.Apply();
-        return mesh;
     }
 
     Engine::Mesh MakeWaterMesh() {
@@ -134,19 +212,19 @@ class Terrain : public Engine::SceneNode {
         std::vector<GLuint> indices;
 
         int y;
-        for(y=0; y<chunkWidth+1; y++) {            
-            for(int x=0; x<chunkWidth+1; x++) {
+        for(y=0; y<CHUNK_WIDTH+1; y++) {            
+            for(int x=0; x<CHUNK_WIDTH+1; x++) {
                 verts.push_back(glm::vec3(x * scale,0.f,y * scale));
                 normals.push_back(glm::vec3(0.,1.,0.));
             }
         }
 
-        for(y=0; y<chunkWidth; y++) {            
-            for(int x=0; x<chunkWidth; x++) {
-                GLuint i00 = x + y*(chunkWidth+1);
-                GLuint i10 = (x+1) + y*(chunkWidth+1);
-                GLuint i01 = x + (y+1)*(chunkWidth+1);
-                GLuint i11 = (x+1) + (y+1)*(chunkWidth+1);
+        for(y=0; y<CHUNK_WIDTH; y++) {            
+            for(int x=0; x<CHUNK_WIDTH; x++) {
+                GLuint i00 = x + y*(CHUNK_WIDTH+1);
+                GLuint i10 = (x+1) + y*(CHUNK_WIDTH+1);
+                GLuint i01 = x + (y+1)*(CHUNK_WIDTH+1);
+                GLuint i11 = (x+1) + (y+1)*(CHUNK_WIDTH+1);
 
                 indices.push_back(i00);
                 indices.push_back(i01);
@@ -166,6 +244,23 @@ class Terrain : public Engine::SceneNode {
         return mesh;
     }
 public:
+    void Update(Engine::World& world) override {
+        glm::vec3 camPos = world.cameraMain()->position();
+
+        int cX = int(camPos.x) / scale;
+        int cZ = int(camPos.z) / scale;
+        int hW = width/2;
+
+        int regenCount = 0;
+        for(auto child : children) {
+            Chunk* chunk = (Chunk*)child;
+            regenCount += chunk->Apply(cX-hW,cZ-hW,cX+hW,cZ+hW,width,*this);
+        }
+
+        if(regenCount > 0) {
+            std::cout << "Regenerated " << regenCount << " chunks | " << cX << ", " << cZ << " (" << hW << ")" << std::endl;
+        }
+    }
 
     void OnEnter(Engine::SceneGraph& sceneGraph) override {
         
@@ -193,40 +288,16 @@ public:
 
         Engine::Mesh waterMesh = MakeWaterMesh();
 
-        int chunks = width/chunkWidth;
+        int chunks = width/CHUNK_WIDTH;
         for(int x=0; x<chunks; x++)
             for(int y=0; y<chunks; y++) {
-                float X = (x*chunkWidth-width/2.f) * scale;
-                float Z = (y*chunkWidth-width/2.f) * scale;
-
-                RenderItem* terrainItem = new RenderItem();                
-                terrainItem->mesh = MakeTerrainMesh(x*chunkWidth,y*chunkWidth);
-                terrainItem->material = terrain_mat_pointer;
-                terrainItem->localTransform = glm::translate(glm::mat4(1.0),glm::vec3(X,0.0,Z));
-                sceneGraph.SetParent(terrainItem, this);
-        
-                RenderItem* waterItem = new RenderItem();
-                waterItem->mesh = waterMesh;
-                waterItem->material = water_mat_pointer;
-                waterItem->shadowEnabled = false;
-                waterItem->localTransform = glm::translate(glm::mat4(1.0),glm::vec3(X,0.0,Z));
-		        sceneGraph.SetParent(waterItem, this);
+                Chunk* chunk = new Chunk(x*CHUNK_WIDTH,y*CHUNK_WIDTH,terrain_mat_pointer,water_mat_pointer,waterMesh);
+		        sceneGraph.SetParent(chunk, this);
             }
     }
-
-    std::vector<float> heightMap;
 
     // width specified in number of verts per side
     Terrain(int width, float scale) : width(width), scale(scale) {
         noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
-
-        float fWidth = width*scale /2.f;
-        for(int y=0; y<width+1; y++) {
-            for(int x=0; x<width+1; x++) {
-                float X = x * scale - fWidth;
-                float Z = y * scale - fWidth;
-                heightMap.push_back(Height(X,Z));
-            }
-        }
     };
 };

@@ -39,8 +39,8 @@ int main()
 
 		// Sun
 		Engine::DirectionalLight* sun = new Engine::DirectionalLight();
-		sun->direction= glm::normalize(glm::vec3(-2.0,-2.,4.0));
-		sun->color = glm::vec3(25.0);
+		sun->direction= glm::normalize(glm::vec3(-2.0,-1.,4.0));
+		sun->color = glm::vec3(60.0,40.,40.);
 		world.scenegraph.SetParent(sun,world.scenegraph.root);
 
 		// Scene objects
@@ -48,7 +48,7 @@ int main()
 		world.scenegraph.SetParent(new Duck(pbr_shader), world.scenegraph.root);
 		world.scenegraph.SetParent(new Windmill(pbr_shader), world.scenegraph.root);
 		world.scenegraph.SetParent(new Crane(), world.scenegraph.root);
-		world.scenegraph.SetParent(new Terrain(1024,0.5), world.scenegraph.root);
+		world.scenegraph.SetParent(new Terrain(2048,4.0), world.scenegraph.root);
 		world.scenegraph.SetParent(new PbrSphereGrid(8,8), world.scenegraph.root);
 
 		sphere = new RenderItem();

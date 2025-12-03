@@ -18,7 +18,7 @@ void main()
     vec4 worldPos = inverse(projection * view) * ClipPos;
     worldPos/= worldPos.w;
     vec3  fogColor  = vec3(0.5,0.6,0.7);
-    float threshold = 32.0;
+    float threshold = 128.0;
     envColor = mix(fogColor,envColor, clamp((worldPos.y-threshold)/threshold,0.0,1.0));
     
     // HDR tonemap and gamma correct

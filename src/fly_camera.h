@@ -5,7 +5,7 @@
 
 class FlyCamera : public Engine::SceneNode {
 private:
-    const float CAMERA_SPEED = 16.0;
+    const float CAMERA_SPEED = 256.0;
     float pitch;
     float yaw;
     bool flyCamera = true;
@@ -26,7 +26,7 @@ private:
 
         pos += CAMERA_SPEED * (cameraFront * keyDelta.y + cameraRight * keyDelta.x);
 
-        m_camera->far = 512.0;
+        m_camera->far = 4096.0;
         m_camera->localTransform = glm::inverse(glm::lookAt(pos,pos+cameraFront,cameraUp));
     }
     Engine::Camera* m_camera;
