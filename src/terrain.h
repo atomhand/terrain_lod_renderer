@@ -1,10 +1,9 @@
 #pragma once
 #include <vector>
 #include <glm/glm.hpp>
-#include <glm/gtc/noise.hpp>
-#include "glm/gtc/random.hpp"
 
 #include <glad/glad.h>
+#include "FastNoiseLite.h"
 #include "mesh.h"
 #include "world.h"
 #include "render_item.h"
@@ -14,13 +13,14 @@ class Terrain : public Engine::SceneNode {
     int width;
     float scale;
     Engine::Mesh mesh;
+    FastNoiseLite noise;
 
     float heightScale = 32.0;
 
     float Height(float x, float z) {
         float fwidth = width*scale;
 
-        float freq = 1.0 / 64.0;
+        float freq = 0.5;
         float amp = 1.0;
 
         float result = 0.f;
@@ -28,7 +28,7 @@ class Terrain : public Engine::SceneNode {
 
         int octaves = 8;
         for(int i =0; i<octaves; i++) {
-            result += glm::perlin(glm::vec2(x,z) * freq) * amp;
+            result += noise.GetNoise(x * freq, z * freq) * amp;
 
             normalise_sum += amp;
             freq *= 2.f;
@@ -218,6 +218,8 @@ public:
 
     // width specified in number of verts per side
     Terrain(int width, float scale) : width(width), scale(scale) {
+        noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+
         float fWidth = width*scale /2.f;
         for(int y=0; y<width+1; y++) {
             for(int x=0; x<width+1; x++) {

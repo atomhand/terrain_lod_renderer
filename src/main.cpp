@@ -48,7 +48,7 @@ int main()
 		world.scenegraph.SetParent(new Duck(pbr_shader), world.scenegraph.root);
 		world.scenegraph.SetParent(new Windmill(pbr_shader), world.scenegraph.root);
 		world.scenegraph.SetParent(new Crane(), world.scenegraph.root);
-		world.scenegraph.SetParent(new Terrain(512.0,0.5), world.scenegraph.root);
+		world.scenegraph.SetParent(new Terrain(1024,0.5), world.scenegraph.root);
 		world.scenegraph.SetParent(new PbrSphereGrid(8,8), world.scenegraph.root);
 
 		sphere = new RenderItem();
