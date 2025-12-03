@@ -32,8 +32,12 @@ int main()
 	RenderItem* sphere;
 	try
 	{
+		float terrain_cells = 2048;
+		float cell_size = 16.0;
+
+		FlyCamera* flyCam = new FlyCamera();
 		// Main camera controller
-		world.scenegraph.SetParent(new FlyCamera(), world.scenegraph.root);
+		world.scenegraph.SetParent(flyCam, world.scenegraph.root);
 
 		// Sun
 		Engine::DirectionalLight* sun = new Engine::DirectionalLight();
@@ -46,8 +50,11 @@ int main()
 		world.scenegraph.SetParent(new Duck(pbr_shader), world.scenegraph.root);
 		world.scenegraph.SetParent(new Windmill(pbr_shader), world.scenegraph.root);
 		world.scenegraph.SetParent(new Crane(), world.scenegraph.root);
-		world.scenegraph.SetParent(new Terrain(2048,4.0), world.scenegraph.root);
+		Terrain* terrain = new Terrain(terrain_cells,cell_size);
+		world.scenegraph.SetParent(terrain, world.scenegraph.root);
 		world.scenegraph.SetParent(new PbrSphereGrid(8,8), world.scenegraph.root);
+
+		flyCam->far = terrain->SuggestFarPlane();
 
 		sphere = new RenderItem();
 		sphere->mesh = Sphere(32,32);

@@ -11,7 +11,6 @@ private:
 
     glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
     glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f); 
-
     glm::vec3 pos = glm::vec3(0.0f,32.f,0.0f);
 
     void CalcFlyCameraTransform(glm::vec2 keyDelta) {
@@ -25,11 +24,13 @@ private:
 
         pos += CAMERA_SPEED * (cameraFront * keyDelta.y + cameraRight * keyDelta.x);
 
-        m_camera->far = 4096.0;
+        m_camera->far = far;
         m_camera->localTransform = glm::inverse(glm::lookAt(pos,pos+cameraFront,cameraUp));
     }
     Engine::Camera* m_camera;
 public:
+    float far = 4096.0;
+    
     void OnEnter(Engine::SceneGraph& sceneGraph) override {
         m_camera = new Engine::Camera();
         m_camera->main = true;

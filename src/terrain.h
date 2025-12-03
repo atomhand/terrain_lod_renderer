@@ -180,10 +180,10 @@ class Terrain : public Engine::SceneNode {
     float scale;
     static const int CHUNK_WIDTH = 32;
     FastNoiseLite noise;
-    float heightScale = 256.0;
+    float heightScale = 1024.0;
 
     float Height(float x, float z) {
-        float freq = 1.0 / 16.0;
+        float freq = 1.0 / 64.0;
         float amp = 1.0;
 
         float result = 0.f;
@@ -201,7 +201,7 @@ class Terrain : public Engine::SceneNode {
         float fac = 3.0;
         if(result > 0.f) result = pow(result,fac);
         // Offset helps to reduce Z-fighting between terrain and water
-        result += 0.001;
+        result += 0.005;
 
         return heightScale * result;
     }
@@ -260,6 +260,12 @@ public:
         if(regenCount > 0) {
             std::cout << "Regenerated " << regenCount << " chunks | " << cX << ", " << cZ << " (" << hW << ")" << std::endl;
         }
+    }
+
+    float SuggestFarPlane() {
+        int chunks = width/CHUNK_WIDTH;
+
+        return std::max(1,(chunks/2-2)) * CHUNK_WIDTH * scale;
     }
 
     void OnEnter(Engine::SceneGraph& sceneGraph) override {
