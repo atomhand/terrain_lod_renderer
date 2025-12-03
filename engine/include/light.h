@@ -38,7 +38,7 @@ namespace Engine {
 
         glm::mat4 lightSpaceMatrix;
 
-        DirectionalLight() : shadowMap(DirectionalShadowMap(1024)) {
+        DirectionalLight() : shadowMap(DirectionalShadowMap(4096)) {
         }
     };
 }

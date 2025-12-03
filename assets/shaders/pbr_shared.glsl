@@ -151,14 +151,29 @@ float CalculateOcclusion(vec4 lightSpacePos, vec3 N, vec3 L) {
         vec2( 0.14383161, -0.14100790 ) 
     );
 
-    vec2 texelSize = 1.0 / textureSize(shadowMap, 0) * 2.0;
+    vec2 texelSize = 1.0 / textureSize(shadowMap, 0) * 1.0;
     float occlusion = 0.0;
     for(int i =0; i<4; i++) {
         int index = int(16.0*random(floor(WorldPos.xyz*1000.0), i))%16;
-        occlusion += 0.25 * (1.0 - texture(shadowMap, vec3(uv.xy + poissonDisk[index] * texelSize,fragDepth-bias)).r);
+        occlusion += 0.25 * texture(shadowMap, vec3(uv.xy + poissonDisk[index] * texelSize,fragDepth-bias)).r;
     }
 
     return occlusion;
+}
+
+float CalculateVolumeOcclusion(vec4 lightSpacePos) {
+    vec3 ndc = lightSpacePos.xyz / lightSpacePos.w;
+    // transform ndc to 0..1
+    vec3 uv = ndc * 0.5 + 0.5;
+
+    // current fragment's depth from light's perspective
+    float fragDepth = uv.z;
+
+    // if frag is beyond our far depth, assume it's unoccluded
+    if(fragDepth > 1.0)
+        return 1.;
+
+    return texture(shadowMap, vec3(uv.xy,fragDepth));
 }
 
 vec3 DirectLightContribution(vec3 N, vec3 V, vec3 F0, vec3 albedo, float roughness, float metallic) {
@@ -173,13 +188,12 @@ vec3 DirectLightContribution(vec3 N, vec3 V, vec3 F0, vec3 albedo, float roughne
         Lo += outRadiance(L,V,N,F0,albedo,inRadiance,roughness,metallic);
     }
 
-    // directional lights
-    for(int i = 0; i < 1; ++i) 
+    // directional light
     {
         vec4 lightSpacePos = directionLightMatrix * vec4(WorldPos,1.0);
 
-        vec3 L = normalize(-lightDirections[i]);
-        vec3 inRadiance = directionalLightColors[i] * (1.0-CalculateOcclusion(lightSpacePos,N,L));
+        vec3 L = normalize(-lightDirections[0]);
+        vec3 inRadiance = directionalLightColors[0] * CalculateOcclusion(lightSpacePos,N,L);
         Lo += outRadiance(L,V,N,F0,albedo,inRadiance,roughness,metallic);
     }
     return Lo;
@@ -208,7 +222,7 @@ vec3 IBL(vec3 N, vec3 V, vec3 R, vec3 F0, vec3 albedo, float ao, float roughness
 // Height fog formula from IQuilez
 // https://iquilezles.org/articles/fog/
 vec3 applyFog(vec3 col) {
-    float a = 0.05; // base fog intensity
+    float a = 0.01; // base fog intensity
     float b = 0.25; // height falloff term
 
     vec3 L = normalize(-lightDirections[0]);
@@ -225,8 +239,9 @@ vec3 applyFog(vec3 col) {
     
     float fogAmount = (a/b) * exp(-viewPos.y*b) * (1.0-exp(-t*rd.y*b))/rd.y;
 
-    float end = 512.0;
-    float start = 480.0;
+    float end = 4096.0;
+    float start = 3600.0;
+    fogAmount = max(fogAmount,min(1.,(t-start) / (end-start)));
 
     vec3  fogColor  = vec3(0.5,0.6,0.7);
     return mix( col, fogColor, clamp(fogAmount,0.,1.) );
@@ -235,6 +250,73 @@ vec3 applyFog(vec3 col) {
     return mix( col, fogColor, fogAmount );
     */
 }
+
+void getParticipatingMedia(out float sigmaS, out float sigmaE, in vec3 pos)
+{
+    float heightFog = 7.0;// + D_FOG_NOISE*3.0*clamp(displacementSimple(pos.xz*0.005 + iTime*0.01),0.0,1.0);
+    heightFog = 0.3*clamp((heightFog-pos.y/16.0)*1.0, 0.0, 1.0);
+    
+    const float fogFactor = 0.005;// + D_STRONG_FOG * 5.0;    
+    const float constantFog = 0.00005;
+
+    sigmaS = constantFog + heightFog*fogFactor;
+   
+    const float sigmaA = 0.0;
+    sigmaE = max(0.000000001, sigmaA + sigmaS); // to avoid division by zero extinction
+}
+
+float phaseFunction()
+{
+    return 1.0/(4.0*3.14);
+}
+
+// Volume integration algorithm from https://www.shadertoy.com/view/XlBSRz
+vec3 applyFogRaymarch(vec3 col) {
+    float a = 0.01; // base fog intensity
+    float b = 0.25; // height falloff term
+
+    vec3 L = normalize(-lightDirections[0]);
+
+    vec3 ro = viewPos;
+    vec3 rd = normalize(WorldPos -viewPos);
+    float t = length(WorldPos -viewPos);
+
+    float transmittance = 1.0;
+    vec3 inscattering  = vec3(0.0,0.0,0.0);
+
+    float sigmaS, sigmaE;
+
+    const int numIter = 100;
+    float stepsize = t / float(numIter);
+    float d = stepsize;
+    for(int i=0; i<numIter; i++) {
+        vec3 p = ro + d * rd;
+
+        getParticipatingMedia(sigmaS,sigmaE, p);
+
+        // Note - would be more efficient to march between 2 points in light space?
+        vec4 lightSpacePos = directionLightMatrix * vec4(p,1.0);
+        vec3 inRadiance = directionalLightColors[0] * CalculateVolumeOcclusion(lightSpacePos);
+
+        for(int i = 0; i < 4; ++i) 
+        {
+            float distance    = length(lightPositions[i] - WorldPos);
+            float attenuation = 1.0 / (distance * distance);
+            inRadiance += lightColors[i] * attenuation;
+        }
+
+        vec3 S = inRadiance *sigmaS * phaseFunction(); // * volumetricShadow
+        vec3 Sint = (S - S * exp(-sigmaE * stepsize)) / sigmaE; // integrate along current segment
+        inscattering += transmittance * Sint;
+
+        transmittance *= exp(-sigmaE * stepsize);
+
+        d+= stepsize;
+    }
+
+    return col*transmittance + inscattering;
+}
+
 
 vec3 CalculateLighting(vec3 N, vec3 albedo, float ao, float roughness, float metallic) {
     vec3 V = normalize(viewPos - WorldPos);
@@ -249,7 +331,7 @@ vec3 CalculateLighting(vec3 N, vec3 albedo, float ao, float roughness, float met
     // IBL Diffuse ambient term from https://learnopengl.com/PBR/IBL/Diffuse-irradiance
 
     vec3 ambient = IBL(N,V,R,F0, albedo, ao, roughness, metallic);
-    return applyFog(ambient + Lo);
+    return applyFogRaymarch(ambient + Lo);
 }
 
 vec3 ToneMap(vec3 color) {
