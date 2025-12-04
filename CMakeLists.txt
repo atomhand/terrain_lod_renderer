@@ -17,6 +17,7 @@ add_subdirectory("engine")
 
 add_executable(GpuProgrammingProject
     src/main.cpp
+    src/renderpasses.cpp
 )
 
 target_link_libraries(GpuProgrammingProject PRIVATE engine)

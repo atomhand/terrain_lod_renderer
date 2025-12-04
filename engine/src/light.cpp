@@ -1,7 +1,11 @@
 #include "light.h"
 #include "render_item.h"
 
-std::vector<size_t> Engine::DirectionalLight::MakeLightSpaceMatrix(Camera& camera, std::vector<Engine::RenderItem*> &shadowReceivers, std::vector<Engine::RenderItem*> &shadowCasters) {
+std::vector<size_t> Engine::DirectionalLight::MakeLightSpaceMatrix(Camera& camera,
+    std::vector<Engine::RenderItem*> &shadowReceivers,
+    std::vector<Engine::RenderItem*> &shadowCasters,
+    std::vector<AABB> &terrainAABBs,
+    std::vector<bool> terrainCullingResults) {
     glm::vec3 frustumCorners[8];
     glm::vec3 frustumCenter = camera.FrustumCorners(frustumCorners);
 
@@ -33,6 +37,25 @@ std::vector<size_t> Engine::DirectionalLight::MakeLightSpaceMatrix(Camera& camer
             zMax = std::max(zMax,-p.z);
         }
     }
+    // Terrain AABBs get special handling for now
+    for(int iTerrain = 0; iTerrain<terrainAABBs.size(); iTerrain++) {
+        bool passedCulling = terrainCullingResults[iTerrain];        
+        if(passedCulling) {
+            terrainAABBs[iTerrain].Corners(corners);
+            for(int i =0; i<8; i++) {
+                // Transform AABB corners into the light's coordinate system                    
+                glm::vec3 p = lightView * corners[i];
+
+                zMax = std::max(zMax,-p.z);
+                zMin = std::min(zMin,-p.z);
+                xMin = std::min(xMin,p.x);
+                yMin = std::min(yMin,p.y);            
+                xMax = std::max(xMax,p.x);
+                yMax = std::max(yMax,p.y);
+            }
+        }        
+    }
+
 
     lightProjection = glm::ortho(xMin,xMax,yMin,yMax,zMin,zMax);
     
@@ -40,17 +63,31 @@ std::vector<size_t> Engine::DirectionalLight::MakeLightSpaceMatrix(Camera& camer
     // are in front of the near plane
     std::vector<size_t> outShadowCasters;
     for(size_t iCaster =0; iCaster<shadowCasters.size(); iCaster++) {
-        shadowCasters[iCaster]->aabb().Corners(corners);
         glm::mat4 MV = lightView * shadowCasters[iCaster]->globalTransform;
         glm::mat4 MVP = lightProjection * MV;
         // We can skip shadowcasters that are outside the x,y bounds of the projection
         if(FrustumAABBTestIgnoreZ(MVP, shadowCasters[iCaster]->aabb())) {
+            shadowCasters[iCaster]->aabb().Corners(corners);
             outShadowCasters.push_back(iCaster);
             for(int i =0; i<8; i++) {
                 glm::vec3 p = MV * corners[i];
                 zMin = std::min(zMin,-p.z);
             }
         }                
+    }    
+    lightSpaceMatrix = lightProjection * lightView;
+    for(int iTerrain = 0; iTerrain<terrainAABBs.size(); iTerrain++) {
+        bool passedCulling = terrainCullingResults[iTerrain];        
+        if(!passedCulling) {
+            auto& aabb = terrainAABBs[iTerrain];
+            if(FrustumAABBTestIgnoreZ(lightSpaceMatrix, aabb)) {
+                aabb.Corners(corners);
+                for(int i =0; i<8; i++) {
+                    glm::vec3 p = lightView * corners[i];
+                    zMin = std::min(zMin,-p.z);
+                }
+            }   
+        }        
     }
 
     lightProjection = glm::ortho(xMin,xMax,yMin,yMax,zMin,zMax);

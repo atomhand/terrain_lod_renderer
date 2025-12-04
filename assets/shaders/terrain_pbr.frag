@@ -3,7 +3,6 @@
 #include "pbr_shared.glsl"
 
 out vec4 outputColor;
-in vec2 TexCoords;
 
 layout(binding=0) uniform sampler2D diffuseTex;
 layout(binding=1) uniform sampler2D normalMap;

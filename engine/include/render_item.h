@@ -15,7 +15,7 @@ namespace Engine
     class RenderItem : public SceneNode {
     public:
         std::shared_ptr<Material> material;
-        RenderPass renderPass;
+        RenderPass renderPass = RenderPass::OPAQUE;
 
         Mesh mesh;
 

@@ -14,6 +14,7 @@
 #include "duck.h"
 #include "windmill.h"
 #include "crane.h"
+#include "fly_camera.h"
 #include "terrain.h"
 
 #include "material.h"
@@ -32,12 +33,8 @@ int main()
 	RenderItem* sphere;
 	try
 	{
-		float terrain_cells = 2048;
-		float cell_size = 16.0;
-
-		CraneCamera* bird = new CraneCamera();
-		// Main camera controller
-		world.scenegraph.SetParent(bird, world.scenegraph.root);
+		int terrain_cells = 512;
+		float cell_size = 128.0;
 
 		// Sun
 		Engine::DirectionalLight* sun = new Engine::DirectionalLight();
@@ -53,7 +50,11 @@ int main()
 		world.scenegraph.SetParent(terrain, world.scenegraph.root);
 		world.scenegraph.SetParent(new PbrSphereGrid(8,8), world.scenegraph.root);
 
-		bird->far = terrain->SuggestFarPlane();
+		//CraneCamera* cam = new CraneCamera();
+		FlyCamera* cam = new FlyCamera();
+		// Main camera controller
+		world.scenegraph.SetParent(cam, world.scenegraph.root);
+		cam->far = terrain->SuggestFarPlane();
 
 		sphere = new RenderItem();
 		sphere->mesh = Sphere(32,32);

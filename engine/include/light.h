@@ -34,7 +34,7 @@ namespace Engine {
 
         // Build the matrix which defines the projection from light space
         // This should be called once per frame, 
-        std::vector<size_t> MakeLightSpaceMatrix(Camera& camera, std::vector<RenderItem*> &shadowReceivers, std::vector<RenderItem*> &shadowCasters);
+        std::vector<size_t> MakeLightSpaceMatrix(Camera& camera, std::vector<RenderItem*> &shadowReceivers, std::vector<RenderItem*> &shadowCasters, std::vector<AABB> &terrainAABBs, std::vector<bool> terrainCullingResults);
 
         glm::mat4 lightSpaceMatrix;
 
