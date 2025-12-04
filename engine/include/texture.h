@@ -44,16 +44,19 @@ namespace Engine {
             GLsizei layerCount = 2;
             GLsizei mipLevelCount = 1;
             GLuint textureObject;
-            GLenum format;
+            GLenum internalFormat;
+
+            GLenum filterMode = GL_LINEAR;
 
             void Apply() {
                 glBindTexture(GL_TEXTURE_2D_ARRAY,textureObject);
-                glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipLevelCount, format, width, height, layerCount+1);
+                glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipLevelCount, internalFormat, width, height, layerCount);
+                //glTexImage3D(GL_TEXTURE_2D_ARRAY,0,GL_RGBA16, width, height, layerCount, 0, GL_RGBA,GL_FLOAT, nullptr);
 
-                glTexParameteri(GL_TEXTURE_2D_ARRAY,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D_ARRAY,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D_ARRAY,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
-                glTexParameteri(GL_TEXTURE_2D_ARRAY,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D_ARRAY,GL_TEXTURE_MIN_FILTER,filterMode);
+                glTexParameteri(GL_TEXTURE_2D_ARRAY,GL_TEXTURE_MAG_FILTER,filterMode);
+                glTexParameteri(GL_TEXTURE_2D_ARRAY,GL_TEXTURE_WRAP_S,GL_CLAMP);
+                glTexParameteri(GL_TEXTURE_2D_ARRAY,GL_TEXTURE_WRAP_T,GL_CLAMP);
             }
             
             TextureData() {
@@ -72,12 +75,18 @@ namespace Engine {
             data = std::make_shared<TextureData>();
         }
 
-        void Configure(GLsizei mipLevelCount, GLenum format, GLsizei width, GLsizei height, GLsizei layerCount) {
+        // Sets the filter mode of the texture
+        // Should be called before calling Configure
+        void SetFilterMode(GLenum filterMode) {
+            data->filterMode = filterMode;
+        }
+
+        void Configure(GLsizei mipLevelCount, GLenum internalFormat, GLsizei width, GLsizei height, GLsizei layerCount) {
             data->width = width;
             data->height = height;
             data->layerCount = layerCount;
             data->mipLevelCount = mipLevelCount;
-            data->format = format;
+            data->internalFormat = internalFormat;
             data->Apply();
         }
 
