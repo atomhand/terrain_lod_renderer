@@ -19,7 +19,7 @@ void main()
     worldPos/= worldPos.w;
     vec3  fogColor  = vec3(0.5,0.6,0.7);
     float threshold = 128.0;
-    envColor = mix(fogColor,envColor, clamp((worldPos.y-threshold)/threshold,0.0,1.0));
+    //envColor = mix(fogColor,envColor, clamp((worldPos.y-threshold)/threshold,0.0,1.0));
     
     // HDR tonemap and gamma correct
     envColor = envColor / (envColor + vec3(1.0));

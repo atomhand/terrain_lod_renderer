@@ -176,6 +176,40 @@ float CalculateVolumeOcclusion(vec4 lightSpacePos) {
     return texture(shadowMap, vec3(uv.xy,fragDepth));
 }
 
+
+void getParticipatingMedia(out float sigmaS, out float sigmaE, in vec3 pos)
+{
+    float heightFog = 7.0;// + D_FOG_NOISE*3.0*clamp(displacementSimple(pos.xz*0.005 + iTime*0.01),0.0,1.0);
+    heightFog = 0.3*clamp((heightFog-pos.y/16.0)*1.0, 0.0, 1.0);
+    
+    const float fogFactor = 0.005;// + D_STRONG_FOG * 5.0;    
+    const float constantFog = 0.00005;
+
+    sigmaS = constantFog + heightFog*fogFactor;
+   
+    const float sigmaA = 0.0;
+    sigmaE = max(0.000000001, sigmaA + sigmaS); // to avoid division by zero extinction
+}
+
+float phaseFunction()
+{
+    return 1.0/(4.0*3.14);
+}
+
+float volumetricShadow(vec3 from, vec3 to) {
+    const float numStep = 16.0;
+    float shadow = 1.0;
+    float sigmaS = 0.0;
+    float sigmaE = 0.0;
+    float dd = length(to-from)/numStep;
+    for(float s=0.5; s<(numStep-0.1); s+=1.0) {
+        vec3 pos = from+(to-from)*(s/(numStep));
+        getParticipatingMedia(sigmaS,sigmaE,pos);
+        shadow *= exp(-sigmaE*dd);
+    }
+    return shadow;
+}
+
 vec3 DirectLightContribution(vec3 N, vec3 V, vec3 F0, vec3 albedo, float roughness, float metallic) {
     vec3 Lo = vec3(0.0);
     for(int i = 0; i < 4; ++i) 
@@ -184,7 +218,7 @@ vec3 DirectLightContribution(vec3 N, vec3 V, vec3 F0, vec3 albedo, float roughne
         vec3 L = normalize(lightPositions[i] - WorldPos);
         float distance    = length(lightPositions[i] - WorldPos);
         float attenuation = 1.0 / (distance * distance);
-        vec3 inRadiance     = lightColors[i] * attenuation;
+        vec3 inRadiance     = lightColors[i] * attenuation ;
         Lo += outRadiance(L,V,N,F0,albedo,inRadiance,roughness,metallic);
     }
 
@@ -193,7 +227,7 @@ vec3 DirectLightContribution(vec3 N, vec3 V, vec3 F0, vec3 albedo, float roughne
         vec4 lightSpacePos = directionLightMatrix * vec4(WorldPos,1.0);
 
         vec3 L = normalize(-lightDirections[0]);
-        vec3 inRadiance = directionalLightColors[0] * CalculateOcclusion(lightSpacePos,N,L);
+        vec3 inRadiance = directionalLightColors[0] * CalculateOcclusion(lightSpacePos,N,L) * volumetricShadow(WorldPos,WorldPos-lightDirections[0]*32.0);
         Lo += outRadiance(L,V,N,F0,albedo,inRadiance,roughness,metallic);
     }
     return Lo;
@@ -251,25 +285,6 @@ vec3 applyFog(vec3 col) {
     */
 }
 
-void getParticipatingMedia(out float sigmaS, out float sigmaE, in vec3 pos)
-{
-    float heightFog = 7.0;// + D_FOG_NOISE*3.0*clamp(displacementSimple(pos.xz*0.005 + iTime*0.01),0.0,1.0);
-    heightFog = 0.3*clamp((heightFog-pos.y/16.0)*1.0, 0.0, 1.0);
-    
-    const float fogFactor = 0.005;// + D_STRONG_FOG * 5.0;    
-    const float constantFog = 0.00005;
-
-    sigmaS = constantFog + heightFog*fogFactor;
-   
-    const float sigmaA = 0.0;
-    sigmaE = max(0.000000001, sigmaA + sigmaS); // to avoid division by zero extinction
-}
-
-float phaseFunction()
-{
-    return 1.0/(4.0*3.14);
-}
-
 // Volume integration algorithm from https://www.shadertoy.com/view/XlBSRz
 vec3 applyFogRaymarch(vec3 col) {
     float a = 0.01; // base fog intensity
@@ -289,6 +304,7 @@ vec3 applyFogRaymarch(vec3 col) {
     const int numIter = 100;
     float stepsize = t / float(numIter);
     float d = stepsize;
+    vec3 ambient = texture(irradianceMap, vec3(0,1,0)).rgb;
     for(int i=0; i<numIter; i++) {
         vec3 p = ro + d * rd;
 
@@ -296,14 +312,17 @@ vec3 applyFogRaymarch(vec3 col) {
 
         // Note - would be more efficient to march between 2 points in light space?
         vec4 lightSpacePos = directionLightMatrix * vec4(p,1.0);
-        vec3 inRadiance = directionalLightColors[0] * CalculateVolumeOcclusion(lightSpacePos);
+        vec3 inRadiance = ambient + directionalLightColors[0] * CalculateVolumeOcclusion(lightSpacePos)  * volumetricShadow(WorldPos,WorldPos-lightDirections[0]*32.0);
 
+        /*
+        // Evaluate point lights
         for(int i = 0; i < 4; ++i) 
         {
             float distance    = length(lightPositions[i] - WorldPos);
             float attenuation = 1.0 / (distance * distance);
             inRadiance += lightColors[i] * attenuation;
         }
+        */
 
         vec3 S = inRadiance *sigmaS * phaseFunction(); // * volumetricShadow
         vec3 Sint = (S - S * exp(-sigmaE * stepsize)) / sigmaE; // integrate along current segment
