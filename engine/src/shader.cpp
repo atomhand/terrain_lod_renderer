@@ -4,62 +4,63 @@
 
 #include <iostream>
 
-Engine::Shader::Shader(const char* vertexPath, const char* fragmentPath)
-{
-    data = std::make_shared<ShaderId>();
-
-    // Process the relative paths into absolute paths
-    std::string shadersDirectory = AssetHelper::assetPath("shaders/").string();
-    std::string fullVertexPath = AssetHelper::assetPath(vertexPath).string();
-    std::string fullFragmentPath = AssetHelper::assetPath(fragmentPath).string();
+void CreateShader(GLenum type, const char* path, GLuint& object) {
+    std::string shadersDirectory = Engine::AssetHelper::assetPath("shaders/").string();
+    std::string fullPath = Engine::AssetHelper::assetPath(path).string();
 
     // STB include 
     char error[256];
-    char* vShaderCode = stb_include_file(fullVertexPath.c_str(), "", shadersDirectory.c_str(), error);
-    if(!vShaderCode) {
-        std::cout << "ERROR::SHADER::VERTEX::LOADING_FAILED\n" << error << std::endl;
-    }
-    char* fShaderCode = stb_include_file(fullFragmentPath.c_str(), "", shadersDirectory.c_str(), error);
-    if(!fShaderCode) {
-        std::cout << "ERROR::SHADER::VERTEX::LOADING_FAILED\n" << error << std::endl;
-    }
-    
-    // Attempt to compile the shaders
-    GLuint vertex, fragment;
+    char* shaderCode = stb_include_file(fullPath.c_str(), "", shadersDirectory.c_str(), error);
+    if(!shaderCode) {
+        std::cout << "ERROR::SHADER::?::LOADING_FAILED\n" << error << std::endl;
+    }    
+
     int success;
     char infoLog[512];
     
     // vertex Shader
-    vertex = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex, 1, &vShaderCode, NULL);
-    glCompileShader(vertex);
+    object = glCreateShader(type);
+    glShaderSource(object, 1, &shaderCode, NULL);
+    glCompileShader(object);
     // print compile errors if any
-    glGetShaderiv(vertex, GL_COMPILE_STATUS, &success);
+    glGetShaderiv(object, GL_COMPILE_STATUS, &success);
     if(!success)
     {
-        glGetShaderInfoLog(vertex, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << vertexPath << "\n" << infoLog << std::endl;
+        glGetShaderInfoLog(object, 512, NULL, infoLog);
+        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << path << "\n" << infoLog << std::endl;
     };
-    free(vShaderCode);
+    free(shaderCode);
+}
 
-     // fragment Shader
-    fragment = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment, 1, &fShaderCode, NULL);
-    glCompileShader(fragment);
-    // print compile errors if any
-    glGetShaderiv(fragment, GL_COMPILE_STATUS, &success);
-    if(!success)
-    {
-        glGetShaderInfoLog(fragment, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::SHADER::COMPILATION_FAILED\n" << fragmentPath << "\n" << infoLog << std::endl;
-    };
-    free(fShaderCode);
+Engine::Shader::Shader(const char* vertexPath, const char* fragmentPath, const char* tessControlPath, const char* tessEvalPath)
+{
+    data = std::make_shared<ShaderId>();
+
+    GLuint vertex, fragment;
+    CreateShader(GL_VERTEX_SHADER, vertexPath, vertex);
+    CreateShader(GL_FRAGMENT_SHADER, fragmentPath, fragment);
+
+    GLuint tessControl, tessEval;
+    if(tessControlPath != nullptr) {
+        assert(tessEvalPath != nullptr);
+        CreateShader(GL_TESS_CONTROL_SHADER, tessControlPath,tessControl);
+        CreateShader(GL_TESS_EVALUATION_SHADER, tessEvalPath,tessEval);
+    }
 
     GLuint id = programId();
+
+    int success;
+    char infoLog[512];
 
     // shader Program
     glAttachShader(id, vertex);
     glAttachShader(id, fragment);
+    if(tessControlPath != nullptr) {
+        glAttachShader(id, tessControl);
+        glAttachShader(id, tessEval);
+    }
+
+
     glLinkProgram(id);
     // print linking errors if any
     glGetProgramiv(id, GL_LINK_STATUS, &success);

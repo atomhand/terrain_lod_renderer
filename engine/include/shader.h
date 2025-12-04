@@ -30,7 +30,11 @@ namespace Engine
             return data->programId;
         }
     public:
-        Shader(const char* vertexPath, const char* fragmentPath);
+        Shader() {};
+
+        Shader(const char* vertexPath, const char* fragmentPath, const char* tessControlPath  = nullptr, const char* tessEvalPath  = nullptr);
+
+        void Load(const char* vertexPath, const char* fragmentPath);
 
         // use/active the shader
         void use();
