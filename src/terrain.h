@@ -182,30 +182,6 @@ class Terrain : public Engine::SceneNode {
     FastNoiseLite noise;
     float heightScale = 1024.0;
 
-    float Height(float x, float z) {
-        float freq = 1.0 / 64.0;
-        float amp = 1.0;
-
-        float result = 0.f;
-        float normalise_sum = 0.f;
-
-        int octaves = 8;
-        for(int i =0; i<octaves; i++) {
-            result += noise.GetNoise(x * freq, z * freq) * amp;
-
-            normalise_sum += amp;
-            freq *= 2.f;
-            amp *= 0.5f;
-        }
-        result /= normalise_sum;
-        float fac = 3.0;
-        if(result > 0.f) result = pow(result,fac);
-        // Offset helps to reduce Z-fighting between terrain and water
-        result += 0.005;
-
-        return heightScale * result;
-    }
-
     Engine::Mesh MakeWaterMesh() {
         std::vector<glm::vec3> verts;
         std::vector<glm::vec3> normals;
@@ -260,6 +236,30 @@ public:
         if(regenCount > 0) {
             std::cout << "Regenerated " << regenCount << " chunks | " << cX << ", " << cZ << " (" << hW << ")" << std::endl;
         }
+    }
+
+    float Height(float x, float z) {
+        float freq = 1.0 / 64.0;
+        float amp = 1.0;
+
+        float result = 0.f;
+        float normalise_sum = 0.f;
+
+        int octaves = 8;
+        for(int i =0; i<octaves; i++) {
+            result += noise.GetNoise(x * freq, z * freq) * amp;
+
+            normalise_sum += amp;
+            freq *= 2.f;
+            amp *= 0.5f;
+        }
+        result /= normalise_sum;
+        float fac = 3.0;
+        if(result > 0.f) result = pow(result,fac);
+        // Offset helps to reduce Z-fighting between terrain and water
+        result += 0.005;
+
+        return heightScale * result;
     }
 
     float SuggestFarPlane() {

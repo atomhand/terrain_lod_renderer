@@ -15,7 +15,7 @@ public:
 		float scale = 2.4 / width;
 
 		SceneNode* container = new SceneNode();
-		container->localTransform = glm::translate(glm::mat4(1.0f), glm::vec3(10.0,0.0,0.0)) * glm::rotate(glm::mat4(1.0f), -1.57f, glm::vec3(1.f,0.f,0.f)) *  glm::scale(glm::mat4(1.0f), glm::vec3(scale));
+		container->localTransform = glm::rotate(glm::mat4(1.0f), glm::radians(180.f), glm::vec3(0.f,1.f,0.f)) * glm::rotate(glm::mat4(1.0f), glm::radians(-90.f), glm::vec3(1.f,0.f,0.f)) *  glm::scale(glm::mat4(1.0f), glm::vec3(scale));
 		sceneGraph.SetParent(container,this);
 
 		Engine::PbrMaterial craneMaterial(shader);

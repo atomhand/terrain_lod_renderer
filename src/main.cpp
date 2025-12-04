@@ -7,7 +7,7 @@
 #include "assimp_wrapper.h"
 #include "renderpasses.h"
 
-#include "fly_camera.h"
+#include "crane_camera.h"
 #include "world.h"
 #include "demo_world.h"
 
@@ -35,9 +35,9 @@ int main()
 		float terrain_cells = 2048;
 		float cell_size = 16.0;
 
-		FlyCamera* flyCam = new FlyCamera();
+		CraneCamera* bird = new CraneCamera();
 		// Main camera controller
-		world.scenegraph.SetParent(flyCam, world.scenegraph.root);
+		world.scenegraph.SetParent(bird, world.scenegraph.root);
 
 		// Sun
 		Engine::DirectionalLight* sun = new Engine::DirectionalLight();
@@ -49,12 +49,11 @@ int main()
 		Engine::Shader pbr_shader = Engine::Shader("shaders/pbr.vert", "shaders/pbr.frag");
 		world.scenegraph.SetParent(new Duck(pbr_shader), world.scenegraph.root);
 		world.scenegraph.SetParent(new Windmill(pbr_shader), world.scenegraph.root);
-		world.scenegraph.SetParent(new Crane(), world.scenegraph.root);
 		Terrain* terrain = new Terrain(terrain_cells,cell_size);
 		world.scenegraph.SetParent(terrain, world.scenegraph.root);
 		world.scenegraph.SetParent(new PbrSphereGrid(8,8), world.scenegraph.root);
 
-		flyCam->far = terrain->SuggestFarPlane();
+		bird->far = terrain->SuggestFarPlane();
 
 		sphere = new RenderItem();
 		sphere->mesh = Sphere(32,32);

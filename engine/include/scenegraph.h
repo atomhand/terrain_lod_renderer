@@ -4,6 +4,7 @@
 #include <concepts>
 #include <cassert>
 #include <stack>
+#include <queue>
 #include <glm/glm.hpp>
 
 namespace Engine {
@@ -187,6 +188,37 @@ namespace Engine {
         // Returns a list of nodes in the graph that match the derived type T
         template<DerivedFromSceneNode T> std::vector<T*> Filter() {
             return Filter<T>(root);
+        }
+
+        // Returns the first node in the subtree that matches derived type T
+        // (or nullptr if there is none)
+        // Breadth first traversal
+        template<DerivedFromSceneNode T> T* First(SceneNode* subtree) {            
+            // Depth first traversal
+            std::queue<SceneNode*> toProcess;
+            toProcess.push(subtree);
+            while(!toProcess.empty()) {
+                SceneNode* parent = toProcess.front();
+                toProcess.pop();
+
+                for(auto child : parent->children) {
+                    if(child->enabled) {
+                        if(T* t= dynamic_cast<T*>(child); t != nullptr)
+                            return t;
+                        if(child->children.size() > 0)
+                            toProcess.push(child);
+                    }
+                }         
+            }
+
+            return nullptr;
+        }
+
+        // Returns the first node in the scene that matches derived type T
+        // (or nullptr if there is none)
+        // Breadth first traversal
+        template<DerivedFromSceneNode T> T* First() {
+            return First<T>(root);
         }
 
         // Returns a list of all nodes
