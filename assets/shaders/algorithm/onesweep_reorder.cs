@@ -12,12 +12,13 @@ layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
 #include "algorithm/onesweep_shared.glsl"
 
+uniform int wordOffset;
+uniform int currentPass;
+
 shared uint sharedBlockId[1];
 shared uint prefixShared[WORD_SIZE];
 shared uint histogramShared[WORD_SIZE * NUM_WARPS];
 shared uint internalBinOffset[WORD_SIZE];
-uniform int wordOffset;
-uniform int currentPass;
 
 shared uint sortedKeys[PARTITION_SIZE];
 
@@ -31,16 +32,6 @@ layout(binding = 4, std430) buffer blockCounterSsbo {
     uint blockCounter[];
 };
 
-layout(binding = 5, std430) buffer debugSsbo1 {
-    uint debugWarpBaseOffset[];
-};
-layout(binding = 6, std430) buffer debugSsbo2 {
-    uint debugWarpLocalOffset[];
-};
-layout(binding = 7, std430) buffer debugSsbo3 {
-    uint debugGlobalOffset[];
-};
-
 uint GetPrefix(uint startBlock, uint word) {
     uint accumulatedSum = 0;
     for(int block = int(startBlock)-1; block >= 0; block--) {
@@ -48,8 +39,9 @@ uint GetPrefix(uint startBlock, uint word) {
 
         uint value, status;
         do {
-            // atomicAdd(x, 0) is necessary to force a fresh atomic read
-            // (Vulkan offers atomicLoad as an alternative)
+            // atomicAdd(x, 0) is necessary to force a fresh atomic read on each loop iteration
+            // otherwise the GPU is "smart" and uses a cached value
+            // (Vulkan GLSL has an extension that exposes this as atomicLoad)
             DecodeBlockHistogramEntry(atomicAdd(blockLocalHistogram[index], 0),
                 value, status);
         } while(status == 0);
@@ -57,7 +49,7 @@ uint GetPrefix(uint startBlock, uint word) {
         if(status == 1) {
             // Entry contains the sum for the previous block
             accumulatedSum += value;
-        } else { // status == 2     
+        } else { // status == 2     gop
             // Entry contains the global prefix       
             return value + accumulatedSum;
         }
@@ -121,18 +113,12 @@ void main() {
     
     barrier();
     uint blockId = sharedBlockId[0];
-    uint partitionKeyOffset = blockId * PARTITION_SIZE;
-    uint warpKeyOffset = gl_SubgroupID * 32 * KEYS_PER_THREAD + gl_SubgroupInvocationID;
-    uint blockHistogramOffset = blockId * WORD_SIZE;
+    uint baseKeyOffset = blockId * PARTITION_SIZE + gl_SubgroupID * 32 * KEYS_PER_THREAD + gl_SubgroupInvocationID;
 
     uint keys[KEYS_PER_THREAD];
     for(uint i =0; i<KEYS_PER_THREAD; i++) {        
-        uint keyId = partitionKeyOffset + warpKeyOffset + i * 32;
-        if(keyId < totalCount) {
-            keys[i] = inputKeys[keyId];
-        } else {
-            keys[i] = 0xffffffff;
-        }
+        uint keyId = baseKeyOffset + i * 32;
+        keys[i] = keyId < totalCount ? inputKeys[keyId] : 0xffffffff;
     }
 
     uint warpLocalOffsets[KEYS_PER_THREAD];
@@ -171,7 +157,6 @@ void main() {
         for(int i =0; i<WORD_SIZE; i++) {            
             uint tmp = internalBinOffset[i];
             internalBinOffset[i] = total;
-            //prefixShared[i] -= internalBinOffset[i];
             total += tmp;
         }
     }
@@ -179,8 +164,7 @@ void main() {
     barrier();
 
     prefixShared[gl_LocalInvocationIndex] = prefix +
-        histogram[gl_LocalInvocationIndex + currentPass * WORD_SIZE] ;//-
-        //internalBinOffset[gl_LocalInvocationIndex];
+        histogram[gl_LocalInvocationIndex + currentPass * WORD_SIZE] - internalBinOffset[gl_LocalInvocationIndex];
 
     for(uint i =0; i<KEYS_PER_THREAD; i++) {      
         uint word = (keys[i] >> wordOffset) & WORD_MASK;
@@ -193,28 +177,12 @@ void main() {
 
     barrier();
 
-/*
     for(uint i =0; i<KEYS_PER_THREAD; i++) {
         uint idx = gl_LocalInvocationIndex*KEYS_PER_THREAD + i;
-        uint key = sortedKeys[idx];
-        uint word = (key >> wordOffset) & WORD_MASK;
+        uint word = (sortedKeys[idx] >> wordOffset) & WORD_MASK;
 
         uint offset = prefixShared[word] + idx;
         if(offset < totalCount)
-            outputKeys[offset] = sortedKeys[idx];// + 10000;
-    }
-    */
-
-    for(uint i=0; i<KEYS_PER_THREAD;i++) {
-        uint word = (keys[i] >> wordOffset) & WORD_MASK;
-        uint warpBaseOffset = histogramShared[gl_SubgroupID * WORD_SIZE + word];
-        uint offset = prefixShared[word]+ warpBaseOffset + warpLocalOffsets[i];
-        if(offset < totalCount)
-            outputKeys[offset] = keys[i];
-
-        //outputKeys[partitionKeyOffset+i*256] = keys[i];
-        //debugWarpBaseOffset[partitionKeyOffset+i*256] = warpBaseOffset;
-        //debugWarpLocalOffset[partitionKeyOffset+i*256] = warpLocalOffsets[i];
-        //debugGlobalOffset[partitionKeyOffset+i*256] = prefixShared[word];
+            outputKeys[offset] = sortedKeys[idx];
     }
 }

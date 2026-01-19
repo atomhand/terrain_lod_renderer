@@ -35,12 +35,27 @@ namespace Engine {
 
         StorageBuffer scratchBuffer = StorageBuffer(MAX_NUM * sizeof(unsigned int), 0);
 
-        StorageBuffer debugWarpBaseOffset = StorageBuffer(MAX_NUM * sizeof(unsigned int), 0);
-        StorageBuffer debugWarpLocalOffset = StorageBuffer(MAX_NUM * sizeof(unsigned int), 0);
-        StorageBuffer debugGlobalOffset = StorageBuffer(MAX_NUM * sizeof(unsigned int), 0);
-
-
         StorageBuffer blockCounter = StorageBuffer(sizeof(unsigned int), 0);
+
+        GLuint countKernelCountLocation;
+        GLuint reorderKernelCountLocation;
+        GLuint reorderKernelCurrentPassLocation;
+        GLuint reorderKernelWordOffsetLocation;
+
+        GLuint countProgram;
+        GLuint reorderProgram;
+        GLuint prefixProgram;
+
+        GpuSort() {
+            countProgram = countKernel.programId();
+            reorderProgram = reorderKernel.programId();
+            prefixProgram = globalPrefixKernel.programId();
+
+            countKernelCountLocation = glGetUniformLocation(countKernel.programId(), "totalCount");
+            reorderKernelCountLocation = glGetUniformLocation(reorderKernel.programId(), "totalCount");
+            reorderKernelCurrentPassLocation = glGetUniformLocation(reorderKernel.programId(), "currentPass");
+            reorderKernelWordOffsetLocation = glGetUniformLocation(reorderKernel.programId(), "wordOffset");
+        }
 
         void Sort(StorageBuffer& input, StorageBuffer& output, int count, int passes = NUM_PASSES) {
             assert(GLAD_GL_KHR_shader_subgroup);
@@ -50,30 +65,27 @@ namespace Engine {
             blockLocalHistogram.BindBase(3);
             blockCounter.BindBase(4);
 
-            debugWarpBaseOffset.BindBase(5);
-            debugWarpLocalOffset.BindBase(6);
-            debugGlobalOffset.BindBase(7);
-
             glClearNamedBufferData(histogram.object(), GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
+            //glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+            unsigned int dispatchNumBlocks = (count+PARTITION_SIZE-1)/PARTITION_SIZE;
+            assert(dispatchNumBlocks <= MAX_NUM_BLOCKS);
+
+            glUseProgram(countProgram);
+            glUniform1i(countKernelCountLocation, count);
+            glDispatchCompute(dispatchNumBlocks,1,1);
+
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-            countKernel.use();
-            countKernel.setInt("totalCount", count);
-            countKernel.Dispatch(std::ceil(count / double(PARTITION_SIZE)), 1, 1);
-
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-            globalPrefixKernel.Dispatch(NUM_PASSES,1,1);
-
-            int numReorderBlocks = std::ceil(count / double(PARTITION_SIZE));
-            assert(numReorderBlocks <= MAX_NUM_BLOCKS);
-
-            reorderKernel.use();
-            reorderKernel.setInt("totalCount", count);
+            glUseProgram(prefixProgram);
+            glDispatchCompute(1,1,1);
+            
+            glUseProgram(reorderProgram);            
+            glUniform1i(reorderKernelCountLocation, count);
             for(int i = 0; i<passes; i++) {
-                glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
-                int zero = 0;
-                glClearNamedBufferSubData(blockLocalHistogram.object(), GL_R8UI, 0, numReorderBlocks*256*sizeof(int), GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
-                glClearNamedBufferData(blockCounter.object(), GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &zero);
+                //glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
+                glClearNamedBufferSubData(blockLocalHistogram.object(), GL_R8UI, 0, dispatchNumBlocks*256*sizeof(int), GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
+                glClearNamedBufferData(blockCounter.object(), GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
                 
                 if(passes == 1) {                    
                     input.BindBase(0);
@@ -90,11 +102,11 @@ namespace Engine {
                     output.BindBase(1);
                 }
                 
-                glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-                reorderKernel.use();
-                reorderKernel.setInt("currentPass", i);
-                reorderKernel.setInt("wordOffset", WORD_BITS * i);
-                glDispatchCompute(std::ceil(count / double(PARTITION_SIZE)), 1, 1);
+                //glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+                
+                glUniform1i(reorderKernelCurrentPassLocation, i);
+                glUniform1i(reorderKernelWordOffsetLocation,  WORD_BITS * i);
+                glDispatchCompute(dispatchNumBlocks, 1, 1);
             }
         }
     };
@@ -103,18 +115,13 @@ namespace Engine {
     private:
         GpuSort m_Sorter;
 
-        int count = 100000000;
-        int countNum = 1;
+        int count;
+        int countNum = 10;
         int countExp = 6;
         int activeBits = 32;
 
         std::vector<unsigned int> inputValues;
         std::vector<unsigned int> outputValues;
-
-        std::vector<unsigned int> debugWarpBaseOffset;
-        std::vector<unsigned int> debugWarpLocalOffset;
-        std::vector<unsigned int> debugGlobalOffset; 
-
 
         //std::vector<unsigned int> blockHistograms;
         //std::vector<unsigned int> histogram;
@@ -163,20 +170,12 @@ namespace Engine {
 
             if(readback) {
                 outputValues.resize(inputValues.size());
-                debugWarpBaseOffset.resize(inputValues.size());
-                debugWarpLocalOffset.resize(inputValues.size());
-                debugGlobalOffset.resize(inputValues.size());
                 //histogram.resize(GpuSort::NUM_PASSES * GpuSort::WORD_SIZE);
                 //int numBlocks = std::ceil(inputValues.size() / double(GpuSort::PARTITION_SIZE));
                 //blockHistograms.resize(numBlocks * GpuSort::WORD_SIZE);
                 glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
                 //m_Sorter.histogram.Readback<unsigned int>(histogram.data(), GpuSort::NUM_PASSES * GpuSort::WORD_SIZE, 0);
                 //m_Sorter.blockLocalHistogram.Readback<unsigned int>(blockHistograms.data(), numBlocks * GpuSort::WORD_SIZE, 0);
-
-
-                m_Sorter.debugWarpBaseOffset.Readback<unsigned int>(debugWarpBaseOffset.data(), outputValues.size(), 0);
-                m_Sorter.debugWarpLocalOffset.Readback<unsigned int>(debugWarpLocalOffset.data(), outputValues.size(), 0);
-                m_Sorter.debugGlobalOffset.Readback<unsigned int>(debugGlobalOffset.data(), outputValues.size(), 0);
 
                 outputBuffer.Readback<unsigned int>(outputValues.data(), outputValues.size(), 0);
                 sortCorrect = CheckSortResult();
@@ -260,7 +259,7 @@ namespace Engine {
                 ImGui::SliderInt("Active Bits", &activeBits, 1, 32);
 
                 if(ImGui::CollapsingHeader("Values")) {
-                    if(ImGui::BeginTable("valuesTable", 5)) {
+                    if(ImGui::BeginTable("valuesTable", 2)) {
                         ImGui::TableSetupColumn("input", ImGuiTableColumnFlags_WidthStretch);                
                         ImGui::TableSetupColumn("output", ImGuiTableColumnFlags_WidthStretch); 
 
@@ -269,12 +268,6 @@ namespace Engine {
                         ImGui::Text("Input");
                         ImGui::TableSetColumnIndex(1);
                         ImGui::Text("Output");
-                        ImGui::TableSetColumnIndex(2);
-                        ImGui::Text("GLobal offset");
-                        ImGui::TableSetColumnIndex(3);
-                        ImGui::Text("Warp base offset");
-                        ImGui::TableSetColumnIndex(4);
-                        ImGui::Text("Warp internal offset");
 
                         int n = std::min(outputValues.size(), (size_t)5000);
                         for(int i =0; i<n; i++) {               
@@ -284,15 +277,6 @@ namespace Engine {
 
                             ImGui::TableSetColumnIndex(1);
                             ImGui::Text("%u", outputValues[i]);
-
-                            ImGui::TableSetColumnIndex(2);
-                            ImGui::Text("%u", debugGlobalOffset[i]);
-
-                            ImGui::TableSetColumnIndex(3);
-                            ImGui::Text("%u", debugWarpBaseOffset[i]);
-
-                            ImGui::TableSetColumnIndex(4);
-                            ImGui::Text("%u", debugWarpLocalOffset[i]);
                         }
 
                         ImGui::EndTable();
