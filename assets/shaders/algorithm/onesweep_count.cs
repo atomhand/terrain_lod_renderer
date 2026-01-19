@@ -32,4 +32,8 @@ void main() {
     for(int i =0; i<NUM_PASSES; i++) {
         atomicAdd(histogram[gl_LocalInvocationIndex*NUM_PASSES+i], histogramShared[gl_LocalInvocationIndex*NUM_PASSES+i]);
     }
+
+    if(gl_GlobalInvocationID.x == 0) {
+        blockCounter[0] = 0;
+    }
 }

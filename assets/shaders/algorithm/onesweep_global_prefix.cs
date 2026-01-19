@@ -12,6 +12,8 @@ layout(local_size_x = WORD_SIZE * NUM_PASSES, local_size_y = 1, local_size_z = 1
 shared uint[NUM_WARPS_PER_PASS*NUM_PASSES] warpTotals;
 
 void main() {
+    clearHistogram[gl_GlobalInvocationID.x] = 0;
+
     uint val = histogram[gl_GlobalInvocationID.x];
 
     uint subgroupPrefix = subgroupExclusiveAdd(val);
