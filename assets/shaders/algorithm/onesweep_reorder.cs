@@ -1,6 +1,7 @@
 #version 460
 
 #extension GL_KHR_shader_subgroup_ballot: enable
+#extension GL_KHR_shader_subgroup_shuffle: enable
 
 #inject
 
@@ -30,6 +31,16 @@ layout(binding = 4, std430) buffer blockCounterSsbo {
     uint blockCounter[];
 };
 
+layout(binding = 5, std430) buffer debugSsbo1 {
+    uint debugWarpBaseOffset[];
+};
+layout(binding = 6, std430) buffer debugSsbo2 {
+    uint debugWarpLocalOffset[];
+};
+layout(binding = 7, std430) buffer debugSsbo3 {
+    uint debugGlobalOffset[];
+};
+
 uint GetPrefix(uint startBlock, uint word) {
     uint accumulatedSum = 0;
     for(int block = int(startBlock)-1; block >= 0; block--) {
@@ -55,28 +66,18 @@ uint GetPrefix(uint startBlock, uint word) {
     return accumulatedSum;
 }
 
-// GPU Multisplit
-// returns output offset for word
-void Warp32Multisplit(uint keys[KEYS_PER_THREAD], out uint warpLocalOffsets[KEYS_PER_THREAD]) {
-    /*
-    Each thread is responsible for some keys (num KEYS_PER_THREAD)
-    and some digits (num DIGITS_PER_WARP_THREAD)
+uint Warp32Multisplit(uint word) {
+    uint mask = 0xffffffff;
+    for(uint k=0; k<WORD_BITS; k++) {
+        const bool t = bool((word >> k) & 0x01u);
+        mask &= (t ? 0 : 0xffffffff) ^ subgroupBallot(t).x;
+    }
+    return mask;
+}
 
-    The threads broadcast 
-    - 
-    */
-
-    uint baseDigit = gl_SubgroupInvocationID * DIGITS_PER_WARP_THREAD;
-    uint[DIGITS_PER_WARP_THREAD] digitMasks;
-    uint[DIGITS_PER_WARP_THREAD] digitCounts;
-
-    uint[KEYS_PER_THREAD] wordMasks;
-
-    for(int i=0;i<DIGITS_PER_WARP_THREAD;i++)
-        digitCounts[i] = 0;
-    for(int i=0;i<KEYS_PER_THREAD;i++)
-        warpLocalOffsets[i] = 0;
-    
+// Fills total warp-level bin counts
+// and each thread acquires within-warp bin offsets its keys
+void WarpLevelPrefix(uint keys[KEYS_PER_THREAD], out uint warpLocalOffsets[KEYS_PER_THREAD]) {    
     // Each thread broadcasts has a set of keys
     // Process
     // Outer loop
@@ -84,66 +85,49 @@ void Warp32Multisplit(uint keys[KEYS_PER_THREAD], out uint warpLocalOffsets[KEYS
     // Inner loops
     // - Each thread observes for each of its keys
     // - as well as each of its digits
-    for(int k=0; k<KEYS_PER_THREAD; k++) {
-        for(int i=0;i<8;i++)
-            digitMasks[i] = 0xffffffff;
-        for(int i=0;i<KEYS_PER_THREAD;i++)
-            wordMasks[i] = 0xffffffff;
+    for(int i=0; i<KEYS_PER_THREAD; i++) {
+        uint word = (keys[i] >> wordOffset) & WORD_MASK;
+        uint mask = Warp32Multisplit(word);
 
-        uint keyBucketId = (keys[k] >> wordOffset) & WORD_MASK;
+        // count of threads in  the batch
+        // - which share the same digit
+        // - and have a lower thread id
+        uint peerBits = bitCount(mask & gl_SubgroupLtMask.x);
+        uint totalBits = bitCount(mask);
 
-        for(uint b =0; b<WORD_BITS; b++) {
-            uint tmpmask = subgroupBallot(bool(keyBucketId & 0x01u)).x;
+        uint lowestRankPeer = findLSB(mask);
 
-            // Warp size is only 32, but key has 256 unique values
-            // so handle 8 values per warp thread
-            for(int iDigit =0; iDigit<DIGITS_PER_WARP_THREAD; iDigit++) {
-                uint currentDigitValue = baseDigit + iDigit;
-                if(bool((currentDigitValue>>b) & 0x01u))
-                    digitMasks[iDigit] &= tmpmask;
-                else            
-                    digitMasks[iDigit] &= tmpmask ^ 0xffffffff;
-            }
-
-            for(int w=0; w<KEYS_PER_THREAD; w++) {
-                uint word = (keys[w] >> wordOffset) & WORD_MASK;
-                if(bool((word>>b) & 0x01u))
-                    wordMasks[w] &= tmpmask;
-                else            
-                    wordMasks[w] &= tmpmask ^ 0xffffffff;
-            }
-            
-            keyBucketId >>= 1;
+        uint exclusiveWarpPrefix;
+        // lowest rank thread associated with a given digit is responsible for increment total to shared memory
+        if(totalBits > 0 && peerBits == 0) {
+            //exclusiveWarpPrefix = histogramShared[gl_SubgroupID * WORD_SIZE + word];
+            //histogramShared[gl_SubgroupID * WORD_SIZE + word] += totalBits;
+            exclusiveWarpPrefix = atomicAdd(histogramShared[gl_SubgroupID * WORD_SIZE + word], totalBits);
         }
 
-        for(int w=0; w<KEYS_PER_THREAD; w++) {
-            // 
-            uint mask = k < w ? gl_SubgroupLeMask.x : gl_SubgroupLtMask.x;
-            warpLocalOffsets[w] += bitCount(wordMasks[w] & mask);
-        }
-
-        for(int batch =0; batch<DIGITS_PER_WARP_THREAD; batch++) {
-            digitCounts[batch] += bitCount(digitMasks[batch]);
-        }
-    }
-
-    for(int batch =0; batch<DIGITS_PER_WARP_THREAD; batch++) {
-        histogramShared[gl_SubgroupID * WORD_SIZE + baseDigit + batch] = digitCounts[batch];
+        warpLocalOffsets[i] = subgroupShuffle(exclusiveWarpPrefix, lowestRankPeer) + peerBits;
     }
 }
 
 void main() {
+    // acquire block id from atomic counter
+    // (because GPU cannot be trusted to schedule blocks in order)
     if(gl_LocalInvocationIndex == 0) {
         sharedBlockId[0] = atomicAdd(blockCounter[0], 1);
     }
+    // Clear shared offsets
+    for(int i =0; i<NUM_WARPS; i++)
+        histogramShared[gl_LocalInvocationIndex*NUM_WARPS+i] = 0;
+    
     barrier();
     uint blockId = sharedBlockId[0];
-    uint partitionKeyOffset = blockId * PARTITION_SIZE + gl_LocalInvocationIndex * KEYS_PER_THREAD;
+    uint partitionKeyOffset = blockId * PARTITION_SIZE;
+    uint warpKeyOffset = gl_SubgroupID * 32 * KEYS_PER_THREAD + gl_SubgroupInvocationID;
     uint blockHistogramOffset = blockId * WORD_SIZE;
 
     uint keys[KEYS_PER_THREAD];
     for(uint i =0; i<KEYS_PER_THREAD; i++) {        
-        uint keyId = partitionKeyOffset + i;
+        uint keyId = partitionKeyOffset + warpKeyOffset + i * 32;
         if(keyId < totalCount) {
             keys[i] = inputKeys[keyId];
         } else {
@@ -152,7 +136,7 @@ void main() {
     }
 
     uint warpLocalOffsets[KEYS_PER_THREAD];
-    Warp32Multisplit(keys, warpLocalOffsets);
+    WarpLevelPrefix(keys, warpLocalOffsets);
 
     barrier();
 
@@ -178,9 +162,6 @@ void main() {
     uint prefix = GetPrefix(blockId, gl_LocalInvocationIndex);
     blockLocalHistogram[gl_LocalInvocationIndex + WORD_SIZE * blockId] = EncodeBlockHistogramEntry(prefix + total,2);
 
-    // Write prefix to shared buffer
-    prefixShared[gl_LocalInvocationIndex] = prefix;
-
     barrier();
 
     // prefix sum over internal bin offsets
@@ -197,9 +178,9 @@ void main() {
 
     barrier();
 
-    prefixShared[gl_LocalInvocationIndex] = prefixShared[gl_LocalInvocationIndex] +
-        histogram[gl_LocalInvocationIndex + currentPass * WORD_SIZE] -
-        internalBinOffset[gl_LocalInvocationIndex];
+    prefixShared[gl_LocalInvocationIndex] = prefix +
+        histogram[gl_LocalInvocationIndex + currentPass * WORD_SIZE] ;//-
+        //internalBinOffset[gl_LocalInvocationIndex];
 
     for(uint i =0; i<KEYS_PER_THREAD; i++) {      
         uint word = (keys[i] >> wordOffset) & WORD_MASK;
@@ -212,10 +193,28 @@ void main() {
 
     barrier();
 
+/*
     for(uint i =0; i<KEYS_PER_THREAD; i++) {
         uint idx = gl_LocalInvocationIndex*KEYS_PER_THREAD + i;
         uint key = sortedKeys[idx];
         uint word = (key >> wordOffset) & WORD_MASK;
-        outputKeys[prefixShared[word] + idx] = sortedKeys[idx];
+
+        uint offset = prefixShared[word] + idx;
+        if(offset < totalCount)
+            outputKeys[offset] = sortedKeys[idx];// + 10000;
+    }
+    */
+
+    for(uint i=0; i<KEYS_PER_THREAD;i++) {
+        uint word = (keys[i] >> wordOffset) & WORD_MASK;
+        uint warpBaseOffset = histogramShared[gl_SubgroupID * WORD_SIZE + word];
+        uint offset = prefixShared[word]+ warpBaseOffset + warpLocalOffsets[i];
+        if(offset < totalCount)
+            outputKeys[offset] = keys[i];
+
+        //outputKeys[partitionKeyOffset+i*256] = keys[i];
+        //debugWarpBaseOffset[partitionKeyOffset+i*256] = warpBaseOffset;
+        //debugWarpLocalOffset[partitionKeyOffset+i*256] = warpLocalOffsets[i];
+        //debugGlobalOffset[partitionKeyOffset+i*256] = prefixShared[word];
     }
 }
