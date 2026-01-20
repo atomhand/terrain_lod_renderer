@@ -98,7 +98,7 @@ namespace Engine {
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
             glUseProgram(prefixProgram);
-            glDispatchCompute(1,1,1);
+            glDispatchCompute(NUM_PASSES,1,1);
             
             glUseProgram(reorderProgram);            
             glUniform1i(reorderKernelCountLocation, count);

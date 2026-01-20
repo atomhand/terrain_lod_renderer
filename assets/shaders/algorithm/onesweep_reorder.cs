@@ -101,7 +101,7 @@ void WarpLevelPrefix(uint keys[KEYS_PER_THREAD], out uint warpLocalOffsets[KEYS_
 
         uint exclusiveWarpPrefix;
         // lowest rank thread associated with a given digit is responsible for increment total to shared memory
-        if(totalBits > 0 && peerBits == 0) {
+        if(peerBits == 0) {
             exclusiveWarpPrefix = atomicAdd(histogramShared[gl_SubgroupID * WORD_SIZE + word], totalBits);
         }
 
@@ -118,17 +118,15 @@ void BlockPrefixScan(uint value) {
 
     barrier();
 
-    if(gl_LocalInvocationIndex < NUM_WARPS) {
-        uint id = gl_LocalInvocationIndex * 32;
-        internalBinOffset[id] = subgroupExclusiveAdd(internalBinOffset[id+31]);
-    }
+    // Compute the offset for the warp by summing the totals (I.e. final lane values) for each lower warp
+    // It would be possible to calculate the prefix sum once and pushing it to shared memory,
+    // but computing it redundantly for each warp saves a shared mem round trip - seems to win on performance
+    uint warpOffset = subgroupAdd(gl_SubgroupInvocationID < gl_SubgroupID ? internalBinOffset[gl_SubgroupInvocationID * 32 + 31] : 0);
 
     barrier();
 
-    uint warpOffset = internalBinOffset[gl_SubgroupID * 32];
-
-    if(gl_SubgroupInvocationID != 0)
-        internalBinOffset[gl_LocalInvocationIndex] += warpOffset - value;
+    // subtract original value to return to an exclusive sum
+    internalBinOffset[gl_LocalInvocationIndex] += warpOffset - value;
 }
 
 void main() {

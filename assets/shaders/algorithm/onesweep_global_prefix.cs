@@ -5,30 +5,21 @@
 #include "algorithm/onesweep_shared.glsl"
 
 
-layout(local_size_x = WORD_SIZE * NUM_PASSES, local_size_y = 1, local_size_z = 1) in;
-
-#define NUM_WARPS_PER_PASS 8
-
-shared uint[NUM_WARPS_PER_PASS*NUM_PASSES] warpTotals;
+layout(local_size_x = WORD_SIZE, local_size_y = 1, local_size_z = 1) in;
 
 void main() {
     clearHistogram[gl_GlobalInvocationID.x] = 0;
 
-    uint val = histogram[gl_GlobalInvocationID.x];
+    uint blockOffset = 256 * gl_WorkGroupID.x;
 
-    uint subgroupPrefix = subgroupExclusiveAdd(val);
-
-    if(gl_SubgroupInvocationID == 31) {
-        warpTotals[gl_SubgroupID] = subgroupPrefix + val;
-    }
+    uint value = histogram[gl_GlobalInvocationID.x];
+    histogram[gl_GlobalInvocationID.x] = subgroupInclusiveAdd(value);
 
     barrier();
 
-    if(gl_SubgroupInvocationID.x < NUM_WARPS_PER_PASS && gl_SubgroupID < NUM_PASSES) {
-        warpTotals[gl_SubgroupInvocationID.x + gl_SubgroupID * NUM_WARPS_PER_PASS] = subgroupExclusiveAdd(warpTotals[gl_SubgroupInvocationID.x + gl_SubgroupID * NUM_WARPS_PER_PASS]);
-    }
+    uint warpOffset = subgroupAdd(gl_SubgroupInvocationID < gl_SubgroupID ? histogram[blockOffset + gl_SubgroupInvocationID * 32 + 31] : 0);
 
     barrier();
 
-    histogram[gl_GlobalInvocationID.x] = warpTotals[gl_SubgroupID] + subgroupPrefix;
+    histogram[gl_GlobalInvocationID.x] += warpOffset - value;
 }
