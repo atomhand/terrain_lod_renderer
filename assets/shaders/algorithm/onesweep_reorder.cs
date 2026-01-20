@@ -112,8 +112,7 @@ void WarpLevelPrefix(uint keys[KEYS_PER_THREAD], out uint warpLocalOffsets[KEYS_
 // Prefix scan using warp intrinsics
 // The number of values to be scanned must == block size
 // (it would be easy to mask out some lanes if required)
-void BlockPrefixScan() {
-    uint value = internalBinOffset[gl_LocalInvocationIndex];
+void BlockPrefixScan(uint value) {
     // per warp inclusive sums to buffer
     internalBinOffset[gl_LocalInvocationIndex] =  subgroupInclusiveAdd(value);
 
@@ -126,7 +125,7 @@ void BlockPrefixScan() {
 
     barrier();
 
-    uint warpOffset = internalBinOffset[gl_SubgroupID * 32];//subgroupBroadcast(internalBinOffset[gl_LocalInvocationIndex],0);
+    uint warpOffset = internalBinOffset[gl_SubgroupID * 32];
 
     if(gl_SubgroupInvocationID != 0)
         internalBinOffset[gl_LocalInvocationIndex] += warpOffset - value;
@@ -140,7 +139,7 @@ void main() {
     }
     // Clear shared offsets
     for(int i =0; i<NUM_WARPS; i++)
-        histogramShared[gl_LocalInvocationIndex*NUM_WARPS+i] = 0;
+        histogramShared[gl_LocalInvocationIndex+i*256] = 0;
     
     barrier();
     uint blockId = sharedBlockId[0]  % blocksPerPass;    
@@ -177,11 +176,8 @@ void main() {
     internalBinOffset[gl_LocalInvocationIndex] = binTotal;
     // Write total count for this word value to the global buffer
     blockLocalHistogram[gl_LocalInvocationIndex + WORD_SIZE * blockId] = EncodeBlockHistogramEntry(binTotal,1,currentPass);
-
-
-    barrier();
     
-    BlockPrefixScan();
+    BlockPrefixScan(binTotal);
 
     barrier();
 
@@ -202,7 +198,7 @@ void main() {
     barrier();
 
     for(uint i =0; i<KEYS_PER_THREAD; i++) {
-        uint idx = gl_LocalInvocationIndex*KEYS_PER_THREAD + i;
+        uint idx = gl_LocalInvocationIndex + i*256;
         uint word = (sortedKeys[idx] >> wordOffset) & WORD_MASK;
 
         uint offset = prefixShared[word] + idx;

@@ -10,13 +10,13 @@ shared uint histogramShared[HISTOGRAM_SIZE];
 
 void main() {
     for(int i =0; i<NUM_PASSES; i++) {
-        histogramShared[gl_LocalInvocationIndex*NUM_PASSES+i] = 0;
+        histogramShared[gl_LocalInvocationIndex+i*256] = 0;
     }
 
     barrier();
 
     for(int w=0; w<KEYS_PER_THREAD; w++) {
-        uint keyId = gl_GlobalInvocationID.x*KEYS_PER_THREAD + w;
+        uint keyId = gl_WorkGroupID.x*PARTITION_SIZE + gl_LocalInvocationIndex + w*256;
         if(keyId < totalCount) {
             uint key = inputKeys[keyId];
             for(uint i =0; i<NUM_PASSES; i++) {
@@ -30,7 +30,7 @@ void main() {
     barrier();
 
     for(int i =0; i<NUM_PASSES; i++) {
-        atomicAdd(histogram[gl_LocalInvocationIndex*NUM_PASSES+i], histogramShared[gl_LocalInvocationIndex*NUM_PASSES+i]);
+        atomicAdd(histogram[gl_LocalInvocationIndex+i*256], histogramShared[gl_LocalInvocationIndex+i*256]);
     }
 
     if(gl_GlobalInvocationID.x == 0) {
