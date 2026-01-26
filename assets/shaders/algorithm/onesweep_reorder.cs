@@ -144,11 +144,9 @@ void main() {
     uint currentPass = sharedBlockId[0] / blocksPerPass;
     uint wordOffset = WORD_BITS * currentPass;
 
-    uint baseKeyOffset = blockId * PARTITION_SIZE + gl_SubgroupID * 32 * KEYS_PER_THREAD + gl_SubgroupInvocationID;
-
     uint keys[KEYS_PER_THREAD];
     for(uint i =0; i<KEYS_PER_THREAD; i++) {        
-        uint keyId = baseKeyOffset + i * 32;
+        uint keyId = blockId * PARTITION_SIZE + gl_SubgroupID * 32 * KEYS_PER_THREAD + gl_SubgroupInvocationID + i * 32;
         keys[i] = keyId < totalCount ? inputKeys[keyId] : 0xffffffff;
     }
 

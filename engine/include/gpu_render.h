@@ -8,18 +8,22 @@
 
 namespace Engine {    
     class GpuRender {
-        struct MaterialHeader {
+        struct RenderItemData {
             glm::mat4 model;
             AABB aabb;
-            int id;
+            uint16_t id;
         };
 
         struct GpuMaterial {
-            int materialId;
+            uint16_t materialId;
         };
         int numMaterials;
-        std::vector<MaterialHeader> materialHeaderData;
+        std::vector<RenderItemData> renderItemData;
+        std::vector<unsigned int> materialKeys;
         StorageBuffer materialHeaderBuffer;
+
+        StorageBuffer inputKeysBuffer;
+        StorageBuffer sortedKeysBuffer;
 
         ComputeShader cullingShader;
 
@@ -35,11 +39,26 @@ namespace Engine {
             for(auto entity : view) {
                 auto [transform,aabb,material] = view.get(entity);
 
-                gpuRender.materialHeaderData.push_back(MaterialHeader { transform.global, aabb, material.materialId});
+                gpuRender.materialKeys.push_back((material.materialId << 16) | );
+                gpuRender.renderItemData.push_back(RenderItemData { transform.global, aabb });
             }
 
 
         }
+
+        // Overview
+
+        // Culling uses a 32 bit key
+        // most significant bit - Cull result
+        // MSbits 2-16 - Instance Group ID (up to 32768 draws)
+        // Bits 17-32 - Instance ID within group (up to 65536 objects per drawcall)
+
+        // Process
+        // 1. CPU side - Write to GPU
+        //  - instance IDs
+        //  - generic instance information (transform, AABB)
+        //  - specialised instance information
+        // - need to think about how 
 
         static void Cull(Engine::World& world) {
 
