@@ -6,10 +6,10 @@
 #extension GL_KHR_shader_subgroup_shuffle: enable
 #extension GL_KHR_shader_subgroup_arithmetic: enable
 
-layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+#define BLOCK_SIZE NUM_WARPS*32
 
-#define NUM_WARPS 8
-#define DIGITS_PER_WARP_THREAD 8 /* = WORD_SIZE / warp size */
+layout(local_size_x = BLOCK_SIZE, local_size_y = 1, local_size_z = 1) in;
+
 
 #include "algorithm/onesweep_shared.glsl"
 
@@ -135,9 +135,11 @@ void main() {
     if(gl_LocalInvocationIndex == 0) {
         sharedBlockId[0] = atomicAdd(blockCounter[0], 1);
     }
-    // Clear shared offsets
-    for(int i =0; i<NUM_WARPS; i++)
-        histogramShared[gl_LocalInvocationIndex+i*256] = 0;
+    if(gl_LocalInvocationIndex < 256) {        
+        // Clear shared offsets
+        for(int i =0; i<NUM_WARPS; i++)
+            histogramShared[gl_LocalInvocationIndex+i*256] = 0;
+    }
     
     barrier();
     uint blockId = sharedBlockId[0]  % blocksPerPass;    
@@ -154,29 +156,32 @@ void main() {
     WarpLevelPrefix(keys, warpLocalOffsets, wordOffset);
 
     barrier();
-
-    // histogram shared layout
-    // num rows = num warps
-    // row size = word num of unique values (256)
-    // each position contains the count for that value for that warp
-
-    // Prefix sum over warp histograms
-    // Each thread performs the prefix sum for the word value corresponding
-    // to gl_LocalInvocationIndex
-    uint binTotal = 0;
-    for(int subgroup=0; subgroup<NUM_WARPS; subgroup++) {
-        uint tmp = histogramShared[subgroup * WORD_SIZE + gl_LocalInvocationIndex];
-        histogramShared[subgroup * WORD_SIZE + gl_LocalInvocationIndex] = binTotal;
-        binTotal += tmp;
-    }
-    internalBinOffset[gl_LocalInvocationIndex] = binTotal;
-    // Write total count for this word value to the global buffer
-    blockLocalHistogram[gl_LocalInvocationIndex + WORD_SIZE * blockId] = EncodeBlockHistogramEntry(binTotal,1,currentPass);
     
-    BlockPrefixScan(binTotal);
+    uint binTotal = 0;
+    if(gl_LocalInvocationIndex < 256) {
+        // histogram shared layout
+        // num rows = num warps
+        // row size = word num of unique values (256)
+        // each position contains the count for that value for that warp
+
+        // Prefix sum over warp histograms
+        // Each thread performs the prefix sum for the word value corresponding
+        // to gl_LocalInvocationIndex
+        for(int subgroup=0; subgroup<NUM_WARPS; subgroup++) {
+            uint tmp = histogramShared[subgroup * WORD_SIZE + gl_LocalInvocationIndex];
+            histogramShared[subgroup * WORD_SIZE + gl_LocalInvocationIndex] = binTotal;
+            binTotal += tmp;
+        }
+        internalBinOffset[gl_LocalInvocationIndex] = binTotal;
+        // Write total count for this word value to the global buffer
+        blockLocalHistogram[gl_LocalInvocationIndex + WORD_SIZE * blockId] = EncodeBlockHistogramEntry(binTotal,1,currentPass);
+    
+        BlockPrefixScan(binTotal);
+    }
 
     barrier();
 
+    // Scatter keys to sort them within locations within block
     for(uint i =0; i<KEYS_PER_THREAD; i++) {      
         uint word = (keys[i] >> wordOffset) & WORD_MASK;
         // offset within the bin for this tile
@@ -184,17 +189,19 @@ void main() {
         sortedKeys[internalBinOffset[word] + localBinOffset] = keys[i];
     }
 
-    // Get the prefix (chained lookback)
-    uint prefix = GetPrefixChainedLookback(blockId, gl_LocalInvocationIndex, currentPass);
-    blockLocalHistogram[gl_LocalInvocationIndex + WORD_SIZE * blockId] = EncodeBlockHistogramEntry(prefix + binTotal,2,currentPass);
+    if(gl_LocalInvocationIndex < 256) {
+        // Get the prefix (chained lookback)
+        uint prefix = GetPrefixChainedLookback(blockId, gl_LocalInvocationIndex, currentPass);
+        blockLocalHistogram[gl_LocalInvocationIndex + WORD_SIZE * blockId] = EncodeBlockHistogramEntry(prefix + binTotal,2,currentPass);
 
-    prefixShared[gl_LocalInvocationIndex] = prefix +
-        histogram[gl_LocalInvocationIndex + currentPass * WORD_SIZE] - internalBinOffset[gl_LocalInvocationIndex];
+        prefixShared[gl_LocalInvocationIndex] = prefix +
+            histogram[gl_LocalInvocationIndex + currentPass * WORD_SIZE] - internalBinOffset[gl_LocalInvocationIndex];
+    }
 
     barrier();
 
     for(uint i =0; i<KEYS_PER_THREAD; i++) {
-        uint idx = gl_LocalInvocationIndex + i*256;
+        uint idx = gl_LocalInvocationIndex + i*BLOCK_SIZE;
         uint word = (sortedKeys[idx] >> wordOffset) & WORD_MASK;
 
         uint offset = prefixShared[word] + idx;

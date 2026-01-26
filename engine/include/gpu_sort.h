@@ -20,6 +20,7 @@ namespace Engine {
         static const unsigned int WORD_MASK = 0xFFu;
         static const unsigned int HISTOGRAM_SIZE = NUM_PASSES * WORD_SIZE;
 
+        const unsigned int REORDER_WARPS;
         const unsigned int KEYS_PER_THREAD;
         const unsigned int PARTITION_SIZE; 
 
@@ -48,12 +49,14 @@ namespace Engine {
         GLuint reorderProgram;
         GLuint prefixProgram;
 
-        GpuSort(unsigned int keysPerThread) : KEYS_PER_THREAD(keysPerThread),
-            PARTITION_SIZE(256 * KEYS_PER_THREAD),
+        GpuSort(unsigned int keysPerThread, unsigned int reorderWarps) : KEYS_PER_THREAD(keysPerThread),
+            REORDER_WARPS(reorderWarps),
+            PARTITION_SIZE(REORDER_WARPS * 32 * KEYS_PER_THREAD),
             MAX_NUM(MAX_NUM_BLOCKS * PARTITION_SIZE)        
         {
             std::string def = std::string("#define KEYS_PER_THREAD ") + std::to_string(keysPerThread);
-            std::vector<const char*> defs = std::vector<const char*>{def.c_str()};
+            std::string def2 = std::string("#define NUM_WARPS ") + std::to_string(REORDER_WARPS);
+            std::vector<const char*> defs = std::vector<const char*>{def.c_str(), def2.c_str()};
 
             countKernel = ComputeShader("shaders/algorithm/onesweep_count.cs", defs);
             globalPrefixKernel = ComputeShader("shaders/algorithm/onesweep_global_prefix.cs", defs);
@@ -147,6 +150,7 @@ namespace Engine {
         int currentBench = 0;
         int benchNumIterations = 64;
         int keysPerThread = 8;
+        int warpsPerBlock = 8;
         double sumRate = 0.0;
         double avgRate = 0.0;
         double totalBenchTime = 0.0;
@@ -207,7 +211,7 @@ namespace Engine {
         std::mt19937 gen32;
     public:        
         GpuSortTester() {
-            m_Sorter = std::make_unique<GpuSort>((unsigned int)keysPerThread);
+            m_Sorter = std::make_unique<GpuSort>((unsigned int)keysPerThread,(unsigned int)warpsPerBlock);
             //histogram.resize(GpuSort::NUM_PASSES * GpuSort::WORD_SIZE);
 
             //for(int i =0; i<GpuSort::NUM_PASSES * GpuSort::WORD_SIZE; i++)
@@ -266,8 +270,9 @@ namespace Engine {
 
                 
                 ImGui::SliderInt("Keys per thread", &keysPerThread, 1, 32);
-                if(keysPerThread != m_Sorter->KEYS_PER_THREAD) {                    
-                    m_Sorter = std::make_unique<GpuSort>((unsigned int)keysPerThread);
+                ImGui::SliderInt("Warps per block", &warpsPerBlock, 8, 32);
+                if(keysPerThread != m_Sorter->KEYS_PER_THREAD || warpsPerBlock != m_Sorter->REORDER_WARPS) {                    
+                    m_Sorter = std::make_unique<GpuSort>((unsigned int)keysPerThread,(unsigned int)warpsPerBlock);
                 }
 
                 ImGui::SliderInt("Passes", &passes, 1, GpuSort::NUM_PASSES);
