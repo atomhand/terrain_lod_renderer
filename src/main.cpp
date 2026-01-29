@@ -21,6 +21,7 @@
 #include "profiler.h"
 
 #include "gpu_sort.h"
+#include "gpu_filter.h"
 
 using namespace std;
 
@@ -45,6 +46,7 @@ int main()
 	RenderPasses renderPasses;
 
 	Engine::GpuSortTester gpuSortTester;
+	Engine::GpuFilterTester gpuFilterTester;
 
 	// Terrain
 	auto terrain_entity = world.registry.create();
@@ -82,7 +84,10 @@ int main()
 
 		DrawUi(world);
 
-		gpuSortTester.DrawInterface(world);
+		if(world.input.radixSortTester)
+			gpuSortTester.DrawInterface(world);
+		if(world.input.gpuFilterTester)
+			gpuFilterTester.DrawInterface(world);
 
 		Engine::Profiler::Render(world);
 

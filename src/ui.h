@@ -14,6 +14,8 @@ static void DrawConfigWindow(bool* p_open, Engine::World& world) {
     ImGui::Checkbox("Terrain Geometry debug", &world.input.terrainGeometryDebug);
     ImGui::Checkbox("Terrain Generation Calibration", &world.input.terrainCalibrationWindow);
     ImGui::Checkbox("Profiler", &world.input.profilerWindow);
+    ImGui::Checkbox("Radix sort test", &world.input.radixSortTester);
+    ImGui::Checkbox("Gpu filter text", &world.input.gpuFilterTester);
 
     ImGui::SeparatorText("Debug");
 
