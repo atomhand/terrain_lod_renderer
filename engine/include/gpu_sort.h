@@ -229,6 +229,7 @@ namespace Engine {
         int activeBits = 32;
 
         std::vector<unsigned int> inputValues;
+        std::vector<glm::uvec2> inputValuesPaired;
         std::vector<unsigned int> outputValues;
 
         //std::vector<unsigned int> blockHistograms;
@@ -246,6 +247,9 @@ namespace Engine {
         double sumRate = 0.0;
         double avgRate = 0.0;
         double totalBenchTime = 0.0;
+
+        bool nextSortPaired = false;
+        bool lastSortPaired = false;
 
         void StartBench() {
             currentBench = benchNumIterations;
@@ -269,17 +273,28 @@ namespace Engine {
         }
 
         double TestSort(bool readback) {
-            inputBuffer.Resize<unsigned int>(inputValues.size());
-            scratchBuffer.Resize<unsigned int>(inputValues.size());
-            inputBuffer.SetBytes((void*)inputValues.data(), sizeof(unsigned int) * inputValues.size(), 0);
+            uint32_t n = nextSortPaired ? inputValuesPaired.size() * 2 : inputValues.size();
+            inputBuffer.Resize<unsigned int>(n);
+            scratchBuffer.Resize<unsigned int>(n);
+            if(nextSortPaired) {
+                inputBuffer.Set<glm::uvec2>(inputValuesPaired.data(), inputValuesPaired.size(), 0);
+            } else {
+                inputBuffer.Set<unsigned int>(inputValues.data(), inputValues.size(), 0);
+            }
             glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
 
             auto sortProfileHandle = Profiler::StartGpu("GpuSort");
-            m_Sorter->SortInPlace(inputBuffer, scratchBuffer, inputValues.size());
+            if(nextSortPaired) {
+                m_Sorter->SortInPlacePaired(inputBuffer,scratchBuffer,inputValuesPaired.size());
+            } else {                
+                m_Sorter->SortInPlace(inputBuffer, scratchBuffer, inputValues.size());
+            }
             sortProfileHandle.End();
 
             if(readback) {
-                outputValues.resize(inputValues.size());
+                lastSortPaired = nextSortPaired;
+
+                outputValues.resize(n);
                 glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
                 inputBuffer.Readback<unsigned int>(outputValues.data(), outputValues.size(), 0);
                 sortCorrect = CheckSortResult();
@@ -288,14 +303,31 @@ namespace Engine {
             return Profiler::GetLastGpuTiming();
         }
 
-        bool CheckSortResult() {
-            std::vector<unsigned int> sorted = std::vector<unsigned int>(inputValues);
+        static bool pairedComparison(glm::uvec2 a, glm::uvec2 b) {
+            return a.x < b.x;
+        }
 
-            std::sort(sorted.begin(),sorted.end());
+        bool pairedValueCorrect;
+        bool CheckSortResult() {
+            pairedValueCorrect = true;
             
-            for(int i = 0; i<outputValues.size(); i++) {
-                if(outputValues[i] != sorted[i]) {
-                    return false;
+            std::vector<unsigned int> sorted = std::vector<unsigned int>(inputValues);
+            std::sort(sorted.begin(),sorted.end());
+
+            if(lastSortPaired) {
+                for(int i = 0; i<sorted.size(); i++) {
+                    if(outputValues[i*2] != sorted[i]) {
+                        return false;
+                    }
+                    if(outputValues[i*2] != inputValues[outputValues[i*2+1]]) {
+                        pairedValueCorrect = false;
+                    }
+                }
+            } else {
+                for(int i = 0; i<sorted.size(); i++) {
+                    if(outputValues[i] != sorted[i]) {
+                        return false;
+                    }
                 }
             }
             return true;
@@ -312,11 +344,13 @@ namespace Engine {
 
         void GenerateInputValues(int n) {            
             inputValues.clear();
+            inputValuesPaired.clear();
             unsigned int mask = 0xFFFFFFFFu >> (32 - activeBits);
             
             std::uniform_int_distribution<unsigned int> numbers_dist = std::uniform_int_distribution<unsigned int>(0, mask);
             for(int i =0; i<count; i++) {
                 inputValues.push_back(numbers_dist(gen32));
+                inputValuesPaired.push_back(glm::uvec2(inputValues[i],i));
             }
         }
 
@@ -354,11 +388,16 @@ namespace Engine {
                 }
                 
                 ImGui::Text(sortCorrect ? "Sort Correct" : "Sort Not Correct");
+                if(lastSortPaired) {                    
+                    ImGui::Text(pairedValueCorrect ? "Paired values Correct" : "Paired values Not Correct");
+                }
 
                 ImGui::SliderInt("CountNum", &countNum, 1, 100);
                 ImGui::SliderInt("Count Exponent", &countExp, 0, 7);
                 count = std::min(double(m_Sorter->MAX_NUM),double(countNum * pow(10,countExp)));
                 ImGui::Text("Count: %i", count);
+
+                ImGui::Checkbox("Paired sort", &nextSortPaired);
 
                 
                 ImGui::SliderInt("Keys per thread", &keysPerThread, 1, 32);
@@ -370,9 +409,10 @@ namespace Engine {
                 ImGui::SliderInt("Active Bits", &activeBits, 1, 32);
 
                 if(ImGui::CollapsingHeader("Values")) {
-                    if(ImGui::BeginTable("valuesTable", 2)) {
+                    if(ImGui::BeginTable("valuesTable", 3)) {
                         ImGui::TableSetupColumn("input", ImGuiTableColumnFlags_WidthStretch);                
-                        ImGui::TableSetupColumn("output", ImGuiTableColumnFlags_WidthStretch); 
+                        ImGui::TableSetupColumn("output", ImGuiTableColumnFlags_WidthStretch);              
+                        ImGui::TableSetupColumn("pairedValues", ImGuiTableColumnFlags_WidthStretch); 
 
                         ImGui::TableNextRow();
                         ImGui::TableSetColumnIndex(0);
@@ -380,14 +420,24 @@ namespace Engine {
                         ImGui::TableSetColumnIndex(1);
                         ImGui::Text("Output");
 
-                        int n = std::min(outputValues.size(), (size_t)5000);
+                        if(lastSortPaired) {
+                            ImGui::TableSetColumnIndex(2);
+                            ImGui::Text("Paired Values");
+                        }
+
+                        int n = std::min(lastSortPaired ? outputValues.size() / 2 : outputValues.size(), (size_t)5000);
                         for(int i =0; i<n; i++) {               
                             ImGui::TableNextRow();                
                             ImGui::TableSetColumnIndex(0);                
                             ImGui::Text("%u", inputValues[i]);
 
                             ImGui::TableSetColumnIndex(1);
-                            ImGui::Text("%u", outputValues[i]);
+                            ImGui::Text("%u", outputValues[lastSortPaired ? i*2 : i]);
+
+                            if(lastSortPaired) {
+                                ImGui::TableSetColumnIndex(2);
+                                ImGui::Text("%u", outputValues[i*2+1]);
+                            }
                         }
 
                         ImGui::EndTable();
