@@ -21,17 +21,8 @@ public:
         hdr.hdrFramebuffer.depthAttachment = deferred.gBuffer.depthAttachment;
     }
 
-    void Init(World& world) {
-        debugCameraEntity = world.registry.create();
-        auto& debugCamera = world.registry.emplace<Camera>(debugCameraEntity);
-        debugCamera.main = false;
-        world.registry.emplace<Transform>(debugCameraEntity);
-
-        glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
-        
-        glClearColor(0.f,0.f,0.,0.0f);
-        glClearDepth(0.f);
-    }
+    void Init(World& world);
+    
     // Run all render passes
     void RunAll(World& world, Engine::Application& app);
 private:

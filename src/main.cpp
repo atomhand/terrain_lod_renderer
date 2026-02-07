@@ -48,6 +48,8 @@ int main()
 	Engine::GpuSortTester gpuSortTester;
 	Engine::GpuFilterTester gpuFilterTester;
 
+	renderPasses.Init(world);
+
 	// Terrain
 	auto terrain_entity = world.registry.create();
 	auto terrainGeometry = TerrainGeometry::Insert(world,terrain_entity,terrainEdgeLength,chunkSize);
@@ -66,8 +68,6 @@ int main()
 	sun.color = glm::vec3(15.0,15.,15.);
 
 	BirdFlockManager::Setup(world);
-
-	renderPasses.Init(world);
 	// event loop
 	while(!app.shouldClose()) {
 		app.frameStart(world);

@@ -31,7 +31,7 @@ namespace Engine {
         bool terrainCalibrationWindow = false;
         bool profilerWindow = true;
         bool radixSortTester = false;
-        bool gpuFilterTester = true;
+        bool gpuFilterTester = false;
 
         // Camera control
         bool flyCamera = true;

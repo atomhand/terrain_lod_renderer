@@ -27,6 +27,7 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
     double generationDuration = 0.0;
 
     auto& terrainCache = world.GetSingle<TerrainMaterial::Cache>();
+    auto& waterCache = world.GetSingle<WaterMaterial::Cache>();
 
     std::priority_queue<TraversalItem> traversalQueue;
     for(int i =0; i<chunks.size(); i++) {        
@@ -90,15 +91,18 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                 transform.global = glm::translate(glm::mat4(1.), nodePos) * glm::scale(glm::mat4(1.), glm::vec3(extent.x,1.f,extent.z));
 
                 auto& aabb = world.registry.emplace<Engine::AABB>(node.entity, heightMap.aabb);
+            }
 
-                if(heightMap.anyWater) {
-                    node.water_entity = world.registry.create();
-                    auto& waterItem = world.registry.emplace<WaterMaterial>(node.water_entity);
-                    auto& transform = world.registry.emplace<Transform>(node.water_entity);
-                    transform.global = glm::translate(glm::mat4(1.), nodePos) * glm::scale(glm::mat4(1.), glm::vec3(extent.x,256.f,extent.z));
+            if(node.water_entity == entt::null) {
+                node.water_entity = waterCache.CreateWaterItem(world, nodePos, extent);
+                /*
+                node.water_entity = world.registry.create();
+                auto& waterItem = world.registry.emplace<WaterMaterial>(node.water_entity);
+                auto& transform = world.registry.emplace<Transform>(node.water_entity);
+                transform.global = glm::translate(glm::mat4(1.), nodePos) * glm::scale(glm::mat4(1.), glm::vec3(extent.x,256.f,extent.z));
 
-                    world.registry.emplace<Engine::AABB>(node.water_entity, glm::vec3(-0.2,-0.5,-0.2), glm::vec3(1.2,0.5,1.2));
-                }
+                world.registry.emplace<Engine::AABB>(node.water_entity, glm::vec3(-0.2,-0.5,-0.2), glm::vec3(1.2,0.5,1.2));
+                */
             }
 
             float targetDepth = TargetLodDepth(node.depth, nodePos, extent, world.registry.get<Engine::AABB>(node.entity),camera, world.input.lodControlParam, node.longestEdge);
@@ -357,7 +361,7 @@ float TerrainGeometry::SuggestFarPlane() const {
 TerrainGeometry& TerrainGeometry::Insert(Engine::World& world, entt::entity terrain_entity, unsigned int width, float scale) {
     auto& terrain = world.registry.emplace<TerrainGeometry>(terrain_entity, width, scale);
 
-    world.registry.emplace<WaterMaterial::Cache>(world.registry.create(), terrain.BASE_POOL_SIZE, terrain.MakeWaterMesh());
+    WaterMaterial::Setup(world, terrain.BASE_POOL_SIZE, terrain.MakeWaterMesh());
     world.registry.emplace<TerrainMaterial::Cache>(world.registry.create(), terrain.BASE_POOL_SIZE, terrain.CHUNK_SIZE, terrain.MakeTerrainMesh());
 
     for(size_t x=0; x<width; x++)

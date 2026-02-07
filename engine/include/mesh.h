@@ -277,6 +277,13 @@ namespace Engine {
             return data->generated != 0;
         }
 
+        int GetVertCount(int lodLevel) {
+            assert(lodLevel < data->lodOffsets.size()-1);
+            int start = data->lodOffsets[lodLevel];
+            int end = data->lodOffsets[lodLevel+1];
+            return end-start;
+        }
+
         AABB aabb;
 
         GLuint vao() {

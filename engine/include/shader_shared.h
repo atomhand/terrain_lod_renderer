@@ -44,5 +44,16 @@ namespace Engine {
         float enableStochasticBlending;
         float applyExposure;
         float displacementScale;
+    };    
+
+
+    // GPU DRIVEN RENDER
+
+    struct DrawElementsIndirectCommand {
+        unsigned int  count;
+        unsigned int  instanceCount;
+        unsigned int  firstIndex;
+        unsigned int  baseVertex;
+        unsigned int  baseInstance;
     };
 }

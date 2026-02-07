@@ -7,7 +7,23 @@
 #include "terrain_material.h"
 #include "profiler.h"
 
+#include "gpu_render.h"
+
 using Engine::RenderItem, Engine::ViewUniformData, Engine::LightUniformData, Engine::MiscUniformData, Engine::Profiler;
+
+void RenderPasses::Init(World& world) {
+    debugCameraEntity = world.registry.create();
+    auto& debugCamera = world.registry.emplace<Camera>(debugCameraEntity);
+    debugCamera.main = false;
+    world.registry.emplace<Transform>(debugCameraEntity);
+
+    glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+    
+    glClearColor(0.f,0.f,0.,0.0f);
+    glClearDepth(0.f);
+
+    GpuRender::Init(world);
+}
 
 void RenderPasses::RunAll(World& world, Engine::Application& app) {
     if(!world.input.enableRendering) {
@@ -73,6 +89,15 @@ void RenderPasses::RunAll(World& world, Engine::Application& app) {
 
 void RenderPasses::RetrieveData(World& world, Engine::Application& app, Engine::Camera& cameraMain, Engine::Transform& cameraMainTransform) {
     auto profileHandle = Profiler::StartCpu("RenderPasses::RetrieveData");
+
+    auto& gpuRender = world.GetSingle<Engine::GpuRender>();
+    gpuRender.PrePrepare(world);
+
+    WaterMaterial::PrepareMain(world, deferred.gBuffer.depthAttachment);
+
+    gpuRender.PrepareGpuScene(world);
+
+
 
     glm::mat4 VP = cameraMain.projection * cameraMain.view;
     glm::vec3 cameraPos = cameraMainTransform.position();
@@ -363,12 +388,17 @@ void RenderPasses::DrawOpaque(World& world, bool drawAABB, Engine::Camera& camer
 
     TerrainMaterial::DrawMain(world);
 
+    auto& gpuRender = world.GetSingle<Engine::GpuRender>();
+    gpuRender.PreparePass(world, camera, 0);
+
+    /*
     if(!world.input.previewTriangleDensity) {
         glDepthMask(GL_FALSE);
         WaterMaterial::DrawMain(world, deferred.gBuffer.depthAttachment);
         glDepthMask(GL_TRUE);
         WaterMaterial::DrawDepth(world);
     }
+    */
 
     if(drawAABB) {
         glPolygonMode( GL_FRONT_AND_BACK, GL_LINE);
