@@ -21,7 +21,7 @@ void main() {
     for(int w=0; w<KEYS_PER_THREAD; w++) {
         uint keyId = gl_WorkGroupID.x*PARTITION_SIZE + gl_LocalInvocationIndex + w*BLOCK_SIZE;
         if(keyId < totalCount) {
-            uint key = inputKeys[keyId];
+            uint key = inputKeys[keyId].x;
             for(uint i =0; i<NUM_PASSES; i++) {
                 uint wordOffset = i * WORD_BITS;
                 uint word = (key >> wordOffset) & WORD_MASK;

@@ -112,8 +112,8 @@ public:
 
         // There should never be more chunks than the SSBO can support
         assert(cache.transforms.size() <= cache.capacity);
-        cache.transformBuffer.Set((void*)cache.transforms.data(), cache.transforms.size()*sizeof(glm::mat4), 0);
-        cache.indexBuffer.Set((void*)cache.indices.data(), cache.indices.size()*sizeof(int), 0);
+        cache.transformBuffer.SetBytes((void*)cache.transforms.data(), cache.transforms.size()*sizeof(glm::mat4), 0);
+        cache.indexBuffer.SetBytes((void*)cache.indices.data(), cache.indices.size()*sizeof(int), 0);
 
         // Bind shader
 
@@ -160,8 +160,8 @@ public:
 
         // There should never be more chunks than the SSBO can support
         assert(cache.transforms.size() <= cache.capacity);
-        cache.transformBuffer.Set((void*)cache.transforms.data(), cache.transforms.size()*sizeof(glm::mat4), 0);
-        cache.indexBuffer.Set((void*)cache.indices.data(), cache.indices.size()*sizeof(int), 0);
+        cache.transformBuffer.SetBytes((void*)cache.transforms.data(), cache.transforms.size()*sizeof(glm::mat4), 0);
+        cache.indexBuffer.SetBytes((void*)cache.indices.data(), cache.indices.size()*sizeof(int), 0);
 
         // Draw
         cache.transformBuffer.BindBase(0);

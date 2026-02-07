@@ -28,10 +28,30 @@ namespace Engine {
         StorageBuffer blockCounter = StorageBuffer(sizeof(unsigned int), 0);
 
         GLuint kernelCountLocation;
+        GLuint kernelNumBlocksLocation;
 
         GLuint program;
 
-        GpuFilter(unsigned int keysPerThread, unsigned int numWarps) : KEYS_PER_THREAD(keysPerThread),
+        GpuFilter(const char* kernelAddress) : KEYS_PER_THREAD(8),
+            NUM_WARPS(8),
+            PARTITION_SIZE(NUM_WARPS * 32 * KEYS_PER_THREAD),
+            MAX_NUM(MAX_NUM_BLOCKS * PARTITION_SIZE)        
+        {
+            std::string def = std::string("#define KEYS_PER_THREAD ") + std::to_string(KEYS_PER_THREAD);
+            std::string def2 = std::string("#define NUM_WARPS ") + std::to_string(NUM_WARPS);
+            std::vector<const char*> defs = std::vector<const char*>{def.c_str(), def2.c_str()};
+
+            kernel = ComputeShader(kernelAddress, defs);
+
+            program = kernel.programId();
+
+            kernelCountLocation = glGetUniformLocation(kernel.programId(), "totalCount");
+            kernelNumBlocksLocation = glGetUniformLocation(kernel.programId(), "numBlocks");
+            
+            glClearNamedBufferData(blockCounts.object(), GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
+        }
+
+        GpuFilter(unsigned int keysPerThread = 12, unsigned int numWarps = 8, const char* kernelAddress = "shaders/algorithm/filter.cs") : KEYS_PER_THREAD(keysPerThread),
             NUM_WARPS(numWarps),
             PARTITION_SIZE(NUM_WARPS * 32 * KEYS_PER_THREAD),
             MAX_NUM(MAX_NUM_BLOCKS * PARTITION_SIZE)        
@@ -40,11 +60,12 @@ namespace Engine {
             std::string def2 = std::string("#define NUM_WARPS ") + std::to_string(NUM_WARPS);
             std::vector<const char*> defs = std::vector<const char*>{def.c_str(), def2.c_str()};
 
-            kernel = ComputeShader("shaders/algorithm/filter.cs", defs);
+            kernel = ComputeShader(kernelAddress, defs);
 
             program = kernel.programId();
 
             kernelCountLocation = glGetUniformLocation(kernel.programId(), "totalCount");
+            kernelNumBlocksLocation = glGetUniformLocation(kernel.programId(), "numBlocks");
             
             glClearNamedBufferData(blockCounts.object(), GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
         }
@@ -67,6 +88,30 @@ namespace Engine {
 
             glUseProgram(program);
             glUniform1i(kernelCountLocation, count);
+            glUniform1i(kernelNumBlocksLocation, 0); // num bloicks is only set if we want the total output count
+            glDispatchCompute(dispatchNumBlocks,1,1);
+        }
+
+        void Filter(StorageBuffer& input, StorageBuffer& output, int count, StorageBuffer& outputCount) {
+            assert(GLAD_GL_KHR_shader_subgroup);
+
+            glClearNamedBufferData(blockCounts.object(), GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
+            glClearNamedBufferData(blockCounter.object(), GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
+
+            input.BindBase(0);
+            output.BindBase(1);
+            blockCounts.BindBase(2);
+            blockCounter.BindBase(3);
+            outputCount.BindBase(4);
+
+            unsigned int dispatchNumBlocks = (count+PARTITION_SIZE-1)/PARTITION_SIZE;
+            assert(dispatchNumBlocks <= MAX_NUM_BLOCKS);
+
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+            glUseProgram(program);
+            glUniform1i(kernelCountLocation, count);
+            glUniform1i(kernelNumBlocksLocation, dispatchNumBlocks);
             glDispatchCompute(dispatchNumBlocks,1,1);
         }
     };
@@ -84,6 +129,10 @@ namespace Engine {
 
         StorageBuffer inputBuffer = StorageBuffer(0);
         StorageBuffer outputBuffer = StorageBuffer(0);
+        StorageBuffer outputCountBuffer = StorageBuffer(4);
+
+        unsigned int outputCount;
+        unsigned int checkedOutputCount;
 
         bool sortCorrect;
 
@@ -119,17 +168,18 @@ namespace Engine {
         double TestFilter(bool readback) {
             inputBuffer.Resize<unsigned int>(inputValues.size());
             outputBuffer.Resize<unsigned int>(inputValues.size());
-            inputBuffer.Set((void*)inputValues.data(), sizeof(unsigned int) * inputValues.size(), 0);
+            inputBuffer.SetBytes((void*)inputValues.data(), sizeof(unsigned int) * inputValues.size(), 0);
             glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
 
             auto sortProfileHandle = Profiler::StartGpu("GpuSort");
-            m_Filter->Filter(inputBuffer, outputBuffer, inputValues.size());
+            m_Filter->Filter(inputBuffer, outputBuffer, inputValues.size(), outputCountBuffer);
             sortProfileHandle.End();
 
             if(readback) {
                 outputValues.resize(inputValues.size());
                 glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
                 outputBuffer.Readback<unsigned int>(outputValues.data(), outputValues.size(), 0);
+                outputCountBuffer.Readback<unsigned int>(&outputCount, 1, 0);
                 sortCorrect = CheckFilterResult();
             }
 
@@ -150,6 +200,7 @@ namespace Engine {
                 }
                 j++;
             }
+            checkedOutputCount = j;
             return true;
         }
         std::mt19937 gen32;
@@ -213,6 +264,13 @@ namespace Engine {
                 ImGui::SliderInt("Warps per block", &warpsPerBlock, 8, 32);
                 if(keysPerThread != m_Filter->KEYS_PER_THREAD || warpsPerBlock != m_Filter->NUM_WARPS) {                    
                     m_Filter = std::make_unique<GpuFilter>((unsigned int)keysPerThread,(unsigned int)warpsPerBlock);
+                }
+
+                ImGui::Text("Outputcount %i", outputCount);
+                if(outputCount == checkedOutputCount) {
+                    ImGui::Text("Outputcount correct");
+                } else {                    
+                    ImGui::Text("Outputcount not correct (should be %i)", checkedOutputCount);
                 }
 
                 if(ImGui::CollapsingHeader("Values")) {

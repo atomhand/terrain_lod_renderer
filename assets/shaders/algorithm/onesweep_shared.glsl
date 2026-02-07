@@ -8,14 +8,21 @@
 #define PARTITION_SIZE NUM_WARPS*32*KEYS_PER_THREAD
 
 #define HISTOGRAM_SIZE WORD_SIZE*NUM_PASSES /* 1024 */
-#define WORD_MASK 0xFFu // 8 bit word 
+#define WORD_MASK 0xFFu // 8 bit word
+
+
+#ifdef PAIRED
+#define KEY_TYPE uvec2
+#else
+#define KEY_TYPE uint
+#endif
 
 layout(binding = 0, std430) buffer inputSsbo {
-    uint inputKeys[];
+    KEY_TYPE inputKeys[];
 };
 
 layout(binding = 1, std430) buffer outputSsbo {
-    uint outputKeys[];
+    KEY_TYPE outputKeys[];
 };
 
 layout(binding = 2, std430) buffer histogramSsbo {

@@ -30,26 +30,28 @@ namespace Engine {
         ComputeShader countKernel;
         ComputeShader globalPrefixKernel;
         ComputeShader reorderKernel;
+        
+        ComputeShader countKernelPaired;
+        ComputeShader globalPrefixKernelPaired;
+        ComputeShader reorderKernelPaired;
 
         unsigned int activeHisto = 0;
         StorageBuffer histogram[2] = { StorageBuffer(NUM_PASSES * WORD_SIZE * sizeof(unsigned int), 0), StorageBuffer(NUM_PASSES * WORD_SIZE * sizeof(unsigned int), 0) };
         StorageBuffer blockLocalHistogram = StorageBuffer(WORD_SIZE *  MAX_NUM_BLOCKS * sizeof(unsigned int), 0);
 
-        StorageBuffer scratchBuffer = StorageBuffer(MAX_NUM * sizeof(unsigned int), 0);
+        //StorageBuffer scratchBuffer = StorageBuffer(MAX_NUM * sizeof(unsigned int), 0);
 
         StorageBuffer blockCounter = StorageBuffer(sizeof(unsigned int), 0);
 
         GLuint countKernelCountLocation;
         GLuint reorderKernelCountLocation;
-        GLuint reorderKernelCurrentPassLocation;
-        GLuint reorderKernelWordOffsetLocation;
         GLuint reorderKernelBlockCountLocation;
 
-        GLuint countProgram;
-        GLuint reorderProgram;
-        GLuint prefixProgram;
+        GLuint countKernelPairedCountLocation;
+        GLuint reorderKernelPairedCountLocation;
+        GLuint reorderKernelPairedBlockCountLocation;
 
-        GpuSort(unsigned int keysPerThread, unsigned int reorderWarps) : KEYS_PER_THREAD(keysPerThread),
+        GpuSort(unsigned int keysPerThread = 12, unsigned int reorderWarps = 8) : KEYS_PER_THREAD(keysPerThread),
             REORDER_WARPS(reorderWarps),
             PARTITION_SIZE(REORDER_WARPS * 32 * KEYS_PER_THREAD),
             MAX_NUM(MAX_NUM_BLOCKS * PARTITION_SIZE)        
@@ -62,21 +64,112 @@ namespace Engine {
             globalPrefixKernel = ComputeShader("shaders/algorithm/onesweep_global_prefix.cs", defs);
             reorderKernel = ComputeShader("shaders/algorithm/onesweep_reorder.cs", defs);
 
-            countProgram = countKernel.programId();
-            reorderProgram = reorderKernel.programId();
-            prefixProgram = globalPrefixKernel.programId();
+            defs.push_back("#define PAIRED");
+            countKernelPaired = ComputeShader("shaders/algorithm/onesweep_count.cs", defs);
+            globalPrefixKernelPaired = ComputeShader("shaders/algorithm/onesweep_global_prefix.cs", defs);
+            reorderKernelPaired = ComputeShader("shaders/algorithm/onesweep_reorder.cs", defs);
 
             countKernelCountLocation = glGetUniformLocation(countKernel.programId(), "totalCount");
             reorderKernelCountLocation = glGetUniformLocation(reorderKernel.programId(), "totalCount");
-            reorderKernelCurrentPassLocation = glGetUniformLocation(reorderKernel.programId(), "currentPass");
-            reorderKernelWordOffsetLocation = glGetUniformLocation(reorderKernel.programId(), "wordOffset");
             reorderKernelBlockCountLocation = glGetUniformLocation(reorderKernel.programId(), "blocksPerPass");
+
+            countKernelPairedCountLocation = glGetUniformLocation(countKernelPaired.programId(), "totalCount");
+            reorderKernelPairedCountLocation = glGetUniformLocation(reorderKernelPaired.programId(), "totalCount");
+            reorderKernelPairedBlockCountLocation = glGetUniformLocation(reorderKernelPaired.programId(), "blocksPerPass");
             
             glClearNamedBufferData(blockLocalHistogram.object(), GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
             glClearNamedBufferData(histogram[0].object(), GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
             glClearNamedBufferData(histogram[1].object(), GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
         }
 
+        void SortInPlacePaired(StorageBuffer& input, StorageBuffer& scratch, int count) {
+            
+            assert(GLAD_GL_KHR_shader_subgroup);
+
+            input.BindBase(0);
+            scratch.BindBase(1);
+
+            histogram[activeHisto].BindBase(2);
+            histogram[(activeHisto+1)%2].BindBase(5);
+
+            activeHisto = (activeHisto+1)%2;
+
+            blockLocalHistogram.BindBase(3);
+            blockCounter.BindBase(4);
+
+            unsigned int dispatchNumBlocks = (count+PARTITION_SIZE-1)/PARTITION_SIZE;
+            assert(dispatchNumBlocks <= MAX_NUM_BLOCKS);
+
+            glUseProgram(countKernelPaired.programId());
+            glUniform1i(countKernelPairedCountLocation, count);
+            glDispatchCompute(dispatchNumBlocks,1,1);
+
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+            glUseProgram(globalPrefixKernelPaired.programId());
+            glDispatchCompute(NUM_PASSES,1,1);
+            
+            glUseProgram(reorderKernelPaired.programId());            
+            glUniform1i(reorderKernelPairedCountLocation, count);
+            glUniform1i(reorderKernelPairedBlockCountLocation, dispatchNumBlocks);
+            for(int i = 0; i<NUM_PASSES; i++) {                
+                if(i%2 == 0) {
+                    input.BindBase(0);
+                    scratch.BindBase(1);
+                } else {
+                    scratch.BindBase(0);
+                    input.BindBase(1);
+                }
+                
+                glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);                
+                glDispatchCompute(dispatchNumBlocks, 1, 1);
+            }
+        }
+
+        void SortInPlace(StorageBuffer& input, StorageBuffer& scratch, int count) {
+            
+            assert(GLAD_GL_KHR_shader_subgroup);
+
+            input.BindBase(0);
+            scratch.BindBase(1);
+
+            histogram[activeHisto].BindBase(2);
+            histogram[(activeHisto+1)%2].BindBase(5);
+
+            activeHisto = (activeHisto+1)%2;
+
+            blockLocalHistogram.BindBase(3);
+            blockCounter.BindBase(4);
+
+            unsigned int dispatchNumBlocks = (count+PARTITION_SIZE-1)/PARTITION_SIZE;
+            assert(dispatchNumBlocks <= MAX_NUM_BLOCKS);
+
+            glUseProgram(countKernel.programId());
+            glUniform1i(countKernelCountLocation, count);
+            glDispatchCompute(dispatchNumBlocks,1,1);
+
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+            glUseProgram(globalPrefixKernel.programId());
+            glDispatchCompute(NUM_PASSES,1,1);
+            
+            glUseProgram(reorderKernel.programId());            
+            glUniform1i(reorderKernelCountLocation, count);
+            glUniform1i(reorderKernelBlockCountLocation, dispatchNumBlocks);
+            for(int i = 0; i<NUM_PASSES; i++) {                
+                if(i%2 == 0) {
+                    input.BindBase(0);
+                    scratch.BindBase(1);
+                } else {
+                    scratch.BindBase(0);
+                    input.BindBase(1);
+                }
+                
+                glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);                
+                glDispatchCompute(dispatchNumBlocks, 1, 1);
+            }
+        }
+/*
         void Sort(StorageBuffer& input, StorageBuffer& output, int count, int passes = NUM_PASSES) {
             assert(GLAD_GL_KHR_shader_subgroup);
 
@@ -123,7 +216,8 @@ namespace Engine {
                 glDispatchCompute(dispatchNumBlocks, 1, 1);
             }
         }
-    };
+    */
+        };
 
     class GpuSortTester {
     private:
@@ -141,15 +235,13 @@ namespace Engine {
         //std::vector<unsigned int> histogram;
 
         StorageBuffer inputBuffer = StorageBuffer(0);
-        StorageBuffer outputBuffer = StorageBuffer(0);
+        StorageBuffer scratchBuffer = StorageBuffer(0);
 
         bool sortCorrect;
 
-        int passes = GpuSort::NUM_PASSES;
-
         int currentBench = 0;
         int benchNumIterations = 64;
-        int keysPerThread = 8;
+        int keysPerThread = 12;
         int warpsPerBlock = 8;
         double sumRate = 0.0;
         double avgRate = 0.0;
@@ -178,18 +270,18 @@ namespace Engine {
 
         double TestSort(bool readback) {
             inputBuffer.Resize<unsigned int>(inputValues.size());
-            outputBuffer.Resize<unsigned int>(inputValues.size());
-            inputBuffer.Set((void*)inputValues.data(), sizeof(unsigned int) * inputValues.size(), 0);
+            scratchBuffer.Resize<unsigned int>(inputValues.size());
+            inputBuffer.SetBytes((void*)inputValues.data(), sizeof(unsigned int) * inputValues.size(), 0);
             glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
 
             auto sortProfileHandle = Profiler::StartGpu("GpuSort");
-            m_Sorter->Sort(inputBuffer, outputBuffer, inputValues.size(), passes);
+            m_Sorter->SortInPlace(inputBuffer, scratchBuffer, inputValues.size());
             sortProfileHandle.End();
 
             if(readback) {
                 outputValues.resize(inputValues.size());
                 glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
-                outputBuffer.Readback<unsigned int>(outputValues.data(), outputValues.size(), 0);
+                inputBuffer.Readback<unsigned int>(outputValues.data(), outputValues.size(), 0);
                 sortCorrect = CheckSortResult();
             }
 
@@ -275,7 +367,6 @@ namespace Engine {
                     m_Sorter = std::make_unique<GpuSort>((unsigned int)keysPerThread,(unsigned int)warpsPerBlock);
                 }
 
-                ImGui::SliderInt("Passes", &passes, 1, GpuSort::NUM_PASSES);
                 ImGui::SliderInt("Active Bits", &activeBits, 1, 32);
 
                 if(ImGui::CollapsingHeader("Values")) {

@@ -11,10 +11,11 @@
 #define PARTITION_SIZE BLOCK_SIZE*KEYS_PER_THREAD
 
 uniform int totalCount;
+uniform int numBlocks;
 
 layout(local_size_x = BLOCK_SIZE, local_size_y = 1, local_size_z = 1) in;
 
-shared uint sharedBlockId[2];
+shared uint sharedBlockOffset[2];
 shared uint countShared[NUM_WARPS];
 
 shared uint sortedKeys[PARTITION_SIZE];
@@ -37,6 +38,13 @@ layout(binding = 3, std430) coherent buffer blockCounterSsbo {
     // size numBlocks
     uint blockCounter[];
 };
+
+layout(binding = 4, std430) writeonly buffer totalCountSsbo {
+    // stores a local histogram for each block
+    // size numBlocks
+    uint finalCount[];
+};
+
 
 uint EncodeBlockHistogramEntry(uint value, uint status) {
     // 3 states
@@ -84,11 +92,13 @@ void main() {
     // acquire block id from atomic counter
     // (because GPU cannot be trusted to schedule blocks in order)
     if(gl_LocalInvocationIndex == 0) {
-        sharedBlockId[0] = atomicAdd(blockCounter[0], 1);
+        // may as well re-use the shared mem we will later use to hold
+        // the offset
+        sharedBlockOffset[0] = atomicAdd(blockCounter[0], 1);
     }
     
     barrier();
-    uint blockId = sharedBlockId[0];
+    uint blockId = sharedBlockOffset[0];
 
     uint numPassed = 0;
     uint keys[KEYS_PER_THREAD];
@@ -136,15 +146,20 @@ void main() {
     }
 
     if(gl_LocalInvocationIndex == BLOCK_SIZE-1) {
-        sharedBlockId[0] = GetPrefixChainedLookback(blockId);
-        sharedBlockId[1] = blockTotal;
-        blockPrefix[blockId] = EncodeBlockHistogramEntry(sharedBlockId[0]+blockTotal,2);
+        sharedBlockOffset[0] = GetPrefixChainedLookback(blockId);
+        sharedBlockOffset[1] = blockTotal;
+        blockPrefix[blockId] = EncodeBlockHistogramEntry(sharedBlockOffset[0]+blockTotal,2);
+
+        if(blockId == numBlocks-1) {
+            // last block, so our total is the true total
+            finalCount[0] = sharedBlockOffset[0]+blockTotal;
+        }
     }
 
     barrier();
     
-    blockTotal = sharedBlockId[1];
-    uint blockOffset = sharedBlockId[0];
+    blockTotal = sharedBlockOffset[1];
+    uint blockOffset = sharedBlockOffset[0];
     for(uint i =0; i<KEYS_PER_THREAD; i++) {
         uint idx = gl_LocalInvocationIndex + i*BLOCK_SIZE;
         uint offset = blockOffset + idx;

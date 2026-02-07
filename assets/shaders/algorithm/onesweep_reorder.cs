@@ -20,7 +20,7 @@ shared uint prefixShared[WORD_SIZE];
 shared uint histogramShared[WORD_SIZE * NUM_WARPS];
 shared uint internalBinOffset[WORD_SIZE];
 
-shared uint sortedKeys[PARTITION_SIZE];
+shared KEY_TYPE sortedKeys[PARTITION_SIZE];
 
 layout(binding = 3, std430) coherent buffer blockLocalHistogramSsbo {
     // stores a local histogram for each block
@@ -86,9 +86,9 @@ uint Warp32Multisplit(uint word) {
 
 // Fills total warp-level bin counts
 // and each thread acquires within-warp bin offsets for its keys
-void WarpLevelPrefix(uint keys[KEYS_PER_THREAD], out uint warpLocalOffsets[KEYS_PER_THREAD], uint wordOffset) {
+void WarpLevelPrefix(KEY_TYPE keys[KEYS_PER_THREAD], out uint warpLocalOffsets[KEYS_PER_THREAD], uint wordOffset) {
     for(int i=0; i<KEYS_PER_THREAD; i++) {
-        uint word = (keys[i] >> wordOffset) & WORD_MASK;
+        uint word = (keys[i].x >> wordOffset) & WORD_MASK;
         uint mask = Warp32Multisplit(word);
 
         // - count of threads in warp which share the same digit 
@@ -146,10 +146,10 @@ void main() {
     uint currentPass = sharedBlockId[0] / blocksPerPass;
     uint wordOffset = WORD_BITS * currentPass;
 
-    uint keys[KEYS_PER_THREAD];
+    KEY_TYPE keys[KEYS_PER_THREAD];
     for(uint i =0; i<KEYS_PER_THREAD; i++) {        
         uint keyId = blockId * PARTITION_SIZE + gl_SubgroupID * 32 * KEYS_PER_THREAD + gl_SubgroupInvocationID + i * 32;
-        keys[i] = keyId < totalCount ? inputKeys[keyId] : 0xffffffff;
+        keys[i] = keyId < totalCount ? inputKeys[keyId] : KEY_TYPE(0xffffffff);
     }
 
     uint warpLocalOffsets[KEYS_PER_THREAD];
@@ -183,7 +183,7 @@ void main() {
 
     // Scatter keys to sort them within locations within block
     for(uint i =0; i<KEYS_PER_THREAD; i++) {      
-        uint word = (keys[i] >> wordOffset) & WORD_MASK;
+        uint word = (keys[i].x >> wordOffset) & WORD_MASK;
         // offset within the bin for this tile
         uint localBinOffset = histogramShared[gl_SubgroupID * WORD_SIZE + word] + warpLocalOffsets[i];
         sortedKeys[internalBinOffset[word] + localBinOffset] = keys[i];
@@ -202,7 +202,7 @@ void main() {
 
     for(uint i =0; i<KEYS_PER_THREAD; i++) {
         uint idx = gl_LocalInvocationIndex + i*BLOCK_SIZE;
-        uint word = (sortedKeys[idx] >> wordOffset) & WORD_MASK;
+        uint word = (sortedKeys[idx].x >> wordOffset) & WORD_MASK;
 
         uint offset = prefixShared[word] + idx;
         if(offset < totalCount)

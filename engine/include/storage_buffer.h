@@ -45,9 +45,28 @@ namespace Engine {
             return buffer->object;
         }
 
-        void Set(void* data, size_t size, size_t offset = 0) {
-            assert(offset+size <= buffer->m_size);
+        uint64_t capacityBytes() {
+            return buffer->m_size;
+        }
+
+        template <typename T>
+        uint64_t capacity() {
+            return buffer->m_size / sizeof(T);
+        }
+
+        void SetBytes(void* data, size_t size, size_t offset = 0, bool allowResize) {
+            if(!allowResize)
+                assert(offset+size <= buffer->m_size);
+            else if(offset+size <= buffer->m_size) {
+                assert(offset == 0); // dont have provision to copy over old data when resizing
+                ResizeBytes(std::max(buffer->m_size*2, offset+size+1));
+            }
             glNamedBufferSubData(buffer->object,offset,size,data);
+        }
+
+        template <typename T>
+        void Set(T* data, size_t size, size_t offset = 0, bool allowResize = false) {
+            SetBytes((void*)data, size*sizeof(T), offset*sizeof(T), allowResize);
         }
 
         void ReadbackBytes(void* data, size_t size, size_t offset = 0) {
