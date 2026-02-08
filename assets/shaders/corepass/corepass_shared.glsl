@@ -9,11 +9,11 @@ struct DrawElementsIndirectCommand {
     uint  baseInstance;
 };
 
-struct  MaterialHeader {
+struct MaterialHeader {
     uint id;
     uint drawBufferOffset;
     uint drawCount;
-    uint drawKeyOffset;
+    uint filteredDrawBufferOffset;
 };
 
 struct MeshHeader {
@@ -21,15 +21,19 @@ struct MeshHeader {
     uint count;
 };
 
+uint MaterialIdFromKey(uint key) {
+    return (key >> 18) & 0x3fff;
+}
+
 void DecodeKey(in uint key, out uint materialId, out uint meshId) {
-    materialId = (key >> 18) & 0x3fff;
+    materialId = MaterialIdFromKey(key);
     meshId = key & 0x3ffff;
 };
 
 struct RenderItem {
     mat4 model;
-    vec3 aabbMin;
-    vec3 aabbMax;
+    vec4 aabbMin;
+    vec4 aabbMax;
 };
 
 #endif

@@ -37,7 +37,10 @@ namespace Engine {
 
     struct RenderItemData {
         glm::mat4 model;
-        AABB aabb;
+        glm::vec3 aabbMin;
+        float pad;
+        glm::vec3 aabbMax;
+        float pad2;
     };
 
     struct GpuMaterialInstance {
@@ -47,7 +50,7 @@ namespace Engine {
     };
 
     // Same struct used on CPU and GPU side
-    struct  MaterialHeader {
+    struct MaterialHeader {
         uint32_t id;
         uint32_t drawBufferOffset;
         uint32_t drawCount;
@@ -86,8 +89,10 @@ public:
         StorageBuffer renderItemBuffer = StorageBuffer(0);
 
         // Dispatch management buffers
-        StorageBuffer indirectDispatchParamsBuffer = StorageBuffer(sizeof(unsigned int)*3);        
-        StorageBuffer counterBuffer = StorageBuffer(4);
+        StorageBuffer indirectDispatchParamsBuffer = StorageBuffer(sizeof(unsigned int)*3);
+
+        StorageBuffer drawCounterBuffer = StorageBuffer(4);
+        StorageBuffer keyCounterBuffer = StorageBuffer(4);
 
         // Per-draw data
         StorageBuffer drawBaseInstanceBuffer = StorageBuffer(0);
@@ -151,8 +156,8 @@ public:
             // TODO - Counting unique draw cmds per material
             uint32_t currentDrawCmdOffset = 0;
             for(auto& materialHeader : gpuRender.materialHeaders) {
-                currentDrawCmdOffset += materialHeader.drawCount;
                 materialHeader.drawBufferOffset = currentDrawCmdOffset;
+                currentDrawCmdOffset += materialHeader.drawCount;
             }
             gpuRender.numDraws = currentDrawCmdOffset;
 
@@ -160,7 +165,8 @@ public:
             
 
             // Set gpu side buffer
-            gpuRender.materialHeadersBuffer.SetBytes((void*)gpuRender.materialHeaders.data(), gpuRender.materialHeaders.size() * sizeof(MaterialHeader), 0, true);
+            gpuRender.materialHeadersBuffer.Set<MaterialHeader>(gpuRender.materialHeaders.data(), gpuRender.materialHeaders.size(), 0, true);
+            gpuRender.meshHeadersBuffer.Set<MeshHeader>(gpuRender.meshHeaders.data(), gpuRender.materialHeaders.size(), 0, true);
 
             // EmitDrawCommands needs total draw count as a uniform (maybe use a uniform buffer and share it between shaders?)
             gpuRender.emitDrawCommandsShader.use();
@@ -171,27 +177,29 @@ public:
             // Gather render items
             gpuRender.materialKeys.clear();
             gpuRender.renderItemData.clear();
-            auto itemsView = world.registry.view<Transform,AABB,GpuMaterialInstance>();
+            auto itemsView = world.registry.view<Transform,AABB,GpuMaterialInstance,Engine::CullingResult>();
             for(auto entity : itemsView) {
-                auto [transform,aabb,material] = itemsView.get(entity);
+                auto [transform,aabb,material,cc] = itemsView.get(entity);
 
                 // Key 
                 gpuRender.materialKeys.push_back(glm::uvec2(PackKey(material.materialId, material.meshId), gpuRender.renderItemData.size()));
-                gpuRender.renderItemData.push_back(RenderItemData { transform.global, aabb});
+                //gpuRender.renderItemData.push_back(RenderItemData { transform.global, aabb});
+                gpuRender.renderItemData.push_back(RenderItemData { transform.global});
             };
             gpuRender.numRenderItems = gpuRender.materialKeys.size();
 
-            gpuRender.drawBaseInstanceBuffer.SmartResizeBytes(gpuRender.numRenderItems*sizeof(unsigned int));
+            gpuRender.drawBaseInstanceBuffer.SmartResizeBytes(gpuRender.numDraws*sizeof(unsigned int));
 
-            gpuRender.inputKeysBuffer.SetBytes((void*)gpuRender.materialKeys.data(), gpuRender.materialKeys.size() * sizeof(glm::uvec2), 0, true);
-            gpuRender.renderItemBuffer.SetBytes((void*)gpuRender.renderItemData.data(), gpuRender.renderItemData.size() * sizeof(RenderItemData), 0, true);
+            gpuRender.inputKeysBuffer.Set<glm::uvec2>(gpuRender.materialKeys.data(), gpuRender.materialKeys.size(), 0, true);
+            gpuRender.passCulledKeysBuffer.SmartResizeBytes(gpuRender.materialKeys.size() * sizeof(glm::uvec2));
+            gpuRender.renderItemBuffer.Set<RenderItemData>(gpuRender.renderItemData.data(), gpuRender.renderItemData.size(), 0, true);
 
             //   Sort keys
             //auto gpuSorter = world.GetSingle<GpuSort>();
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
             // can  use passCulledKeys as scratch buffer because it's not holding anything important right now
             // Potential improvement - replace this with a global pool for temp buffers
-            gpuRender.gpuSorter.SortInPlacePaired(gpuRender.inputKeysBuffer, gpuRender.passCulledKeysBuffer, gpuRender.materialKeys.size());
+            gpuRender.gpuSorter.SortInPlacePaired(gpuRender.inputKeysBuffer, gpuRender.passCulledKeysBuffer, gpuRender.numRenderItems);
         }
         
         static void PreparePass(Engine::World& world, Engine::Camera& camera, uint8_t passId) {
@@ -201,25 +209,27 @@ public:
             // write a filtered buffer to passCulledKeysBuffer
             // (skipping culling for initial implementation)
 
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+            gpuRender.keyCounterBuffer.Set<uint32_t>(&gpuRender.numRenderItems, 1);
 
             // Clear draw commands
-
-            // ?not necessary?
-            //glClearNamedBufferData(gpuRender.drawCmdsBuffer.object(), GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
+            glClearNamedBufferData(gpuRender.drawCmdsBuffer.object(), GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
 
             // TODO filter should support an indirect dispatch
-            gpuRender.baseInstanceFilter.Filter(gpuRender.inputKeysBuffer, gpuRender.drawBaseInstanceBuffer, gpuRender.numRenderItems, gpuRender.counterBuffer);
+            gpuRender.materialHeadersBuffer.BindBase(5);
+            gpuRender.baseInstanceFilter.Filter(gpuRender.inputKeysBuffer, gpuRender.drawBaseInstanceBuffer, gpuRender.numRenderItems, gpuRender.drawCounterBuffer);
 
             // Interpret counter to get indirect dispatch params
             // (assumes workgroup layout (256,1,1))
+
+            /*
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-            gpuRender.counterBuffer.BindBase(0);
+            gpuRender.drawCounterBuffer.BindBase(0);
             gpuRender.indirectDispatchParamsBuffer.BindBase(1);
             gpuRender.indirectGroupsFromCounterShader.Dispatch(1,1,1);
+            */
 
             gpuRender.inputKeysBuffer.BindBase(0);
-            gpuRender.counterBuffer.BindBase(1);
+            gpuRender.keyCounterBuffer.BindBase(1);
             gpuRender.materialHeadersBuffer.BindBase(2);
             gpuRender.drawBaseInstanceBuffer.BindBase(3);
             gpuRender.drawCmdsBuffer.BindBase(4);
@@ -228,11 +238,12 @@ public:
             // counterBuffer, materialHeaderBuffer, drawBaseInstanceBuffer are already bound to correct positions
 
             gpuRender.meshHeadersBuffer.BindBase(5);
+            gpuRender.drawCounterBuffer.BindBase(6);
             gpuRender.emitDrawCommandsShader.use();
             // depends on previous kernel output so barrier is required
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-            glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, gpuRender.indirectDispatchParamsBuffer.object());
+            //glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, gpuRender.indirectDispatchParamsBuffer.object());
 
             glDispatchCompute((gpuRender.numDraws+255)/256,1,1);
 

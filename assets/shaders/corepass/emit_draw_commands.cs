@@ -35,15 +35,20 @@ layout(binding = 5, std430) readonly buffer meshHeaderSsbo {
     MeshHeader meshHeaders[];
 };
 
+layout(binding = 6, std430) readonly buffer drawountSsbo {
+    uint drawCount[];
+};
+
 uniform int numDraws;
 
 void main() {
-    if(gl_GlobalInvocationID.x >= numDraws) return;
+    if(gl_GlobalInvocationID.x >= drawCount[0]) return;
 
     uint baseInstance = drawBaseInstance[gl_GlobalInvocationID.x];
     uint nextBaseInstance;
 
-    if(gl_GlobalInvocationID.x == numDraws-1) {
+    if(gl_GlobalInvocationID.x == drawCount[0]-1) {
+        // if we are the last draw, 
         nextBaseInstance = keyCount[0];
     } else {
         nextBaseInstance = drawBaseInstance[gl_GlobalInvocationID.x + 1];
@@ -64,7 +69,8 @@ void main() {
         MaterialHeader materialHeader = materialHeaders[materialId];
 
         drawCmd.count = meshHeader.count;
-    }
 
-    drawCommands[gl_GlobalInvocationID.x] = drawCmd;
+        uint offsetInDraw = gl_GlobalInvocationID.x - materialHeader.filteredDrawBufferOffset;
+        drawCommands[gl_GlobalInvocationID.x - materialHeader.filteredDrawBufferOffset + materialHeader.drawBufferOffset] = drawCmd;
+    }
 }

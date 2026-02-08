@@ -21,12 +21,8 @@ layout(binding = 3, std430) readonly buffer renderItemSsbo {
     RenderItem renderItems[];
 };
 
-MaterialHeader GetHeader() {
-    return materialHeaders[materialId];
-}
-
-mat4 GetModel() {
-    MaterialHeader header = GetHeader();
+mat4 GetModel() {    
+    MaterialHeader header = materialHeaders[materialId];
     uint baseInstance = drawBaseInstance[gl_DrawID+header.drawBufferOffset];
     uvec2 key = keys[baseInstance+gl_InstanceID];
 

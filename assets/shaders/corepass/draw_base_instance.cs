@@ -23,7 +23,7 @@ shared uint countShared[NUM_WARPS];
 shared uint sortedKeys[PARTITION_SIZE];
 
 layout(binding = 0, std430) readonly buffer inputSsbo {
-    uint inputKeys[];
+    uvec2 inputKeys[];
 };
 layout(binding = 1, std430) writeonly buffer outputSsbo {
     uint outputKeys[];
@@ -45,6 +45,10 @@ layout(binding = 4, std430) writeonly buffer totalCountSsbo {
     // stores a local histogram for each block
     // size numBlocks
     uint finalCount[];
+};
+
+layout(binding = 5, std430) writeonly buffer materialHeaderSsbo {
+    MaterialHeader materialHeaders[];
 };
 
 uint EncodeBlockHistogramEntry(uint value, uint status) {
@@ -98,19 +102,29 @@ void main() {
     uint numPassed = 0;
     uint keys[KEYS_PER_THREAD];
     bool passed[KEYS_PER_THREAD];
+    bool firstMaterialInstance[KEYS_PER_THREAD];
 
     for(uint i =0; i<KEYS_PER_THREAD; i++) {        
         uint keyId = blockId * PARTITION_SIZE + gl_SubgroupID * 32 * KEYS_PER_THREAD + gl_SubgroupInvocationID + i * 32;
 
         if(keyId < totalCount) {
-            uint key = inputKeys[keyId];
-            uint prevKey = keyId > 0 ? inputKeys[keyId-1] : key;
+            uint key = inputKeys[keyId].x;
+            uint prevKey = keyId > 0 ? inputKeys[keyId-1].x : 0xffffffff;
 
-            passed[i] = key == prevKey;
+            // If key is different from prev key (i.e. either material id or draw id is different)
+            // it will be appended to the output buffer
+            passed[i] = key != prevKey;
             if(passed[i]) {
                 // 
                 keys[i] = keyId;
                 numPassed++;
+
+                uint materialId = MaterialIdFromKey(key);
+                uint prevMaterialId = MaterialIdFromKey(prevKey);
+
+                // If we are the first key of our material, later we need to write our
+                // offset into the drawBaseInstance buffer to the material header
+                firstMaterialInstance[i] = materialId != prevMaterialId;
             }
         } else {
             passed[i] = false;
@@ -133,12 +147,13 @@ void main() {
         blockPrefix[blockId] = EncodeBlockHistogramEntry(blockTotal,1);
     }
 
+    uint internalOffset[KEYS_PER_THREAD];
     // Scatter keys to sort them within locations within block
     uint withinWarpBaseOffset = 0;
     for(uint i =0; i<KEYS_PER_THREAD; i++) {
         if(passed[i]) {
-            uint internalOffset = warpOffset + withinWarpBaseOffset + subgroupExclusiveAdd(1);    
-            sortedKeys[internalOffset] = keys[i];
+            internalOffset[i] = warpOffset + withinWarpBaseOffset + subgroupExclusiveAdd(1);    
+            sortedKeys[internalOffset[i]] = keys[i];
         }
         withinWarpBaseOffset += subgroupAdd(passed[i] ? 1 : 0);
     }
@@ -158,6 +173,17 @@ void main() {
     
     blockTotal = sharedBlockOffset[1];
     uint blockOffset = sharedBlockOffset[0];
+    // For keys 
+    // (there isn't any write coalescing here since there is no particular advantage to doing so)
+    for(uint i=0; i<KEYS_PER_THREAD; i++) {
+        if(firstMaterialInstance[i]) {
+            uint offset = blockOffset + internalOffset[i];
+            uint materialId = MaterialIdFromKey(keys[i]);
+            materialHeaders[materialId].filteredDrawBufferOffset = offset;
+        }
+    }
+
+    // Blit keys from sortedKeys to the output buffer
     for(uint i =0; i<KEYS_PER_THREAD; i++) {
         uint idx = gl_LocalInvocationIndex + i*BLOCK_SIZE;
         uint offset = blockOffset + idx;

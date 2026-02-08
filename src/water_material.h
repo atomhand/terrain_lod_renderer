@@ -12,10 +12,102 @@
 #include "gpu_render.h"
 #include "shader_shared.h"
 
+#include "imgui.h"
+
 using Engine::World, Engine::Mesh, Engine::Transform, Engine::GpuRender, Engine::MaterialHeader, Engine::MaterialRenderComponent, Engine::MaterialRenderPass, Engine::DrawElementsIndirectCommand;
 
 struct WaterMaterial {
     struct Cache;
+
+    static inline std::vector<glm::uvec2> keys;
+    static inline std::vector<uint32_t> drawBaseInstance;
+    static inline std::vector<DrawElementsIndirectCommand> drawCommands;
+    static inline std::vector<Engine::MaterialHeader> materialHeaders;
+
+    static void DebugUi(GpuRender& gpuRender) {
+        uint32_t keysSize = gpuRender.numRenderItems;
+        keys.resize(keysSize);
+        gpuRender.inputKeysBuffer.Readback<glm::uvec2>(keys.data(), keysSize, 0);
+
+        uint32_t drawsSize = gpuRender.numDraws;
+        drawCommands.resize(drawsSize);
+        gpuRender.drawCmdsBuffer.Readback<DrawElementsIndirectCommand>(drawCommands.data(), drawsSize, 0);
+
+        drawBaseInstance.resize(drawsSize);
+        gpuRender.drawBaseInstanceBuffer.Readback<uint32_t>(drawBaseInstance.data(), drawsSize, 0);
+
+        materialHeaders.resize(gpuRender.materialHeaders.size());
+        gpuRender.materialHeadersBuffer.Readback<MaterialHeader>(materialHeaders.data(), materialHeaders.size(), 0);
+
+        uint32_t numFilteredDraws;
+        gpuRender.drawCounterBuffer.Readback<uint32_t>(&numFilteredDraws,1,0);
+
+        if(ImGui::Begin("WaterMaterial tester")) {
+            if(ImGui::CollapsingHeader("Keys")) {
+                if(ImGui::BeginTable("valuesTable", 3)) {
+                    ImGui::TableSetupColumn("i", ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableSetupColumn("inputkey", ImGuiTableColumnFlags_WidthStretch);       
+                    ImGui::TableSetupColumn("outputkey", ImGuiTableColumnFlags_WidthStretch);
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("i");
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("keyIn");
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("keyOut");
+
+                    int n = std::min(gpuRender.numRenderItems, (uint32_t)5000);
+                    for(int i =0; i<n; i++) {               
+                        ImGui::TableNextRow();               
+                        ImGui::TableSetColumnIndex(0);                
+                        ImGui::Text("%u", i);
+
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::Text("%u (%u)", gpuRender.materialKeys[i].x, gpuRender.materialKeys[i].y);
+
+                        ImGui::TableSetColumnIndex(2);                
+                        ImGui::Text("%u (%u)", keys[i].x, keys[i].y);
+                    }
+
+                    ImGui::EndTable();
+                }
+            }
+
+            if(ImGui::CollapsingHeader("MaterialHeaders")) {
+                for(int i =0; i<materialHeaders.size(); i++) {
+                    ImGui::Text("ID %u", materialHeaders[i].id);
+                    ImGui::Text("DrawBufferOffset %u", materialHeaders[i].drawBufferOffset);
+                    ImGui::Text("DrawCount %u", materialHeaders[i].drawCount);
+                    ImGui::Text("DrawKeyOffset %u", materialHeaders[i].drawKeyOffset);
+                }
+            }
+
+            if(ImGui::CollapsingHeader("DrawBaseInstance")) {
+                
+                ImGui::Text("numDraws %u", gpuRender.numDraws);
+                ImGui::Text("numFilteredDraws %u", numFilteredDraws);
+                ImGui::Separator();
+
+                for(int i =0; i<drawBaseInstance.size(); i++) {
+                    ImGui::Text("[%i] %u", i, drawBaseInstance[i]);
+                }
+            }
+
+            if(ImGui::CollapsingHeader("DrawCmds")) {
+                for(int i =0; i<drawCommands.size(); i++) {
+                    ImGui::Text("Draw Command");
+                    ImGui::Text("vertex count % u", drawCommands[i].count);
+                    ImGui::Text("instanceCount % u", drawCommands[i].instanceCount);
+                    ImGui::Text("firstIndex % u", drawCommands[i].firstIndex);
+                    ImGui::Text("baseVertex % u", drawCommands[i].baseVertex);
+                    ImGui::Text("baseInstance % u", drawCommands[i].baseInstance);
+                }
+            }
+        }
+
+        ImGui::End();
+    }
 
     class WaterRenderPass : MaterialRenderPass {
         void Render(World& world, uint32_t drawOffset, uint32_t drawCount, uint8_t pass) override {
@@ -26,6 +118,8 @@ struct WaterMaterial {
             // Buffers
             // - DrawBaseInstance
             // - FilteredKeys
+
+            DebugUi(gpuRender);
 
             gpuRender.inputKeysBuffer.BindBase(0);
             gpuRender.materialHeadersBuffer.BindBase(1);
@@ -106,15 +200,9 @@ public:
         }
 
         entt::entity CreateWaterItem(World& world, glm::vec3 pos, glm::vec3 extent) {
-            if(materialId < 0) return entt::null;
-
             auto water_entity = world.registry.create();
             auto& waterItem = world.registry.emplace<WaterMaterial>(water_entity);
             auto& transform = world.registry.emplace<Transform>(water_entity);
-
-            auto& instance = world.registry.emplace<Engine::GpuMaterialInstance>(water_entity);
-            instance.materialId = materialId;
-            instance.meshId = meshId;
 
             transform.global = glm::translate(glm::mat4(1.), pos) * glm::scale(glm::mat4(1.), glm::vec3(extent.x,256.f,extent.z));
             world.registry.emplace<Engine::AABB>(water_entity, glm::vec3(-0.2,-0.5,-0.2), glm::vec3(1.2,0.5,1.2));
@@ -125,7 +213,7 @@ public:
     static void Setup(Engine::World& world, size_t capacity, Engine::Mesh mesh) {
         auto& gpuRender = world.GetSingle<GpuRender>();
         auto headerEntity = world.registry.create();
-        world.registry.emplace<Cache>(headerEntity, capacity, mesh, gpuRender.RegisterMesh(mesh.GetVertCount(0)));
+        world.registry.emplace<Cache>(headerEntity, capacity, mesh, gpuRender.RegisterMesh(mesh.GetIndexCount(0)));
 
         world.registry.emplace<MaterialRenderComponent>(headerEntity, (MaterialRenderPass*)new WaterRenderPass());
     }
@@ -133,13 +221,19 @@ public:
     bool enabled = true;
 
     static void PrepareMain(Engine::World& world, Engine::Texture depthTexture) {
-
         auto cacheView = world.registry.view<WaterMaterial::Cache,MaterialHeader>();
         auto [cache,header] = cacheView.get(cacheView.front());
 
         cache.depthTarget = depthTexture;
         cache.materialId = header.id;
         header.drawCount = 1;
+
+        auto itemView = world.registry.view<WaterMaterial>(entt::exclude<Engine::GpuMaterialInstance>);
+        for(auto entity : itemView) {
+            auto& instance = world.registry.emplace<Engine::GpuMaterialInstance>(entity);
+            instance.materialId = cache.materialId;
+            instance.meshId = cache.meshId;
+        }
     }
 
     static void DrawMain(Engine::World& world, Engine::Texture depthTexture) {
