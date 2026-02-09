@@ -43,27 +43,21 @@ struct Vertex {
 #endif
 };
 
-Vertex FetchVertex(uint index) {
+Vertex FetchVertex(uint index, MeshHeader mesh) {
     Vertex vertex;
     vertex.position = vec3(attributes[index],attributes[index+1],attributes[index+2]);
 
 #ifdef VERTEX_NORMAL
     vertex.normal = vec3(attributes[index+3],attributes[index+4],attributes[index+5]);
-    const uint uvOffset = index+6;
-#else
-    const uint uvOffset = index;
 #endif
 
 #ifdef VERTEX_UV
-    vertex.uv = vec2(attributes[uvOffset],attributes[uvOffset+1]);
-    const uint tangentOffset = uvOffset+2;
-#else
-    const uint tangentOffset = uvOffset;
+    vertex.uv = vec2(attributes[mesh.uvOffset],attributes[mesh.uvOffset+1]);
 #endif
 
 #ifdef VERTEX_TANGENT    
-    vertex.tangent = vec3(attributes[tangentOffset+0],attributes[tangentOffset+1],attributes[tangentOffset+2]);
-    vertex.bitangent = vec3(attributes[tangentOffset+3],attributes[tangentOffset+4],attributes[tangentOffset+5]);
+    vertex.tangent = vec3(attributes[mesh.tangentOffset+0],attributes[mesh.tangentOffset+1],attributes[mesh.tangentOffset+2]);
+    vertex.bitangent = vec3(attributes[mesh.tangentOffset+3],attributes[mesh.tangentOffset+4],attributes[mesh.tangentOffset+5]);
 #endif
     return vertex;
 }
@@ -74,7 +68,7 @@ void GetModelVertex(out mat4 model, out Vertex vertexAttributes) {
     uvec2 key = keys[baseInstance+gl_InstanceID];
 
     MeshHeader mesh = meshHeaders[MeshIdFromKey(key.x)];
-    vertexAttributes = FetchVertex(mesh.baseVertex + gl_VertexID*mesh.stride);
+    vertexAttributes = FetchVertex(mesh.baseVertex + gl_VertexID*mesh.stride,mesh);
 
     model = renderItems[key.y].model;
 }

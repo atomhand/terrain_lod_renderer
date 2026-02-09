@@ -86,6 +86,10 @@ namespace Engine {
         uint32_t stride;
         uint32_t PACK;
 
+        uint32_t uvOffset;
+        uint32_t tangentOffset;
+        glm::uvec2 PACK2;
+
         AABB aabb() { return AABB(aabbMin, aabbMax ); }
     };
 
@@ -138,6 +142,10 @@ namespace Engine {
             header.count = meshBuilder.indices.size();
             header.firstIndex = indexHead + indexStagingBuffer.size();
             header.baseVertex = attributesHead + attributesStagingBuffer.size();
+
+            header.uvOffset = meshBuilder.vertexFormat.uvOffset() / 4;
+            header.tangentOffset = meshBuilder.vertexFormat.tangentOffset() / 4;
+
             header.stride = meshBuilder.vertexFormat.stride() / 4; // stride is in 32 bit units, for now
             meshHeaders.push_back(header);
 

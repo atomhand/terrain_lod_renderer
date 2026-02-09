@@ -27,6 +27,10 @@ struct MeshHeader {
     uint firstIndex;
     uint stride;
     uint PACK;
+
+    uint uvOffset;
+    uint tangentOffset;
+    uvec2 PACK2;
 };
 
 uint MaterialIdFromKey(uint key) {
