@@ -94,8 +94,6 @@ namespace Engine {
         std::vector<GLuint> indexStagingBuffer;
         std::vector<float> attributesStagingBuffer;
 
-
-
         const size_t indexCapacity = 1024*1024; // 4 MB
         const size_t attributesCapacity = 16*1024*1024; // 64 MB
 
@@ -107,8 +105,6 @@ namespace Engine {
         StorageBuffer indexBuffer;
         StorageBuffer attributesBuffer;
         std::vector<MeshHeader> meshHeaders;
-
-        size_t numMeshes;
 
         MeshCache() : attributesBuffer(attributesCapacity*4), indexBuffer(indexCapacity*4) {
             glGenVertexArrays(1, &vao);
@@ -133,10 +129,10 @@ namespace Engine {
         }
 
         // note to self
-        // It is valid to call this function on a mesh that has already been generated, so make sure to clean pre-exisitng data properly...
+        // It is valid to call this function on a mesh that has already been generated, so make sure to clean pre-existing data properly...
         uint32_t RegisterMesh(GpuMeshBuilder& meshBuilder) {
             MeshHeader header;
-            header.id = numMeshes++;
+            header.id = meshHeaders.size();
             header.aabbMin = meshBuilder.aabb.min;
             header.aabbMax = meshBuilder.aabb.max;
             header.count = meshBuilder.indices.size();

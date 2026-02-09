@@ -23,6 +23,8 @@
 #include "gpu_sort.h"
 #include "gpu_filter.h"
 
+#include "test_gpu_material.h"
+
 using namespace std;
 
 const char * title = "GPU Programming Coursework App";
@@ -54,6 +56,8 @@ int main()
 	auto terrain_entity = world.registry.create();
 	auto terrainGeometry = TerrainGeometry::Insert(world,terrain_entity,terrainEdgeLength,chunkSize);
 	world.registry.emplace<Terrain>(terrain_entity);
+
+	TestGpuMaterial::Setup(world);
 
 	// Camera
 #ifdef DEBUG

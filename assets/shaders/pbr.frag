@@ -7,9 +7,6 @@
 #include "shared/deferred_shared.glsl"
 
 in vec2 TexCoords;
-
-uniform mat4 view;
-
 in vec3 WorldPos;
 in vec3 Normal;
 

@@ -1,9 +1,9 @@
 #pragma once
 
 #include <glad/gl.h>
-#include "mesh.h"
+#include "gpu_mesh.h"
 
-static Engine::Mesh Cube() {
+static Engine::GpuMeshBuilder Cube() {
         /* Define vertices for a cube in 12 triangles */
     std::vector<glm::vec3> verts =
     {
@@ -102,11 +102,11 @@ static Engine::Mesh Cube() {
         indices.push_back(i);
     }
 
-    Engine::Mesh::MeshBuilder mesh;
+    Engine::GpuMeshBuilder mesh;
     mesh.SetVerts(verts);
     mesh.SetNormals(normals);
     mesh.SetIndices(indices);
-    return mesh.CreateMesh();
+    return mesh;
 }
 
 // Adapted from https://github.com/pmp-library/pmp-library/blob/main/src/pmp/algorithms/shapes.cpp
@@ -165,7 +165,7 @@ licensing this software, and their respective officers, directors,
 employees, agents, affiliates, successors, and assigns, are express third
 party beneficiaries of this agreement with the right to enforce its terms.
 */
-static Engine::Mesh Sphere(int w, int h) {
+static Engine::GpuMeshBuilder Sphere(int w, int h) {
     std::vector<glm::vec3> verts;
     std::vector<glm::vec3> normals;
     std::vector<GLuint> indices;
@@ -232,9 +232,9 @@ static Engine::Mesh Sphere(int w, int h) {
         }
     }
 
-    Engine::Mesh::MeshBuilder mesh;
+    Engine::GpuMeshBuilder mesh;
     mesh.SetVerts(verts);
     mesh.SetNormals(normals);
     mesh.SetIndices(indices);
-    return mesh.CreateMesh();
+    return mesh;
 }

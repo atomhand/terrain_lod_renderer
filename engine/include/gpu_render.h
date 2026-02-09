@@ -64,6 +64,16 @@ namespace Engine {
 
     class GpuRender {
 private:
+    static void GenericPassBindings(GpuRender& gpuRender, MeshCache& meshCache) {
+        gpuRender.inputKeysBuffer.BindBase(0);
+        gpuRender.materialHeadersBuffer.BindBase(1);
+        gpuRender.drawBaseInstanceBuffer.BindBase(2);
+        gpuRender.renderItemBuffer.BindBase(3);
+        meshCache.attributesBuffer.BindBase(4);
+        gpuRender.meshHeadersBuffer.BindBase(5);
+        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, gpuRender.drawCmdsBuffer.object());
+        glBindVertexArray(meshCache.vao);
+    }
 public:
         GpuSort gpuSorter;
 
@@ -72,8 +82,6 @@ public:
         std::vector<RenderItemData> renderItemData;
         std::vector<glm::uvec2> materialKeys;
         std::vector<MaterialHeader> materialHeaders;
-
-        std::vector<entt::entity> materialEntities;
 
         // Render item keys
         StorageBuffer inputKeysBuffer = StorageBuffer(0);
@@ -104,22 +112,18 @@ public:
         uint32_t numDraws = 0;
         uint32_t numRenderItems = 0;
 
-        static unsigned int PackKey(uint32_t materialId, uint32_t meshId) {
+        uint32_t numMaterials = 0;
+
+        static uint32_t PackKey(uint32_t materialId, uint32_t meshId) {
             assert(materialId <= 0x3fffu);
             assert(meshId <= 0x3ffffu);
             return (materialId << 18) | meshId;
         }
 
-        void RegisterNewMaterials(Engine::World& world) {
-            
-            auto materialHeadersView = world.registry.view<MaterialRenderComponent>(entt::exclude<MaterialHeader>);
-            for(auto entity : materialHeadersView) {
-                auto& header = world.registry.emplace<MaterialHeader>(entity);
-                header.id = materialHeaders.size();
-
-                materialHeaders.push_back(header);
-                materialEntities.push_back(entity);
-            }
+        MaterialHeader& RegisterMaterial(Engine::World& world, entt::entity entity) {
+            auto& header = world.registry.emplace<MaterialHeader>(entity);
+            header.id = numMaterials++;
+            return header;
         }
 
         static void Init(Engine::World& world) {
@@ -129,7 +133,7 @@ public:
 
         static void PrePrepare(Engine::World& world) {
             auto& gpuRender = world.GetSingle<GpuRender>();
-            gpuRender.RegisterNewMaterials(world);
+            //gpuRender.RegisterNewMaterials(world);
         }
 
         static void PrepareGpuScene(Engine::World& world) {      
@@ -137,22 +141,21 @@ public:
             auto& meshCache = world.GetSingle<MeshCache>();
             meshCache.FlushStagingBuffer();
 
-            // Gather material headers
-            for(int i =0; i<gpuRender.materialEntities.size(); i++) {
-                gpuRender.materialHeaders[i] = world.registry.get<MaterialHeader>(gpuRender.materialEntities[i]);
-            }
-
+            gpuRender.materialHeaders.clear();
             // TODO - Counting unique draw cmds per material
+            world.registry.sort<MaterialHeader>([](const MaterialHeader &lhs, const MaterialHeader &rhs) { return lhs.id < rhs.id ; });
             uint32_t currentDrawCmdOffset = 0;
-            for(auto& materialHeader : gpuRender.materialHeaders) {
+            auto materialView = world.registry.view<MaterialHeader>();
+            for(auto entity : materialView) {
+                auto& materialHeader = materialView.get<MaterialHeader>(entity);
                 materialHeader.drawBufferOffset = currentDrawCmdOffset;
                 currentDrawCmdOffset += materialHeader.drawCount;
+                gpuRender.materialHeaders.push_back(materialHeader);
             }
             gpuRender.numDraws = currentDrawCmdOffset;
 
             gpuRender.drawCmdsBuffer.SmartResizeBytes(gpuRender.numDraws * sizeof(DrawElementsIndirectCommand));
             
-
             // Set gpu side buffer
             gpuRender.materialHeadersBuffer.Set<MaterialHeader>(gpuRender.materialHeaders.data(), gpuRender.materialHeaders.size(), 0, true);
             gpuRender.meshHeadersBuffer.Set<MeshHeader>(meshCache.meshHeaders.data(), meshCache.meshHeaders.size(), 0, true);
@@ -202,40 +205,34 @@ public:
 
             // Clear draw commands
             glClearNamedBufferData(gpuRender.drawCmdsBuffer.object(), GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
-
-            // TODO filter should support an indirect dispatch
-            gpuRender.materialHeadersBuffer.BindBase(5);
-            gpuRender.baseInstanceFilter.Filter(gpuRender.inputKeysBuffer, gpuRender.drawBaseInstanceBuffer, gpuRender.numRenderItems, gpuRender.drawCounterBuffer);
-
+ /*
             // Interpret counter to get indirect dispatch params
             // (assumes workgroup layout (256,1,1))
-
-            /*
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
             gpuRender.drawCounterBuffer.BindBase(0);
             gpuRender.indirectDispatchParamsBuffer.BindBase(1);
             gpuRender.indirectGroupsFromCounterShader.Dispatch(1,1,1);
             */
 
+            // TODO filter should support an indirect dispatch
+            gpuRender.materialHeadersBuffer.BindBase(5);
+            gpuRender.baseInstanceFilter.Filter(gpuRender.inputKeysBuffer, gpuRender.drawBaseInstanceBuffer, gpuRender.numRenderItems, gpuRender.drawCounterBuffer);
+
+            // Emit draw commands
             gpuRender.inputKeysBuffer.BindBase(0);
             gpuRender.keyCounterBuffer.BindBase(1);
             gpuRender.materialHeadersBuffer.BindBase(2);
             gpuRender.drawBaseInstanceBuffer.BindBase(3);
             gpuRender.drawCmdsBuffer.BindBase(4);
-
-            // Emit draw commands
-            // counterBuffer, materialHeaderBuffer, drawBaseInstanceBuffer are already bound to correct positions
-
             gpuRender.meshHeadersBuffer.BindBase(5);
             gpuRender.drawCounterBuffer.BindBase(6);
             gpuRender.emitDrawCommandsShader.use();
             // depends on previous kernel output so barrier is required
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
-            //glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, gpuRender.indirectDispatchParamsBuffer.object());
-
             glDispatchCompute((gpuRender.numDraws+255)/256,1,1);
 
+            auto& meshCache = world.GetSingle<MeshCache>();
+            GenericPassBindings(gpuRender,meshCache);
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_ELEMENT_ARRAY_BARRIER_BIT);
             // Iterate materials, bind and draw
             auto materialView = world.registry.view<MaterialHeader,MaterialRenderComponent>();
@@ -243,6 +240,7 @@ public:
                 auto [materialHeader,materialRenderComponent] = materialView.get<MaterialHeader,MaterialRenderComponent>(entity);
                 materialRenderComponent.renderPass->Render(world, materialHeader.drawBufferOffset, materialHeader.drawCount, passId);
             }
+            glBindVertexArray(0);
         }
 
         // Overview
