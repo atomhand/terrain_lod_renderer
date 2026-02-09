@@ -20,13 +20,13 @@ layout(local_size_x = BLOCK_SIZE, local_size_y = 1, local_size_z = 1) in;
 shared uint sharedBlockOffset[2];
 shared uint countShared[NUM_WARPS];
 
-shared uint sortedKeys[PARTITION_SIZE];
+shared uint sortedOutput[PARTITION_SIZE];
 
 layout(binding = 0, std430) readonly buffer inputSsbo {
     uvec2 inputKeys[];
 };
 layout(binding = 1, std430) writeonly buffer outputSsbo {
-    uint outputKeys[];
+    uint outputIdx[];
 };
 
 layout(binding = 2, std430) coherent buffer blockPrefixSsbo {
@@ -47,7 +47,7 @@ layout(binding = 4, std430) writeonly buffer totalCountSsbo {
     uint finalCount[];
 };
 
-layout(binding = 5, std430) writeonly buffer materialHeaderSsbo {
+layout(binding = 5, std430) buffer materialHeaderSsbo {
     MaterialHeader materialHeaders[];
 };
 
@@ -89,6 +89,10 @@ uint GetPrefixChainedLookback(uint startBlock) {
     return accumulatedSum;
 }
 
+uint KeyId(uint blockId, uint i) {
+    return blockId * PARTITION_SIZE + gl_SubgroupID * 32 * KEYS_PER_THREAD + gl_SubgroupInvocationID + i * 32;
+}
+
 void main() {
     // acquire block id from atomic counter
     // (because GPU cannot be trusted to schedule blocks in order)
@@ -105,8 +109,9 @@ void main() {
     bool firstMaterialInstance[KEYS_PER_THREAD];
 
     for(uint i =0; i<KEYS_PER_THREAD; i++) {        
-        uint keyId = blockId * PARTITION_SIZE + gl_SubgroupID * 32 * KEYS_PER_THREAD + gl_SubgroupInvocationID + i * 32;
-
+        uint keyId = KeyId(blockId,i);
+        
+        firstMaterialInstance[i] = false;
         if(keyId < totalCount) {
             uint key = inputKeys[keyId].x;
             uint prevKey = keyId > 0 ? inputKeys[keyId-1].x : 0xffffffff;
@@ -116,7 +121,7 @@ void main() {
             passed[i] = key != prevKey;
             if(passed[i]) {
                 // 
-                keys[i] = keyId;
+                keys[i] = key;
                 numPassed++;
 
                 uint materialId = MaterialIdFromKey(key);
@@ -153,7 +158,7 @@ void main() {
     for(uint i =0; i<KEYS_PER_THREAD; i++) {
         if(passed[i]) {
             internalOffset[i] = warpOffset + withinWarpBaseOffset + subgroupExclusiveAdd(1);    
-            sortedKeys[internalOffset[i]] = keys[i];
+            sortedOutput[internalOffset[i]] = KeyId(blockId,i);
         }
         withinWarpBaseOffset += subgroupAdd(passed[i] ? 1 : 0);
     }
@@ -174,7 +179,7 @@ void main() {
     blockTotal = sharedBlockOffset[1];
     uint blockOffset = sharedBlockOffset[0];
     // For keys 
-    // (there isn't any write coalescing here since there is no particular advantage to doing so)
+    // (not really possible to do write coalescing here)
     for(uint i=0; i<KEYS_PER_THREAD; i++) {
         if(firstMaterialInstance[i]) {
             uint offset = blockOffset + internalOffset[i];
@@ -183,12 +188,12 @@ void main() {
         }
     }
 
-    // Blit keys from sortedKeys to the output buffer
+    // Blit keys from sortedOutput to the output buffer
     for(uint i =0; i<KEYS_PER_THREAD; i++) {
         uint idx = gl_LocalInvocationIndex + i*BLOCK_SIZE;
         uint offset = blockOffset + idx;
 
         if(idx < blockTotal)
-            outputKeys[offset] = sortedKeys[idx];
+            outputIdx[offset] = sortedOutput[idx];
     }
 }
