@@ -22,13 +22,21 @@ namespace Engine {
             return sizeof(glm::vec3);
         }
         size_t uvOffset() {
-            return sizeof(glm::vec3) + (normalsEnabled ? sizeof(glm::vec3) : 0);
+            return normalsOffset()  + (normalsEnabled ? sizeof(glm::vec3) : 0);
         }
         size_t tangentOffset() {
-            return sizeof(glm::vec3) + (normalsEnabled ? sizeof(glm::vec3) : 0)  + (uvEnabled ? sizeof(glm::vec2) : 0);
+            return uvOffset() + (uvEnabled ? sizeof(glm::vec2) : 0);
         }
         size_t bitangentOffset() {
-            return sizeof(glm::vec3) + tangentOffset();
+            return tangentOffset() + sizeof(glm::vec3);
+        }
+
+        std::vector<const char*> GetShaderDefs() {
+            std::vector<const char*> defs;
+            if(normalsEnabled) defs.push_back("#DEFINE VERTEX_NORMAL");
+            if(uvEnabled) defs.push_back("#DEFINE VERTEX_UV");
+            if(hasTangents) defs.push_back("#DEFINE VERTEX_TANGENT");
+            return defs;
         }
 
         GLuint positionAttributeIndex() { return 0; }
@@ -277,7 +285,7 @@ namespace Engine {
             return data->generated != 0;
         }
 
-        int GetVertCount(int lodLevel) {
+        int GetIndexCount(int lodLevel) {
             assert(lodLevel < data->lodOffsets.size()-1);
             int start = data->lodOffsets[lodLevel];
             int end = data->lodOffsets[lodLevel+1];

@@ -361,7 +361,7 @@ float TerrainGeometry::SuggestFarPlane() const {
 TerrainGeometry& TerrainGeometry::Insert(Engine::World& world, entt::entity terrain_entity, unsigned int width, float scale) {
     auto& terrain = world.registry.emplace<TerrainGeometry>(terrain_entity, width, scale);
 
-    WaterMaterial::Setup(world, terrain.BASE_POOL_SIZE, terrain.MakeWaterMesh());
+    WaterMaterial::Setup(world, terrain.BASE_POOL_SIZE, terrain.scale, terrain.CHUNK_SIZE);
     world.registry.emplace<TerrainMaterial::Cache>(world.registry.create(), terrain.BASE_POOL_SIZE, terrain.CHUNK_SIZE, terrain.MakeTerrainMesh());
 
     for(size_t x=0; x<width; x++)

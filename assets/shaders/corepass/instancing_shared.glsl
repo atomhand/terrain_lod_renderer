@@ -21,12 +21,62 @@ layout(binding = 3, std430) readonly buffer renderItemSsbo {
     RenderItem renderItems[];
 };
 
-mat4 GetModel() {    
+layout(binding = 4, std430) readonly buffer attributesSsbo {
+    float attributes[];
+};
+
+layout(binding = 5, std430) readonly buffer meshHeaderSsbo {
+    MeshHeader meshHeaders[];
+};
+
+struct Vertex {
+    vec3 position;
+#ifdef VERTEX_NORMAL
+    vec3 normal;
+#endif
+#ifdef VERTEX_UV
+    vec2 uv;
+#endif
+#ifdef VERTEX_TANGENT
+    vec3 tangent;
+    vec3 bitangent; // lol
+#endif
+};
+
+Vertex FetchVertex(uint index) {
+    Vertex vertex;
+    vertex.position = vec3(attributes[index],attributes[index+1],attributes[index+2]);
+
+#ifdef VERTEX_NORMAL
+    vertex.normal = vec3(attributes[index+3],attributes[index+4],attributes[index+5]);
+    const uint uvOffset = index+6;
+#else
+    const uint uvOffset = index;
+#endif
+
+#ifdef VERTEX_UV
+    vertex.uv = vec2(attributes[uvOffset],attributes[uvOffset+1]);
+    const uint tangentOffset = uvOffset+2;
+#else
+    const uint tangentOffset = uvOffset;
+#endif
+
+#ifdef VERTEX_TANGENT    
+    vertex.tangent = vec3(attributes[tangentOffset+0],attributes[tangentOffset+1],attributes[tangentOffset+2]);
+    vertex.bitangent = vec3(attributes[tangentOffset+3],attributes[tangentOffset+4],attributes[tangentOffset+5]);
+#endif
+    return vertex;
+}
+
+void GetModelVertex(out mat4 model, out Vertex vertexAttributes) {    
     MaterialHeader header = materialHeaders[materialId];
     uint baseInstance = drawBaseInstance[gl_DrawID+header.drawBufferOffset];
     uvec2 key = keys[baseInstance+gl_InstanceID];
 
-    return renderItems[key.y].model;
+    MeshHeader mesh = meshHeaders[MeshIdFromKey(key.x)];
+    vertexAttributes = FetchVertex(mesh.baseVertex + gl_VertexID*mesh.stride);
+
+    model = renderItems[key.y].model;
 }
 
 #endif

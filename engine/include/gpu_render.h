@@ -9,6 +9,7 @@
 #include "gpu_filter.h"
 #include "shader_shared.h"
 #include <memory>
+#include "gpu_mesh.h"
 
 namespace Engine {
     class GpuRender;
@@ -61,11 +62,6 @@ namespace Engine {
         }
     };
 
-    struct MeshHeader {
-        unsigned int id;
-        unsigned int count;
-    };
-
     class GpuRender {
 private:
 public:
@@ -76,8 +72,6 @@ public:
         std::vector<RenderItemData> renderItemData;
         std::vector<glm::uvec2> materialKeys;
         std::vector<MaterialHeader> materialHeaders;
-
-        std::vector<MeshHeader> meshHeaders;
 
         std::vector<entt::entity> materialEntities;
 
@@ -128,13 +122,6 @@ public:
             }
         }
 
-        int RegisterMesh(unsigned int count) {
-            int id = meshHeaders.size();
-            meshHeaders.push_back(MeshHeader{(unsigned int)id,count});
-
-            return id;
-        }
-
         static void Init(Engine::World& world) {
             auto entity = world.registry.create();
             auto& gpuRender = world.registry.emplace<GpuRender>(entity);
@@ -147,6 +134,8 @@ public:
 
         static void PrepareGpuScene(Engine::World& world) {      
             auto& gpuRender = world.GetSingle<GpuRender>();
+            auto& meshCache = world.GetSingle<MeshCache>();
+            meshCache.FlushStagingBuffer();
 
             // Gather material headers
             for(int i =0; i<gpuRender.materialEntities.size(); i++) {
@@ -166,7 +155,7 @@ public:
 
             // Set gpu side buffer
             gpuRender.materialHeadersBuffer.Set<MaterialHeader>(gpuRender.materialHeaders.data(), gpuRender.materialHeaders.size(), 0, true);
-            gpuRender.meshHeadersBuffer.Set<MeshHeader>(gpuRender.meshHeaders.data(), gpuRender.materialHeaders.size(), 0, true);
+            gpuRender.meshHeadersBuffer.Set<MeshHeader>(meshCache.meshHeaders.data(), meshCache.meshHeaders.size(), 0, true);
 
             // EmitDrawCommands needs total draw count as a uniform (maybe use a uniform buffer and share it between shaders?)
             gpuRender.emitDrawCommandsShader.use();
@@ -247,7 +236,7 @@ public:
 
             glDispatchCompute((gpuRender.numDraws+255)/256,1,1);
 
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_ELEMENT_ARRAY_BARRIER_BIT);
             // Iterate materials, bind and draw
             auto materialView = world.registry.view<MaterialHeader,MaterialRenderComponent>();
             for(auto entity : materialView) {

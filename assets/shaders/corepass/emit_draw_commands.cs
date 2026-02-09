@@ -68,6 +68,9 @@ void main() {
         MeshHeader meshHeader = meshHeaders[meshId];
         MaterialHeader materialHeader = materialHeaders[materialId];
 
+
+        drawCmd.firstIndex = meshHeader.firstIndex;
+
         drawCmd.count = meshHeader.count;
 
         uint offsetInDraw = gl_GlobalInvocationID.x - materialHeader.filteredDrawBufferOffset;

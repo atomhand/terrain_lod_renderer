@@ -17,17 +17,29 @@ struct MaterialHeader {
 };
 
 struct MeshHeader {
+    vec3 aabbMin;
     uint id;
+
+    vec3 aabbMax;
+    uint baseVertex;
+
     uint count;
+    uint firstIndex;
+    uint stride;
+    uint PACK;
 };
 
 uint MaterialIdFromKey(uint key) {
     return (key >> 18) & 0x3fff;
 }
 
+uint MeshIdFromKey(uint key) {
+    return key & 0x3ffff;
+}
+
 void DecodeKey(in uint key, out uint materialId, out uint meshId) {
     materialId = MaterialIdFromKey(key);
-    meshId = key & 0x3ffff;
+    meshId = MeshIdFromKey(key);
 };
 
 struct RenderItem {

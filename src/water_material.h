@@ -10,11 +10,12 @@
 #include "light.h"
 
 #include "gpu_render.h"
+#include "gpu_mesh.h"
 #include "shader_shared.h"
 
 #include "imgui.h"
 
-using Engine::World, Engine::Mesh, Engine::Transform, Engine::GpuRender, Engine::MaterialHeader, Engine::MaterialRenderComponent, Engine::MaterialRenderPass, Engine::DrawElementsIndirectCommand;
+using Engine::World, Engine::Mesh, Engine::Transform, Engine::GpuRender, Engine::MaterialHeader, Engine::MaterialRenderComponent, Engine::MaterialRenderPass, Engine::DrawElementsIndirectCommand, Engine::MeshCache, Engine::GpuMeshBuilder;
 
 struct WaterMaterial {
     struct Cache;
@@ -24,7 +25,7 @@ struct WaterMaterial {
     static inline std::vector<DrawElementsIndirectCommand> drawCommands;
     static inline std::vector<Engine::MaterialHeader> materialHeaders;
 
-    static void DebugUi(GpuRender& gpuRender) {
+    static void DebugUi(GpuRender& gpuRender, MeshCache& meshCache) {
         uint32_t keysSize = gpuRender.numRenderItems;
         keys.resize(keysSize);
         gpuRender.inputKeysBuffer.Readback<glm::uvec2>(keys.data(), keysSize, 0);
@@ -43,6 +44,13 @@ struct WaterMaterial {
         gpuRender.drawCounterBuffer.Readback<uint32_t>(&numFilteredDraws,1,0);
 
         if(ImGui::Begin("WaterMaterial tester")) {
+            if(ImGui::CollapsingHeader("Overview")) {
+                ImGui::Text("Num meshes: %u", meshCache.numMeshes);
+                ImGui::Text("Num indices: %u", meshCache.indexHead);
+                ImGui::Text("Num attribute values: %u", meshCache.attributesHead);
+            }
+
+
             if(ImGui::CollapsingHeader("Keys")) {
                 if(ImGui::BeginTable("valuesTable", 3)) {
                     ImGui::TableSetupColumn("i", ImGuiTableColumnFlags_WidthStretch);
@@ -83,6 +91,19 @@ struct WaterMaterial {
                 }
             }
 
+            if(ImGui::CollapsingHeader("MeshHeaders")) {
+                for(auto& header : meshCache.meshHeaders) {
+                    ImGui::Text("ID %u", header.id);
+
+                    ImGui::Text("Count %u", header.count);
+                    ImGui::Text("firstIndex %u", header.firstIndex);
+                    ImGui::Text("Stride %u", header.stride);
+
+                    ImGui::Text("AABB min (%f,%f,%f)", header.aabbMin.x,header.aabbMin.y,header.aabbMin.z);
+                    ImGui::Text("AABB max (%f,%f,%f)", header.aabbMax.x,header.aabbMax.y,header.aabbMax.z);
+                }
+            }
+
             if(ImGui::CollapsingHeader("DrawBaseInstance")) {
                 
                 ImGui::Text("numDraws %u", gpuRender.numDraws);
@@ -119,7 +140,8 @@ struct WaterMaterial {
             // - DrawBaseInstance
             // - FilteredKeys
 
-            DebugUi(gpuRender);
+            auto& meshCache = world.GetSingle<MeshCache>();
+            DebugUi(gpuRender,meshCache);
 
             gpuRender.inputKeysBuffer.BindBase(0);
             gpuRender.materialHeadersBuffer.BindBase(1);
@@ -140,9 +162,13 @@ struct WaterMaterial {
                 cache.textures[i].bind();
             }
 
-            glBindVertexArray(cache.mesh.vao());
+            meshCache.attributesBuffer.BindBase(4);
+            gpuRender.meshHeadersBuffer.BindBase(5);
 
             glBindBuffer(GL_DRAW_INDIRECT_BUFFER, gpuRender.drawCmdsBuffer.object());
+
+            glBindVertexArray(meshCache.vao);
+            //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshCache.indexBuffer.object());
 
             // draw colour
             glDepthMask(GL_FALSE);
@@ -152,9 +178,10 @@ struct WaterMaterial {
             glDepthMask(GL_TRUE);
             cache.depthOnlyShader.use();
             glUniform1i(cache.depthOnlyIdOffset,cache.materialId);
-            glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), drawCount, 0);
-
+            glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT,(void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), drawCount, 0);
+            
             glBindVertexArray(0);
+            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
         }
     };
 
@@ -162,11 +189,10 @@ struct WaterMaterial {
 public:
     struct Cache {
     public:
-        int meshId;
+        uint32_t meshId;
         int materialId = -1;
         
         size_t capacity;
-        Engine::Mesh mesh;
         Engine::Shader shader;
         Engine::Shader depthOnlyShader;
         Engine::Shader shadowShader;
@@ -181,10 +207,9 @@ public:
 
         std::vector<Engine::Texture> textures;
 
-        Cache(size_t capacity, Engine::Mesh mesh, int meshId) :
+        Cache(size_t capacity, uint32_t meshId) :
             meshId(meshId), 
             capacity(capacity),
-            mesh(mesh),
             shader(Engine::Shader("shaders/water.vert", "shaders/water_pbr.frag")),
             depthOnlyShader(Engine::Shader("shaders/water.vert","shaders/shadow.frag")),
             shadowShader(Engine::Shader("shaders/water.vert","shaders/shadow.frag","shaders/shadow_cascade.geom")),
@@ -210,10 +235,61 @@ public:
         }
     };
 
-    static void Setup(Engine::World& world, size_t capacity, Engine::Mesh mesh) {
+    static void SetupMesh(GpuMeshBuilder& meshBuilder, float scale, int chunk_size) {
+        auto& verts = meshBuilder.verts;
+        auto& normals = meshBuilder.normals;
+        auto& indices = meshBuilder.indices;
+
+        meshBuilder.vertexFormat.normalsEnabled = true;
+
+        verts.clear();
+        normals.clear();
+        indices.clear();
+
+        int cw = chunk_size;
+        assert(cw >= 2);
+
+        // no skirts
+        int vw = cw+1;
+        int iz;
+        for(iz=0; iz<vw; iz++) {
+            for(int ix=0; ix<vw; ix++) {
+                glm::vec3 pos = glm::vec3(ix / float(cw),0.f,iz / float(cw));
+                verts.push_back(pos);
+                normals.push_back(glm::vec3(0,1,0));
+            }
+        }
+
+        for(iz=0; iz<vw-1; iz++) {            
+            for(int ix=0; ix<vw-1; ix++) {
+                GLuint i00 = ix + iz*(vw);
+                GLuint i10 = (ix+1) + iz*(vw);
+                GLuint i01 = ix + (iz+1)*(vw);
+                GLuint i11 = (ix+1) + (iz+1)*(vw);
+
+                indices.push_back(i00);
+                indices.push_back(i01);
+                indices.push_back(i11);
+
+                indices.push_back(i00);
+                indices.push_back(i11);
+                indices.push_back(i10);
+            }
+        }
+
+        meshBuilder.aabb = Engine::AABB(glm::vec3(0.,-16.,0.),glm::vec3(scale*(chunk_size+1),16.,scale*(chunk_size+1)));
+    }
+
+    static void Setup(Engine::World& world, size_t capacity, float scale, int chunk_size) {
+        GpuMeshBuilder builder;
+        SetupMesh(builder, scale, chunk_size);
+
+        auto& meshCache = world.GetSingle<MeshCache>();
+        uint32_t meshId = meshCache.RegisterMesh(builder);
+
         auto& gpuRender = world.GetSingle<GpuRender>();
         auto headerEntity = world.registry.create();
-        world.registry.emplace<Cache>(headerEntity, capacity, mesh, gpuRender.RegisterMesh(mesh.GetIndexCount(0)));
+        world.registry.emplace<Cache>(headerEntity, capacity, meshId);        
 
         world.registry.emplace<MaterialRenderComponent>(headerEntity, (MaterialRenderPass*)new WaterRenderPass());
     }
@@ -236,6 +312,7 @@ public:
         }
     }
 
+    /*
     static void DrawMain(Engine::World& world, Engine::Texture depthTexture) {
         auto& cache = world.GetSingle<WaterMaterial::Cache>();
 
@@ -303,4 +380,5 @@ public:
         cache.shadowShader.use();
         cache.mesh.DrawInstanced(cache.transforms.size());
     }
+    */
 };

@@ -8,6 +8,7 @@
 #include "profiler.h"
 
 #include "gpu_render.h"
+#include "gpu_mesh.h"
 
 using Engine::RenderItem, Engine::ViewUniformData, Engine::LightUniformData, Engine::MiscUniformData, Engine::Profiler;
 
@@ -16,6 +17,10 @@ void RenderPasses::Init(World& world) {
     auto& debugCamera = world.registry.emplace<Camera>(debugCameraEntity);
     debugCamera.main = false;
     world.registry.emplace<Transform>(debugCameraEntity);
+
+    // Mesh cache that stores all mesh data, needs to be intialised before we start loading any meshes
+    // maybe a better place this could be initialised, review later
+    world.registry.emplace<Engine::MeshCache>(world.registry.create());
 
     glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
     
@@ -243,7 +248,7 @@ void RenderPasses::DrawShadowMaps(World& world, Engine::Camera& cameraMain) {
         material.SetModel(transform.global);
         item.mesh.Draw();
     }
-    WaterMaterial::DrawShadow(world);
+    //WaterMaterial::DrawShadow(world);
     TerrainMaterial::DrawShadow(world);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
