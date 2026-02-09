@@ -64,7 +64,7 @@ Vertex FetchVertex(uint index, MeshHeader mesh) {
 
 void GetModelVertex(out mat4 model, out Vertex vertexAttributes) {    
     MaterialHeader header = materialHeaders[materialId];
-    uint baseInstance = drawBaseInstance[gl_DrawID+header.drawBufferOffset];
+    uint baseInstance = drawBaseInstance[gl_DrawID+header.filteredDrawBufferOffset];
     uvec2 key = keys[baseInstance+gl_InstanceID];
 
     MeshHeader mesh = meshHeaders[MeshIdFromKey(key.x)];

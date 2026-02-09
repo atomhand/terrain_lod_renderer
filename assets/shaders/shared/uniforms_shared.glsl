@@ -15,7 +15,7 @@ layout (std140, binding=0) uniform Matrices
 
 layout (std140, binding=1) uniform LightUniformData {
     // The view matrix used to compute the fragment depth used to select light cascade
-    // Typically it's the same as 
+    // Typically it's the same as the main camera VP
     // It may be separated when the debug camera mode is active
     mat4 cascadeDeterminationView;
 
@@ -37,6 +37,11 @@ layout (std140, binding=2) uniform MiscUniformData {
     float enableStochasticBlending;
     float applyExposure;
     float displacementScale;
+};
+
+layout (std140, binding=3) uniform PassUniformData {
+    mat4 cullingVP;
+    uint renderPassId;
 };
 
 #endif

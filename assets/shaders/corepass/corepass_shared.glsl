@@ -14,6 +14,8 @@ struct MaterialHeader {
     uint drawBufferOffset;
     uint drawCount;
     uint filteredDrawBufferOffset;
+
+    uint renderPassesMask;
 };
 
 struct MeshHeader {

@@ -33,6 +33,7 @@ private:
     Engine::UniformBuffer viewUniforms;
     Engine::UniformBuffer lightUniforms;
     Engine::UniformBuffer miscUniforms;
+    Engine::UniformBuffer passUniforms;
 
     entt::entity debugCameraEntity;
 
@@ -62,7 +63,7 @@ private:
     void DrawDebugQuad(World& world);
 
     // Draw opaque renderitems
-    void DrawOpaque(World& world, bool drawAABB, Engine::Camera& camera);
+    void DrawOpaque(World& world, bool drawAABB, Engine::Camera& camera, Engine::Camera& cullingCamera);
 
     // Draw transparent renderitems
     void DrawTransparent(World& world, bool drawAABB = false);

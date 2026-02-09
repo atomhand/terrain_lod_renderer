@@ -68,11 +68,11 @@ void RenderPasses::RunAll(World& world, Engine::Application& app) {
         hdr.BindHdrFramebuffer(display_w,display_h);
         PrepareMain(world,*cameraMain,*cameraMainTransform);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        DrawOpaque(world,world.input.drawAABBs, *cameraMain);
+        DrawOpaque(world,world.input.drawAABBs, *cameraMain, cullingCamera);
     } else {
         deferred.BindGBuffer(display_w,display_h);
         PrepareMain(world,*cameraMain,*cameraMainTransform);
-        DrawOpaque(world,world.input.drawAABBs, *cameraMain);
+        DrawOpaque(world,world.input.drawAABBs, *cameraMain, cullingCamera);
 
         hdr.BindHdrFramebuffer(display_w,display_h);
         deferred.LightingPass(world);
@@ -309,7 +309,7 @@ void RenderPasses::DrawDebugQuad(World& world) {
 }
 
 // Draw opaque renderitems
-void RenderPasses::DrawOpaque(World& world, bool drawAABB, Engine::Camera& camera) {
+void RenderPasses::DrawOpaque(World& world, bool drawAABB, Engine::Camera& camera, Engine::Camera& cullingCamera) {
     auto profileHandle = Profiler::StartCpu("RenderPasses::DrawOpaque");
     auto gpuProfileHandle = Profiler::StartGpu("RenderPasses::DrawOpaque");
 
@@ -393,8 +393,15 @@ void RenderPasses::DrawOpaque(World& world, bool drawAABB, Engine::Camera& camer
 
     TerrainMaterial::DrawMain(world);
 
+auto passUniformData = Engine::PassUniformData {
+        cullingCamera.VP,
+        static_cast<uint32_t>(Engine::RenderPassId::OPAQUE)
+    };
+    passUniforms.Set(&passUniformData);
+    passUniforms.BindBase(3);
+    
     auto& gpuRender = world.GetSingle<Engine::GpuRender>();
-    gpuRender.PreparePass(world, camera, 0);
+    gpuRender.PreparePass(world, camera, Engine::RenderPassId::OPAQUE);
 
     /*
     if(!world.input.previewTriangleDensity) {

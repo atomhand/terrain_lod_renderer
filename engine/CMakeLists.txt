@@ -8,6 +8,7 @@ file(GLOB ENGINE_GLOB
     ${SRC_PATH}/texture.cpp
     ${SRC_PATH}/impl_stb.cpp
     ${SRC_PATH}/light.cpp
+    ${SRC_PATH}/gpu_render.cpp
     )
 
 add_library(engine STATIC ${ENGINE_GLOB} ../extern/glad/src/gl.c)

@@ -54,6 +54,15 @@ namespace Engine {
             return buffer->m_size / sizeof(T);
         }
 
+        void ResizeBytes(size_t size) {
+            buffer->Resize(size);
+        }
+
+        template <typename T>
+        void Resize(size_t size) {
+            buffer->Resize(size * sizeof(T));
+        }
+
         void SmartResizeBytes(size_t target) {
             if(target > buffer->m_size) {
                 ResizeBytes(std::max(buffer->m_size*2, target));
@@ -87,15 +96,6 @@ namespace Engine {
 
         void BindBase(GLuint bindingpoint) {
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindingpoint, buffer->object);
-        }
-
-        template <typename T>
-        void Resize(size_t size) {
-            buffer->Resize(size * sizeof(T));
-        }
-
-        void ResizeBytes(size_t size) {
-            buffer->Resize(size);
         }
 
         StorageBuffer(size_t size, GLbitfield flags = GL_DYNAMIC_STORAGE_BIT) {

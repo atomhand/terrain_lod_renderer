@@ -135,7 +135,7 @@ struct WaterMaterial {
     }
 
     class WaterRenderPass : MaterialRenderPass {
-        void Render(World& world, uint32_t drawOffset, uint32_t drawCount, uint8_t pass) override {
+        void Render(World& world, uint32_t drawOffset, uint32_t drawCount, Engine::RenderPassId pass) override {
             auto& cache = world.GetSingle<Cache>();
             DebugUi(world);
 
@@ -271,7 +271,8 @@ public:
         auto headerEntity = world.registry.create();
         world.registry.emplace<Cache>(headerEntity, capacity, meshId);
         
-        gpuRender.RegisterMaterial(world, headerEntity);
+        auto& materialHeader = gpuRender.RegisterMaterial(world, headerEntity);
+        materialHeader.SetRenderPass(Engine::RenderPassId::OPAQUE);
 
         world.registry.emplace<MaterialRenderComponent>(headerEntity, (MaterialRenderPass*)new WaterRenderPass());
     }

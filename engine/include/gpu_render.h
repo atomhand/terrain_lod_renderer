@@ -15,10 +15,23 @@
 
 namespace Engine {
     class GpuRender;
+    enum class RenderPassId : uint32_t {
+        OPAQUE,
+        TRANSPARENT,
+        SHADOW
+    };
+
+    struct CullingFilter {
+    private:
+        GpuFilter filter = GpuFilter("shaders/corepass/culling.cs");
+    public:
+
+        void Cull(GpuRender& gpuRender, glm::mat4& vp, RenderPassId pass, StorageBuffer& input, StorageBuffer& output, StorageBuffer& inputCount, StorageBuffer& outputCount);
+    };
 
     class MaterialRenderPass {
     public:
-        virtual void Render(World& world, uint32_t offset, uint32_t count, uint8_t pass) {            
+        virtual void Render(World& world, uint32_t offset, uint32_t count, RenderPassId pass) {            
             // Uniforms that should always be set
             // - Material header index
             // Buffers
@@ -40,16 +53,16 @@ namespace Engine {
 
     struct RenderItemData {
         glm::mat4 model;
-        glm::vec3 aabbMin;
-        float pad;
-        glm::vec3 aabbMax;
-        float pad2;
+        glm::vec4 aabbMin;
+        glm::vec4 aabbMax;
+
+        RenderItemData(glm::mat4& model, AABB& aabb) :
+            model(model), aabbMin(aabb.min,1.0), aabbMax(aabb.max,1.0) {}
     };
 
     struct GpuMaterialInstance {
         uint32_t materialId;
         uint32_t meshId;
-        //uint16_t idInBatch;
     };
 
     // Same struct used on CPU and GPU side
@@ -59,6 +72,19 @@ namespace Engine {
         uint32_t drawCount;
         uint32_t drawKeyOffset; // not set on  CPU side
 
+        uint32_t renderPassesMask;
+
+        void SetRenderPass(RenderPassId pass, bool x = true) {
+            uint32_t position = static_cast<uint32_t>(pass);
+            // clear bit and then set it
+            renderPassesMask = (renderPassesMask & ~((uint32_t)1 << position) | (uint32_t(x) << position));
+        }
+
+        bool IsRenderPassEnabled(RenderPassId pass) {
+            uint32_t position = static_cast<uint32_t>(pass);
+            return (renderPassesMask >> position) & uint32_t(1);
+        }
+
         bool operator < (MaterialHeader const& rhs) {
             return this->id < rhs.id;
         }
@@ -67,7 +93,7 @@ namespace Engine {
     class GpuRender {
 private:
     static void GenericPassBindings(GpuRender& gpuRender, MeshCache& meshCache) {
-        gpuRender.inputKeysBuffer.BindBase(0);
+        gpuRender.passCulledKeysBuffer.BindBase(0);
         gpuRender.materialHeadersBuffer.BindBase(1);
         gpuRender.drawBaseInstanceBuffer.BindBase(2);
         gpuRender.renderItemBuffer.BindBase(3);
@@ -80,6 +106,7 @@ public:
         GpuSort gpuSorter;
 
         GpuFilter baseInstanceFilter = GpuFilter("shaders/corepass/draw_base_instance.cs");
+        CullingFilter cullingFilter;
 
         std::vector<RenderItemData> renderItemData;
         std::vector<glm::uvec2> materialKeys;
@@ -95,12 +122,13 @@ public:
         // Dispatch management buffers
         StorageBuffer indirectDispatchParamsBuffer = StorageBuffer(sizeof(unsigned int)*3);
 
-        StorageBuffer drawCounterBuffer = StorageBuffer(4);
+        StorageBuffer drawCounterBuffer = StorageBuffer(4, 0);
         StorageBuffer keyCounterBuffer = StorageBuffer(4);
+        StorageBuffer culledKeyCounterBuffer = StorageBuffer(4, 0);
 
         // Per-draw data
-        StorageBuffer drawBaseInstanceBuffer = StorageBuffer(0);
-        StorageBuffer drawCmdsBuffer = StorageBuffer(0);
+        StorageBuffer drawBaseInstanceBuffer = StorageBuffer(0, 0);
+        StorageBuffer drawCmdsBuffer = StorageBuffer(0, 0);
 
         // Material and mesh headers
         StorageBuffer materialHeadersBuffer = StorageBuffer(0);
@@ -108,7 +136,7 @@ public:
 
         //ComputeShader cullingShader;
 
-        ComputeShader indirectGroupsFromCounterShader = ComputeShader("shaders/corepass/indirect_params_from_counter.cs");
+        //ComputeShader indirectGroupsFromCounterShader = ComputeShader("shaders/corepass/indirect_params_from_counter.cs");
         ComputeShader emitDrawCommandsShader = ComputeShader("shaders/corepass/emit_draw_commands.cs");
 
         uint32_t numDraws = 0;
@@ -156,7 +184,7 @@ public:
                 // Key 
                 materialKeys.push_back(glm::uvec2(PackKey(material.materialId, material.meshId), renderItemData.size()));
                 //gpuRender.renderItemData.push_back(RenderItemData { transform.global, aabb});
-                renderItemData.push_back(RenderItemData { transform.global});
+                renderItemData.emplace_back(transform.global,aabb);
 
                 materialMeshPairs[material.materialId].insert(material.meshId);
             };
@@ -210,35 +238,29 @@ public:
             // can  use passCulledKeys as scratch buffer because it's not holding anything important right now
             // Potential improvement - replace this with a global pool for temp buffers
             gpuRender.gpuSorter.SortInPlacePaired(gpuRender.inputKeysBuffer, gpuRender.passCulledKeysBuffer, gpuRender.numRenderItems);
+            gpuRender.keyCounterBuffer.Set<uint32_t>(&gpuRender.numRenderItems, 1);
         }
         
-        static void PreparePass(Engine::World& world, Engine::Camera& camera, uint8_t passId) {
+        static void PreparePass(Engine::World& world, Engine::Camera& camera, RenderPassId passId) {
             auto& gpuRender = world.GetSingle<GpuRender>();
+
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+            gpuRender.cullingFilter.Cull(gpuRender, camera.VP, passId, gpuRender.inputKeysBuffer, gpuRender.passCulledKeysBuffer, gpuRender.keyCounterBuffer, gpuRender.culledKeyCounterBuffer);
             
             // TODO: CULL according to the VP and the pass id
             // write a filtered buffer to passCulledKeysBuffer
             // (skipping culling for initial implementation)
 
-            gpuRender.keyCounterBuffer.Set<uint32_t>(&gpuRender.numRenderItems, 1);
-
             // Clear draw commands
             glClearNamedBufferData(gpuRender.drawCmdsBuffer.object(), GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
- /*
-            // Interpret counter to get indirect dispatch params
-            // (assumes workgroup layout (256,1,1))
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-            gpuRender.drawCounterBuffer.BindBase(0);
-            gpuRender.indirectDispatchParamsBuffer.BindBase(1);
-            gpuRender.indirectGroupsFromCounterShader.Dispatch(1,1,1);
-            */
 
             // TODO filter should support an indirect dispatch
-            gpuRender.materialHeadersBuffer.BindBase(5);
-            gpuRender.baseInstanceFilter.Filter(gpuRender.inputKeysBuffer, gpuRender.drawBaseInstanceBuffer, gpuRender.numRenderItems, gpuRender.drawCounterBuffer);
+            gpuRender.materialHeadersBuffer.BindBase(6);
+            gpuRender.baseInstanceFilter.Filter(gpuRender.passCulledKeysBuffer, gpuRender.drawBaseInstanceBuffer, gpuRender.culledKeyCounterBuffer, gpuRender.drawCounterBuffer);
 
             // Emit draw commands
-            gpuRender.inputKeysBuffer.BindBase(0);
-            gpuRender.keyCounterBuffer.BindBase(1);
+            gpuRender.passCulledKeysBuffer.BindBase(0);
+            gpuRender.culledKeyCounterBuffer.BindBase(1);
             gpuRender.materialHeadersBuffer.BindBase(2);
             gpuRender.drawBaseInstanceBuffer.BindBase(3);
             gpuRender.drawCmdsBuffer.BindBase(4);
@@ -251,7 +273,7 @@ public:
 
             auto& meshCache = world.GetSingle<MeshCache>();
             GenericPassBindings(gpuRender,meshCache);
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_ELEMENT_ARRAY_BARRIER_BIT);
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_ELEMENT_ARRAY_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
             // Iterate materials, bind and draw
             auto materialView = world.registry.view<MaterialHeader,MaterialRenderComponent>();
             for(auto entity : materialView) {

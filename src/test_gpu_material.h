@@ -24,7 +24,7 @@ private:
     };
 
     class TestRenderPass : MaterialRenderPass {
-        void Render(World& world, uint32_t drawOffset, uint32_t drawCount, uint8_t pass) override {
+        void Render(World& world, uint32_t drawOffset, uint32_t drawCount, Engine::RenderPassId pass) override {
             auto view = world.registry.view<TestGpuMaterialManager,MaterialHeader>();
             for(auto entity : view) {
                 auto [manager,header] = view.get(entity);
@@ -45,6 +45,7 @@ public:
         world.registry.emplace<TestGpuMaterialManager>(headerEntity);
 
         auto& header = gpuRender.RegisterMaterial(world,headerEntity);
+        header.SetRenderPass(Engine::RenderPassId::OPAQUE);
 
         // sphere
         auto sphere = Sphere(16,16);
@@ -71,7 +72,7 @@ public:
             auto entity = world.registry.create();
 
             world.registry.emplace<Engine::CullingResult>(entity);
-            world.registry.emplace<Engine::AABB>(entity, sphere.aabb);
+            world.registry.emplace<Engine::AABB>(entity, cube.aabb);
             auto& instance = world.registry.emplace<Engine::GpuMaterialInstance>(entity);
             instance.materialId = header.id;
             instance.meshId = cubeId;

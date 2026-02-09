@@ -18,5 +18,9 @@ layout(binding = 1, std430) writeonly buffer drawCommandsSsbo {
 };
 
 void main() {
-    params[0] = DispatchIndirectCommand((counter[0]+255)/256, 1, 1);
+#ifdef DISPATCH_MIN_1_GROUP
+    params[0] = DispatchIndirectCommand(max(1,(counter[0]+PARTITION_SIZE-1)/PARTITION_SIZE), 1, 1);
+#else
+    params[0] = DispatchIndirectCommand((counter[0]+PARTITION_SIZE-1)/PARTITION_SIZE, 1, 1);
+#endif
 }

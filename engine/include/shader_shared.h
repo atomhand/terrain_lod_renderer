@@ -20,7 +20,7 @@ namespace Engine {
             nearPlane = camera.near;
             farPlane = camera.far;
 
-            viewProjection = projection * view;
+            viewProjection = camera.VP;
             inverseViewProjection = glm::inverse(viewProjection);
             screenDimensions = glm::vec2(camera.width,camera.height);
         }
@@ -44,8 +44,12 @@ namespace Engine {
         float enableStochasticBlending;
         float applyExposure;
         float displacementScale;
-    };    
+    };
 
+    struct PassUniformData {
+        glm::mat4 cullingVP;
+        uint32_t renderPassId;
+    };
 
     // GPU DRIVEN RENDER
 
