@@ -45,10 +45,6 @@ public:
         world.registry.emplace<TestGpuMaterialManager>(headerEntity);
 
         auto& header = gpuRender.RegisterMaterial(world,headerEntity);
-        header.drawCount = 2;
-
-        //auto& testGpuMaterial = world.registry.emplace<TestGpuMaterialManager>(entity);
-        //testGpuMaterial.meshId = gpuRender.RegisterMesh(6);
 
         // sphere
         auto sphere = Sphere(16,16);

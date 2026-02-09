@@ -284,7 +284,6 @@ public:
 
         cache.depthTarget = depthTexture;
         cache.materialId = header.id;
-        header.drawCount = 1;
 
         auto itemView = world.registry.view<WaterMaterial>(entt::exclude<Engine::GpuMaterialInstance>);
         for(auto entity : itemView) {

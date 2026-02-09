@@ -1,5 +1,8 @@
 #pragma once
 
+#include <unordered_set>
+#include <memory>
+
 #include "world.h"
 #include "culling.h"
 #include "compute_shader.h"
@@ -8,7 +11,6 @@
 #include "gpu_sort.h"
 #include "gpu_filter.h"
 #include "shader_shared.h"
-#include <memory>
 #include "gpu_mesh.h"
 
 namespace Engine {
@@ -126,20 +128,50 @@ public:
             return header;
         }
 
-        static void Init(Engine::World& world) {
+        static void Init(World& world) {
             auto entity = world.registry.create();
             auto& gpuRender = world.registry.emplace<GpuRender>(entity);
         }
 
-        static void PrePrepare(Engine::World& world) {
+        static void PrePrepare(World& world) {
             auto& gpuRender = world.GetSingle<GpuRender>();
             //gpuRender.RegisterNewMaterials(world);
         }
 
-        static void PrepareGpuScene(Engine::World& world) {      
+        std::vector<std::unordered_set<uint32_t>> materialMeshPairs;
+
+        void GatherRenderItems(World& world) {
+            materialMeshPairs.resize(numMaterials);
+            for(auto& set : materialMeshPairs) {
+                set.clear();
+            }
+
+            // Gather render items
+            materialKeys.clear();
+            renderItemData.clear();
+            auto itemsView = world.registry.view<Transform,AABB,GpuMaterialInstance,Engine::CullingResult>();
+            for(auto entity : itemsView) {
+                auto [transform,aabb,material,cc] = itemsView.get(entity);
+
+                // Key 
+                materialKeys.push_back(glm::uvec2(PackKey(material.materialId, material.meshId), renderItemData.size()));
+                //gpuRender.renderItemData.push_back(RenderItemData { transform.global, aabb});
+                renderItemData.push_back(RenderItemData { transform.global});
+
+                materialMeshPairs[material.materialId].insert(material.meshId);
+            };
+            numRenderItems = materialKeys.size();
+            inputKeysBuffer.Set<glm::uvec2>(materialKeys.data(), materialKeys.size(), 0, true);
+            passCulledKeysBuffer.SmartResizeBytes(materialKeys.size() * sizeof(glm::uvec2));
+            renderItemBuffer.Set<RenderItemData>(renderItemData.data(), renderItemData.size(), 0, true);
+        }
+
+        static void PrepareGpuScene(World& world) {      
             auto& gpuRender = world.GetSingle<GpuRender>();
             auto& meshCache = world.GetSingle<MeshCache>();
             meshCache.FlushStagingBuffer();
+
+            gpuRender.GatherRenderItems(world);
 
             gpuRender.materialHeaders.clear();
             // TODO - Counting unique draw cmds per material
@@ -148,6 +180,9 @@ public:
             auto materialView = world.registry.view<MaterialHeader>();
             for(auto entity : materialView) {
                 auto& materialHeader = materialView.get<MaterialHeader>(entity);
+
+                materialHeader.drawCount = gpuRender.materialMeshPairs[materialHeader.id].size();
+
                 materialHeader.drawBufferOffset = currentDrawCmdOffset;
                 currentDrawCmdOffset += materialHeader.drawCount;
                 gpuRender.materialHeaders.push_back(materialHeader);
@@ -166,25 +201,8 @@ public:
 
             // Partially set up draw commands
 
-            // Gather render items
-            gpuRender.materialKeys.clear();
-            gpuRender.renderItemData.clear();
-            auto itemsView = world.registry.view<Transform,AABB,GpuMaterialInstance,Engine::CullingResult>();
-            for(auto entity : itemsView) {
-                auto [transform,aabb,material,cc] = itemsView.get(entity);
-
-                // Key 
-                gpuRender.materialKeys.push_back(glm::uvec2(PackKey(material.materialId, material.meshId), gpuRender.renderItemData.size()));
-                //gpuRender.renderItemData.push_back(RenderItemData { transform.global, aabb});
-                gpuRender.renderItemData.push_back(RenderItemData { transform.global});
-            };
-            gpuRender.numRenderItems = gpuRender.materialKeys.size();
-
             gpuRender.drawBaseInstanceBuffer.SmartResizeBytes(gpuRender.numDraws*sizeof(unsigned int));
 
-            gpuRender.inputKeysBuffer.Set<glm::uvec2>(gpuRender.materialKeys.data(), gpuRender.materialKeys.size(), 0, true);
-            gpuRender.passCulledKeysBuffer.SmartResizeBytes(gpuRender.materialKeys.size() * sizeof(glm::uvec2));
-            gpuRender.renderItemBuffer.Set<RenderItemData>(gpuRender.renderItemData.data(), gpuRender.renderItemData.size(), 0, true);
 
             //   Sort keys
             //auto gpuSorter = world.GetSingle<GpuSort>();
