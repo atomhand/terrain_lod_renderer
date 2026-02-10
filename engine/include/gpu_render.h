@@ -53,16 +53,20 @@ namespace Engine {
 
     struct RenderItemData {
         glm::mat4 model;
-        glm::vec4 aabbMin;
+        glm::vec3 aabbMin;
+        uint32_t materialInstanceId;
         glm::vec4 aabbMax;
 
-        RenderItemData(glm::mat4& model, AABB& aabb) :
-            model(model), aabbMin(aabb.min,1.0), aabbMax(aabb.max,1.0) {}
+        RenderItemData(glm::mat4& model, AABB& aabb, uint32_t materialInstanceId) :
+            model(model), aabbMin(aabb.min), materialInstanceId(materialInstanceId), aabbMax(aabb.max,1.0) {}
     };
 
     struct GpuMaterialInstance {
         uint32_t materialId;
         uint32_t meshId;
+        // id within the material's internal buffer, used to access material specific per-instance attributes
+        // Can be 0 if the material doesn't care
+        uint32_t materialInstanceId;
     };
 
     // Same struct used on CPU and GPU side
@@ -184,8 +188,7 @@ public:
 
                 // Key 
                 materialKeys.push_back(glm::uvec2(PackKey(material.materialId, material.meshId), renderItemData.size()));
-                //gpuRender.renderItemData.push_back(RenderItemData { transform.global, aabb});
-                renderItemData.emplace_back(transform.global,aabb);
+                renderItemData.emplace_back(transform.global,aabb,material.materialInstanceId);
 
                 materialMeshPairs[material.materialId].insert(material.meshId);
             };

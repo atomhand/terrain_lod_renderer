@@ -9,7 +9,6 @@
 #include <glm/glm.hpp>
 #include <entt/entt.hpp>
 
-#include "mesh.h"
 #include "world.h"
 #include "terrain.h"
 #include "culling.h"
@@ -21,7 +20,7 @@
 
 #include "imgui.h"
 
-using Engine::World, Engine::Mesh, Engine::Transform;
+using Engine::World, Engine::Transform;
 
 struct TerrainGeometry;
 
@@ -334,9 +333,6 @@ struct TerrainQuadtree {
 
 // Infinite procedurally generated terrain class
 struct TerrainGeometry {
-    Engine::Mesh MakeWaterMesh();
-    Engine::Mesh MakeTerrainMesh();
-
     const int CHUNK_SIZE = 128;
     const int MAX_QUADTREE_DEPTH = 16;
     const int BASE_POOL_SIZE = 1500; //4096 * 4 * 4;

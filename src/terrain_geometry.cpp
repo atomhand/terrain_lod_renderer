@@ -76,8 +76,6 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
             glm::vec3 extent = (glm::vec3(uvMax.x,0.f,uvMax.y) - glm::vec3(uvMin.x,0.f,uvMin.y))*scale;
 
             if(node.entity == entt::null) {
-                node.entity = world.registry.create();
-                
                 auto start = std::chrono::steady_clock::now();
                 Heightmap heightMap(terrain, chunk.positionOffset + uvMin*scale, chunk.positionOffset + uvMax*scale, terrainGeometry.CHUNK_SIZE);
                 generationDuration +=  std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
@@ -85,24 +83,11 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
 
                 node.longestEdge = heightMap.longestEdge;
 
-                auto& terrainMat = world.registry.emplace<TerrainMaterial>(node.entity, topIdx);
-
-                auto& transform = world.registry.emplace<Engine::Transform>(node.entity);
-                transform.global = glm::translate(glm::mat4(1.), nodePos) * glm::scale(glm::mat4(1.), glm::vec3(extent.x,1.f,extent.z));
-
-                auto& aabb = world.registry.emplace<Engine::AABB>(node.entity, heightMap.aabb);
+                node.entity = terrainCache.CreateTerrainItem(world, nodePos, extent, heightMap.aabb, topIdx);
             }
 
             if(node.water_entity == entt::null) {
                 node.water_entity = waterCache.CreateWaterItem(world, nodePos, extent);
-                /*
-                node.water_entity = world.registry.create();
-                auto& waterItem = world.registry.emplace<WaterMaterial>(node.water_entity);
-                auto& transform = world.registry.emplace<Transform>(node.water_entity);
-                transform.global = glm::translate(glm::mat4(1.), nodePos) * glm::scale(glm::mat4(1.), glm::vec3(extent.x,256.f,extent.z));
-
-                world.registry.emplace<Engine::AABB>(node.water_entity, glm::vec3(-0.2,-0.5,-0.2), glm::vec3(1.2,0.5,1.2));
-                */
             }
 
             float targetDepth = TargetLodDepth(node.depth, nodePos, extent, world.registry.get<Engine::AABB>(node.entity),camera, world.input.lodControlParam, node.longestEdge);
@@ -173,107 +158,6 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
     if(numGenerated > 0) {
         terrainGeometry.timePerGeneratedChunk =  std::lerp(terrainGeometry.timePerGeneratedChunk,generationDuration / numGenerated,0.1);
     }
-}
-
-Engine::Mesh TerrainGeometry::MakeTerrainMesh() {
-    Engine::Mesh::MeshBuilder meshBuilder;
-    auto& verts = meshBuilder.verts;
-    auto& normals = meshBuilder.normals;
-    meshBuilder.lodIndices.resize(1);
-    auto& indices = meshBuilder.lodIndices[0];
-
-    meshBuilder.vertexFormat.normalsEnabled = true;
-
-    verts.clear();
-    indices.clear();
-
-    int cw = CHUNK_SIZE;
-    assert(cw >= 2);
-
-    int vw = cw+3;
-
-    int iz;
-    for(iz=0; iz<vw; iz++) {
-        for(int ix=0; ix<vw; ix++) {
-            int x = std::clamp((ix-1),0,cw);
-            int z = std::clamp((iz-1),0,cw);
-
-            glm::vec3 pos = glm::vec3(x / float(cw),0.f,z / float(cw));
-            if(ix == 0 || iz == 0 || ix == vw-1 || iz == vw-1) {
-                pos.y -= 64.f;
-            }
-
-            verts.push_back(pos);
-        }
-    }
-
-    for(iz=0; iz<vw-1; iz++) {            
-        for(int ix=0; ix<vw-1; ix++) {
-            GLuint i00 = ix + iz*(vw);
-            GLuint i10 = (ix+1) + iz*(vw);
-            GLuint i01 = ix + (iz+1)*(vw);
-            GLuint i11 = (ix+1) + (iz+1)*(vw);
-
-            indices.push_back(i00);
-            indices.push_back(i01);
-            indices.push_back(i11);
-
-            indices.push_back(i00);
-            indices.push_back(i11);
-            indices.push_back(i10);
-        }
-    }
-
-    meshBuilder.aabb = Engine::AABB(glm::vec3(0.,-1.,0.),glm::vec3(1.0,1.0,1.0));
-    return meshBuilder.CreateMesh();
-}
-
-Engine::Mesh TerrainGeometry::MakeWaterMesh() {
-    Engine::Mesh::MeshBuilder meshBuilder;
-    auto& verts = meshBuilder.verts;
-    auto& normals = meshBuilder.normals;
-    meshBuilder.lodIndices.resize(1);
-    auto& indices = meshBuilder.lodIndices[0];
-
-    meshBuilder.vertexFormat.normalsEnabled = true;
-
-    verts.clear();
-    normals.clear();
-    indices.clear();
-
-    int cw = CHUNK_SIZE;
-    assert(cw >= 2);
-
-    // no skirts
-    int vw = cw+1;
-    int iz;
-    for(iz=0; iz<vw; iz++) {
-        for(int ix=0; ix<vw; ix++) {
-            glm::vec3 pos = glm::vec3(ix / float(cw),0.f,iz / float(cw));
-            verts.push_back(pos);
-            normals.push_back(glm::vec3(0,1,0));
-        }
-    }
-
-    for(iz=0; iz<vw-1; iz++) {            
-        for(int ix=0; ix<vw-1; ix++) {
-            GLuint i00 = ix + iz*(vw);
-            GLuint i10 = (ix+1) + iz*(vw);
-            GLuint i01 = ix + (iz+1)*(vw);
-            GLuint i11 = (ix+1) + (iz+1)*(vw);
-
-            indices.push_back(i00);
-            indices.push_back(i01);
-            indices.push_back(i11);
-
-            indices.push_back(i00);
-            indices.push_back(i11);
-            indices.push_back(i10);
-        }
-    }
-
-    meshBuilder.aabb = Engine::AABB(glm::vec3(0.,-16.,0.),glm::vec3(scale*(CHUNK_SIZE+1),16.,scale*(CHUNK_SIZE+1)));
-    return meshBuilder.CreateMesh();
 }
 
 void DebugUi(Engine::World& world) {
@@ -362,7 +246,7 @@ TerrainGeometry& TerrainGeometry::Insert(Engine::World& world, entt::entity terr
     auto& terrain = world.registry.emplace<TerrainGeometry>(terrain_entity, width, scale);
 
     WaterMaterial::Setup(world, terrain.BASE_POOL_SIZE, terrain.scale, terrain.CHUNK_SIZE);
-    world.registry.emplace<TerrainMaterial::Cache>(world.registry.create(), terrain.BASE_POOL_SIZE, terrain.CHUNK_SIZE, terrain.MakeTerrainMesh());
+    TerrainMaterial::Setup(world, terrain.BASE_POOL_SIZE, terrain.scale, terrain.CHUNK_SIZE);
 
     for(size_t x=0; x<width; x++)
         for(size_t y=0; y<width; y++) {

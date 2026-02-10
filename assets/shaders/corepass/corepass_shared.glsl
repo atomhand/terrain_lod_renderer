@@ -55,8 +55,10 @@ uint EncodeKey(uint materialId, uint meshId) {
 
 struct RenderItem {
     mat4 model;
-    vec4 aabbMin;
-    vec4 aabbMax;
+    vec3 aabbMin;
+    uint materialInstanceId; 
+    vec3 aabbMax;
+    uint pack;
 };
 
 #endif

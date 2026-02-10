@@ -3,21 +3,12 @@
 // Tom Kellett 2025
 
 #include "shared/uniforms_shared.glsl"
+#include "corepass/instancing_shared.glsl"
 
 #define TERRAIN_VERTEX
 #include "terrain_shared.glsl"
 
-layout (location = 0) in vec3 aPos;
-
 layout(binding=0) uniform sampler2DArray dataTex; // xyz normal, w height
-
-layout(binding = 0, std430) readonly buffer ssbo1 {
-    mat4 modelMatrices[];
-};
-
-layout(binding = 1, std430) readonly buffer ssbo2 {
-    int terrainIndex[];
-};
 
 #include "shared/curvature_shared.glsl"
 
@@ -29,13 +20,17 @@ out vec2 erosionFactor;
 
 void main()
 {
-    vec4 t = textureLod(dataTex, vec3(aPos.xz,terrainIndex[gl_InstanceID]), 0);
-    WorldPos = vec3(modelMatrices[gl_InstanceID] * vec4(aPos.x, aPos.y + t.w, aPos.z, 1.0));
+    mat4 model;
+    Vertex vert;
+    uint materialInstanceId = GetModelVertex(model,vert);
+
+    vec4 t = textureLod(dataTex, vec3(vert.position.xz,materialInstanceId), 0);
+    WorldPos = vec3(model * vec4(vert.position.x, vert.position.y + t.w, vert.position.z, 1.0));
     Normal = t.xyz;
 
 
 #ifdef SHADOW_PASS
-    gl_Position = vec4(getCurvedPosition(WorldPos.xyz),1.0);
+    gl_Position = cullingVP * vec4(WorldPos.xyz,1.0);
 #else
     // Temp - disable
     erosionFactor = vec2(0.0);

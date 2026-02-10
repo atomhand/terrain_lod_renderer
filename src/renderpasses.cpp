@@ -248,7 +248,7 @@ void RenderPasses::DrawShadowMaps(World& world, Engine::Camera& cameraMain) {
         item.mesh.Draw();
     }
     //WaterMaterial::DrawShadow(world);
-    TerrainMaterial::DrawShadow(world);
+    //TerrainMaterial::DrawShadow(world);
 
     for(int i =0; i<sun.lightSpaceMatrices.size(); i++) {
         sun.shadowMap.PrepareFramebufferLayer(i);
@@ -404,7 +404,7 @@ void RenderPasses::DrawOpaque(World& world, bool drawAABB, Engine::Camera& camer
     (the advantage being it could then read the Gbuffer as well)
     */
 
-    TerrainMaterial::DrawMain(world);
+    //TerrainMaterial::DrawMain(world);
 
     auto passUniformData = Engine::PassUniformData {
         cullingCamera.VP,

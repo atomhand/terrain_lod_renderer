@@ -2,7 +2,6 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include <glad/gl.h>
-#include "mesh.h"
 #include "world.h"
 #include "shader.h"
 #include "culling.h"
@@ -137,7 +136,9 @@ struct WaterMaterial {
     class WaterRenderPass : MaterialRenderPass {
         void Render(World& world, uint32_t drawOffset, uint32_t drawCount, Engine::RenderPassId pass) override {
             auto& cache = world.GetSingle<Cache>();
-            DebugUi(world);
+            if(pass == Engine::RenderPassId::OPAQUE) {                
+                DebugUi(world);
+            }
 
             // Bind material specific datacache.shader.use();
             cache.shader.use();
@@ -165,6 +166,47 @@ struct WaterMaterial {
         }
     };
 
+
+    static void SetupMesh(GpuMeshBuilder& meshBuilder, float scale, int chunk_size) {
+        auto& verts = meshBuilder.verts;
+        auto& indices = meshBuilder.indices;
+
+        verts.clear();
+        indices.clear();
+
+        int cw = chunk_size;
+        assert(cw >= 2);
+
+        // no skirts
+        int vw = cw+1;
+        int iz;
+        for(iz=0; iz<vw; iz++) {
+            for(int ix=0; ix<vw; ix++) {
+                glm::vec3 pos = glm::vec3(ix / float(cw),0.f,iz / float(cw));
+                verts.push_back(pos);
+                //normals.push_back(glm::vec3(0,1,0));
+            }
+        }
+
+        for(iz=0; iz<vw-1; iz++) {            
+            for(int ix=0; ix<vw-1; ix++) {
+                GLuint i00 = ix + iz*(vw);
+                GLuint i10 = (ix+1) + iz*(vw);
+                GLuint i01 = ix + (iz+1)*(vw);
+                GLuint i11 = (ix+1) + (iz+1)*(vw);
+
+                indices.push_back(i00);
+                indices.push_back(i01);
+                indices.push_back(i11);
+
+                indices.push_back(i00);
+                indices.push_back(i11);
+                indices.push_back(i10);
+            }
+        }
+
+        meshBuilder.aabb = Engine::AABB(glm::vec3(-0.25,-1.5,-0.25),glm::vec3(1.25,1.5,1.25));
+    }
 
 public:
     struct Cache {
@@ -215,51 +257,6 @@ public:
         }
     };
 
-    static void SetupMesh(GpuMeshBuilder& meshBuilder, float scale, int chunk_size) {
-        auto& verts = meshBuilder.verts;
-        auto& normals = meshBuilder.normals;
-        auto& indices = meshBuilder.indices;
-
-        meshBuilder.vertexFormat.normalsEnabled = true;
-
-        verts.clear();
-        normals.clear();
-        indices.clear();
-
-        int cw = chunk_size;
-        assert(cw >= 2);
-
-        // no skirts
-        int vw = cw+1;
-        int iz;
-        for(iz=0; iz<vw; iz++) {
-            for(int ix=0; ix<vw; ix++) {
-                glm::vec3 pos = glm::vec3(ix / float(cw),0.f,iz / float(cw));
-                verts.push_back(pos);
-                normals.push_back(glm::vec3(0,1,0));
-            }
-        }
-
-        for(iz=0; iz<vw-1; iz++) {            
-            for(int ix=0; ix<vw-1; ix++) {
-                GLuint i00 = ix + iz*(vw);
-                GLuint i10 = (ix+1) + iz*(vw);
-                GLuint i01 = ix + (iz+1)*(vw);
-                GLuint i11 = (ix+1) + (iz+1)*(vw);
-
-                indices.push_back(i00);
-                indices.push_back(i01);
-                indices.push_back(i11);
-
-                indices.push_back(i00);
-                indices.push_back(i11);
-                indices.push_back(i10);
-            }
-        }
-
-        meshBuilder.aabb = Engine::AABB(glm::vec3(0.,-16.,0.),glm::vec3(scale*(chunk_size+1),16.,scale*(chunk_size+1)));
-    }
-
     static void Setup(Engine::World& world, size_t capacity, float scale, int chunk_size) {
         GpuMeshBuilder builder;
         SetupMesh(builder, scale, chunk_size);
@@ -293,74 +290,4 @@ public:
             instance.meshId = cache.meshId;
         }
     }
-
-    /*
-    static void DrawMain(Engine::World& world, Engine::Texture depthTexture) {
-        auto& cache = world.GetSingle<WaterMaterial::Cache>();
-
-        // Prepare transforms        
-        cache.transforms.clear();
-        auto view = world.registry.view<WaterMaterial,Transform,Engine::CullingResult>();
-        for(auto entity : view) {
-            auto [mat,transform,cullingResult] = view.get(entity);
-
-            if(mat.enabled && cullingResult.viewResult) {
-                cache.transforms.push_back(transform.global);
-            }
-        }
-
-        // There should never be more water chunks than the SSBO can support
-        assert(cache.transforms.size() <= cache.capacity);
-        cache.storage.SetBytes((void*)cache.transforms.data(), cache.transforms.size()*sizeof(glm::mat4), 0);
-
-        // Bind shader
-
-        cache.shader.use();
-        glUniform1f(cache.timeOffset,world.shaderAnimTime);
-        
-        int offset = GL_TEXTURE0;
-        glActiveTexture(offset++);
-        depthTexture.bind();
-
-        for(int i =0; i<cache.textures.size(); i++) {
-            glActiveTexture(offset++);
-            cache.textures[i].bind();
-        }
-
-        cache.storage.BindBase(0);
-
-        // Draw
-        cache.shader.use();
-        cache.mesh.DrawInstanced(cache.transforms.size());
-    }
-
-    static void DrawDepth(Engine::World& world) {
-        auto& cache = world.GetSingle<WaterMaterial::Cache>();
-
-        // Draw
-        cache.depthOnlyShader.use();
-        cache.mesh.DrawInstanced(cache.transforms.size());
-    }
-    
-    // NOTE - water doesnt actually cast shadow..
-    static void DrawShadow(Engine::World& world) {
-        auto& cache = world.GetSingle<WaterMaterial::Cache>();
-
-        // Prepare transforms
-        cache.transforms.clear();
-        auto view = world.registry.view<WaterMaterial,Transform,Engine::SurvivedLightCullingTag>();
-        for(auto entity : view) {
-            auto [mat,transform] = view.get(entity);
-
-            if(mat.enabled) {
-                cache.transforms.push_back(transform.global);
-            }
-        }
-
-        // Draw
-        cache.storage.BindBase(0);
-        cache.shadowShader.use();
-        cache.mesh.DrawInstanced(cache.transforms.size());
-    }
-    */
 };

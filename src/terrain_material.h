@@ -2,33 +2,95 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include <glad/gl.h>
-#include "mesh.h"
 #include "world.h"
 #include "shader.h"
 #include "culling.h"
 #include "storage_buffer.h"
 #include "light.h"
 
-using Engine::World, Engine::Mesh, Engine::Transform;
+#include "gpu_mesh.h"
+#include "gpu_render.h"
+
+using Engine::World, Engine::Mesh, Engine::Transform, Engine::GpuRender, Engine::MaterialHeader, Engine::MaterialRenderComponent, Engine::MaterialRenderPass, Engine::DrawElementsIndirectCommand, Engine::MeshCache, Engine::GpuMeshBuilder;
 
 struct TerrainMaterial {
+private:
+    class TerrainRenderPass : MaterialRenderPass {
+        void Render(World& world, uint32_t drawOffset, uint32_t drawCount, Engine::RenderPassId pass) override {
+            auto cacheView = world.registry.view<Cache,MaterialHeader>();
+            auto [cache,header] = cacheView.get(cacheView.front());
+
+            if(pass == Engine::RenderPassId::SHADOW) {                  
+                cache.shadowShader.use();
+                glUniform1i(cache.shadowIdLocation,header.id);
+                cache.BindTextures();
+                glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(Engine::DrawElementsIndirectCommand)), drawCount, 0);
+            } else {
+                cache.shader.use();
+                glUniform1i(cache.idLocation,header.id);
+                cache.BindTextures();
+                glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(Engine::DrawElementsIndirectCommand)), drawCount, 0);
+            }
+        }
+    };
+
+    static void MakeTerrainMesh(GpuMeshBuilder& meshBuilder, int chunk_size) {
+        auto& verts = meshBuilder.verts;
+        auto& indices = meshBuilder.indices;
+
+        verts.clear();
+        indices.clear();
+
+        int cw = chunk_size;
+        assert(cw >= 2);
+
+        int vw = cw+3;
+
+        int iz;
+        for(iz=0; iz<vw; iz++) {
+            for(int ix=0; ix<vw; ix++) {
+                int x = std::clamp((ix-1),0,cw);
+                int z = std::clamp((iz-1),0,cw);
+
+                glm::vec3 pos = glm::vec3(x / float(cw),0.f,z / float(cw));
+                if(ix == 0 || iz == 0 || ix == vw-1 || iz == vw-1) {
+                    pos.y -= 64.f;
+                }
+
+                verts.push_back(pos);
+            }
+        }
+
+        for(iz=0; iz<vw-1; iz++) {            
+            for(int ix=0; ix<vw-1; ix++) {
+                GLuint i00 = ix + iz*(vw);
+                GLuint i10 = (ix+1) + iz*(vw);
+                GLuint i01 = ix + (iz+1)*(vw);
+                GLuint i11 = (ix+1) + (iz+1)*(vw);
+
+                indices.push_back(i00);
+                indices.push_back(i01);
+                indices.push_back(i11);
+
+                indices.push_back(i00);
+                indices.push_back(i11);
+                indices.push_back(i10);
+            }
+        }
+
+        meshBuilder.aabb = Engine::AABB(glm::vec3(0.,-1.,0.),glm::vec3(1.0,1.0,1.0));
+    }
 public:
     struct Cache {
     public:
         size_t capacity;
-        Engine::Mesh mesh;
+        uint32_t meshId;
         Engine::Shader shader;
         Engine::Shader depthOnlyShader;
         Engine::Shader shadowShader;
-
         
         Engine::Shader triangleDensityShader;
         //Engine::Shader wireframeShader;
-
-        Engine::StorageBuffer transformBuffer;
-        Engine::StorageBuffer indexBuffer;
-        std::vector<glm::mat4> transforms;
-        std::vector<int> indices;
 
         Engine::Texture2DArray terrainDataTex;
 
@@ -36,25 +98,57 @@ public:
 
         std::vector<Engine::Texture2DArray> texturearrays;
 
-        Cache(size_t capacity, int chunkSize, Engine::Mesh mesh) : 
+        entt::entity CreateTerrainItem(Engine::World& world, glm::vec3 nodePos, glm::vec3 extent, Engine::AABB& aabb, uint32_t topIdx) {
+            auto cacheView = world.registry.view<Cache,MaterialHeader>();
+            auto [cache,header] = cacheView.get(cacheView.front());
+
+            auto entity = world.registry.create();
+            auto& terrainMat = world.registry.emplace<TerrainMaterial>(entity, topIdx);
+
+            auto& transform = world.registry.emplace<Engine::Transform>(entity);
+            transform.global = glm::translate(glm::mat4(1.), nodePos) * glm::scale(glm::mat4(1.), glm::vec3(extent.x,1.f,extent.z));
+
+            world.registry.emplace<Engine::AABB>(entity, aabb);
+
+            auto& instance = world.registry.emplace<Engine::GpuMaterialInstance>(entity);
+            instance.materialId = header.id;
+            instance.meshId = cache.meshId;
+            instance.materialInstanceId = topIdx;
+
+            return entity;
+        }
+
+        uint32_t idLocation;
+        uint32_t depthOnlyIdLocation;
+        uint32_t shadowIdLocation;
+
+        void BindTextures() {            
+            int offset = GL_TEXTURE0;
+            glActiveTexture(offset++);
+            terrainDataTex.bind();
+
+            for(int i =0; i<texturearrays.size(); i++) {
+                glActiveTexture(offset++);
+                texturearrays[i].bind();
+            }
+        }
+
+        Cache(size_t capacity, int chunkSize, uint32_t meshId) : 
             capacity(capacity),
-            mesh(mesh),
+            meshId(meshId),
             shader(Engine::Shader("shaders/terrain.vert", "shaders/terrain_pbr.frag")),
             depthOnlyShader(Engine::Shader("shaders/terrain.vert","shaders/shadow.frag")),
-            triangleDensityShader(Engine::Shader("shaders/terrain.vert","shaders/primitive/basic.frag","shaders/primitive/triangle_density.geom")),
+            triangleDensityShader(Engine::Shader("shaders/terrain.vert","shaders/primitive/basic.frag","shaders/primitive/triangle_density.geom"))
             //wireframeShader(Engine::Shader("shaders/terrain.vert","shaders/wireframe.frag","shaders/wireframe.geom")),
-            transformBuffer(capacity * sizeof(glm::mat4)),
-            indexBuffer(capacity * sizeof(int))
         {
             auto defines = std::vector<const char*>{ "#define SHADOW_PASS"};
-            shadowShader = Engine::Shader("shaders/terrain.vert","shaders/shadow.frag","shaders/shadow_cascade.geom", defines);
+            shadowShader = Engine::Shader("shaders/terrain.vert","shaders/shadow.frag", defines);
+
+            idLocation = glGetUniformLocation(shader.programId(), "materialId");
+            depthOnlyIdLocation = glGetUniformLocation(depthOnlyShader.programId(), "materialId");
+            shadowIdLocation = glGetUniformLocation(shadowShader.programId(), "materialId");
 
             terrainDataTex.Configure(1, GL_RGBA32F, chunkSize, chunkSize, capacity, GL_LINEAR, GL_CLAMP_TO_EDGE);
-
-            transforms.reserve(capacity);
-            indices.reserve(capacity);
-
-            timeOffset = glGetUniformLocation(shader.programId(), "time");
 
             texturearrays.push_back(Engine::Texture2DArray::Import({
                 "textures/grass/diff_4k.jpg",
@@ -94,81 +188,21 @@ public:
 
     TerrainMaterial(int index) : index(index) {}
 
-    static void DrawMain(Engine::World& world) {
-        auto& cache = world.GetSingle<TerrainMaterial::Cache>();
-        // Prepare transforms
+    static void Setup(Engine::World& world, size_t capacity, float scale, int chunk_size) {       
+        GpuMeshBuilder builder;
+        MakeTerrainMesh(builder, chunk_size);
+
+        auto& meshCache = world.GetSingle<MeshCache>();
+        uint32_t meshId = meshCache.RegisterMesh(builder);
+
+        auto headerEntity = world.registry.create();
+        world.registry.emplace<TerrainMaterial::Cache>(headerEntity, capacity, chunk_size, meshId);
         
-        cache.transforms.clear();
-        cache.indices.clear();
-        auto view = world.registry.view<TerrainMaterial,Transform,Engine::CullingResult>();
-        for(auto entity : view) {
-            auto [mat,transform,cullingResult] = view.get(entity);
+        auto& gpuRender = world.GetSingle<GpuRender>();
+        auto& materialHeader = gpuRender.RegisterMaterial(world, headerEntity);
+        materialHeader.SetRenderPass(Engine::RenderPassId::OPAQUE);
+        materialHeader.SetRenderPass(Engine::RenderPassId::SHADOW);
 
-            if(mat.enabled && cullingResult.viewResult) {
-                cache.transforms.push_back(transform.global);
-                cache.indices.push_back(mat.index);
-            }
-        }
-
-        // There should never be more chunks than the SSBO can support
-        assert(cache.transforms.size() <= cache.capacity);
-        cache.transformBuffer.SetBytes((void*)cache.transforms.data(), cache.transforms.size()*sizeof(glm::mat4), 0);
-        cache.indexBuffer.SetBytes((void*)cache.indices.data(), cache.indices.size()*sizeof(int), 0);
-
-        // Bind shader
-
-        if(world.input.previewTriangleDensity) {
-            cache.triangleDensityShader.use();
-        } else {
-            cache.shader.use();
-        }
-        
-        int offset = GL_TEXTURE0;
-        glActiveTexture(offset++);
-        cache.terrainDataTex.bind();
-
-        for(int i =0; i<cache.texturearrays.size(); i++) {
-            glActiveTexture(offset++);
-            cache.texturearrays[i].bind();
-        }
-
-        cache.transformBuffer.BindBase(0);
-        cache.indexBuffer.BindBase(1);
-
-        glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT| GL_BUFFER_UPDATE_BARRIER_BIT);
-
-        // Draw
-        cache.mesh.DrawInstanced(cache.transforms.size());
-    }
-    
-    // NOTE - water doesnt actually cast shadow..
-    static void DrawShadow(Engine::World& world) {
-        auto& cache = world.GetSingle<TerrainMaterial::Cache>();
-
-        // Prepare transforms
-        cache.transforms.clear();
-        cache.indices.clear();
-        auto view = world.registry.view<TerrainMaterial,Transform,Engine::SurvivedLightCullingTag>();
-        for(auto entity : view) {
-            auto [mat,transform] = view.get(entity);
-
-            if(mat.enabled) {
-                cache.transforms.push_back(transform.global);
-                cache.indices.push_back(mat.index);
-            }
-        }
-
-        // There should never be more chunks than the SSBO can support
-        assert(cache.transforms.size() <= cache.capacity);
-        cache.transformBuffer.SetBytes((void*)cache.transforms.data(), cache.transforms.size()*sizeof(glm::mat4), 0);
-        cache.indexBuffer.SetBytes((void*)cache.indices.data(), cache.indices.size()*sizeof(int), 0);
-
-        // Draw
-        cache.transformBuffer.BindBase(0);
-        cache.indexBuffer.BindBase(1);
-        cache.shadowShader.use();
-        glActiveTexture(GL_TEXTURE0);
-        cache.terrainDataTex.bind();
-        cache.mesh.DrawInstanced(cache.transforms.size());
+        world.registry.emplace<MaterialRenderComponent>(headerEntity, (MaterialRenderPass*)new TerrainRenderPass());
     }
 };
