@@ -15,6 +15,7 @@ namespace Engine {
             DirectionalShadowCascadeMapData(const DirectionalShadowCascadeMapData&) = delete;
 
             GLuint depthMapFBO;
+            std::vector<GLuint> layerFBO;
             GLuint depthMaps; // texture object
             const unsigned int width;
             const unsigned int height;
@@ -54,6 +55,22 @@ namespace Engine {
                     throw 0;
                 }
 
+                layerFBO.resize(NUM_CASCADES);
+                glGenFramebuffers(NUM_CASCADES, layerFBO.data());
+                for(int i =0; i<NUM_CASCADES; i++) {
+                    glBindFramebuffer(GL_FRAMEBUFFER, layerFBO[i]);
+                    glNamedFramebufferTextureLayer( layerFBO[i], GL_DEPTH_ATTACHMENT, depthMaps, 0, i);
+                    glNamedFramebufferDrawBuffer( layerFBO[i], GL_NONE);
+                    glNamedFramebufferReadBuffer( layerFBO[i], GL_NONE);
+                    
+                    int status = glCheckNamedFramebufferStatus(layerFBO[i],GL_FRAMEBUFFER);
+                    if (status != GL_FRAMEBUFFER_COMPLETE)
+                    {
+                        std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!";
+                        throw 0;
+                    }
+                }
+
                 glBindFramebuffer(GL_FRAMEBUFFER, 0);
             }
 
@@ -83,6 +100,12 @@ namespace Engine {
             glViewport(0, 0, data->width, data->height);
             glBindFramebuffer(GL_FRAMEBUFFER, data->depthMapFBO);
             glClear(GL_DEPTH_BUFFER_BIT);
+        }
+        
+        void PrepareFramebufferLayer(uint32_t layer) {
+            assert(layer < data->NUM_CASCADES);
+            glViewport(0, 0, data->width, data->height);
+            glBindFramebuffer(GL_FRAMEBUFFER, data->layerFBO[layer]);
         }
 
         Material& UseShadowMaterial() {

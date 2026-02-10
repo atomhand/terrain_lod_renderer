@@ -16,6 +16,7 @@ struct MaterialHeader {
     uint filteredDrawBufferOffset;
 
     uint renderPassesMask;
+    uint shadowMaterialRedirect;
 };
 
 struct MeshHeader {
@@ -47,6 +48,10 @@ void DecodeKey(in uint key, out uint materialId, out uint meshId) {
     materialId = MaterialIdFromKey(key);
     meshId = MeshIdFromKey(key);
 };
+
+uint EncodeKey(uint materialId, uint meshId) {
+    return (materialId << 18) | meshId;
+}
 
 struct RenderItem {
     mat4 model;

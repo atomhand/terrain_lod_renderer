@@ -26,7 +26,7 @@ namespace Engine {
         GpuFilter filter = GpuFilter("shaders/corepass/culling.cs");
     public:
 
-        void Cull(GpuRender& gpuRender, glm::mat4& vp, RenderPassId pass, StorageBuffer& input, StorageBuffer& output, StorageBuffer& inputCount, StorageBuffer& outputCount);
+        void Cull(GpuRender& gpuRender, RenderPassId pass, StorageBuffer& input, StorageBuffer& output, StorageBuffer& inputCount, StorageBuffer& outputCount);
     };
 
     class MaterialRenderPass {
@@ -72,7 +72,8 @@ namespace Engine {
         uint32_t drawCount;
         uint32_t drawKeyOffset; // not set on  CPU side
 
-        uint32_t renderPassesMask;
+        uint32_t renderPassesMask;        
+        uint32_t shadowMaterialRedirect = 0xffffffff;
 
         void SetRenderPass(RenderPassId pass, bool x = true) {
             uint32_t position = static_cast<uint32_t>(pass);
@@ -241,11 +242,11 @@ public:
             gpuRender.keyCounterBuffer.Set<uint32_t>(&gpuRender.numRenderItems, 1);
         }
         
-        static void PreparePass(Engine::World& world, Engine::Camera& camera, RenderPassId passId) {
+        static void PreparePass(Engine::World& world, RenderPassId passId) {
             auto& gpuRender = world.GetSingle<GpuRender>();
 
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-            gpuRender.cullingFilter.Cull(gpuRender, camera.VP, passId, gpuRender.inputKeysBuffer, gpuRender.passCulledKeysBuffer, gpuRender.keyCounterBuffer, gpuRender.culledKeyCounterBuffer);
+            gpuRender.cullingFilter.Cull(gpuRender, passId, gpuRender.inputKeysBuffer, gpuRender.passCulledKeysBuffer, gpuRender.keyCounterBuffer, gpuRender.culledKeyCounterBuffer);
             
             // TODO: CULL according to the VP and the pass id
             // write a filtered buffer to passCulledKeysBuffer

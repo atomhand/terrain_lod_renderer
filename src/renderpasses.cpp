@@ -22,12 +22,11 @@ void RenderPasses::Init(World& world) {
     // maybe a better place this could be initialised, review later
     world.registry.emplace<Engine::MeshCache>(world.registry.create());
 
-    glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
-    
+    GpuRender::Init(world);
+
+    glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);    
     glClearColor(0.f,0.f,0.,0.0f);
     glClearDepth(0.f);
-
-    GpuRender::Init(world);
 }
 
 void RenderPasses::RunAll(World& world, Engine::Application& app) {
@@ -251,6 +250,20 @@ void RenderPasses::DrawShadowMaps(World& world, Engine::Camera& cameraMain) {
     //WaterMaterial::DrawShadow(world);
     TerrainMaterial::DrawShadow(world);
 
+    for(int i =0; i<sun.lightSpaceMatrices.size(); i++) {
+        sun.shadowMap.PrepareFramebufferLayer(i);
+
+        auto passUniformData = Engine::PassUniformData {
+            sun.lightSpaceMatrices[i],
+            static_cast<uint32_t>(Engine::RenderPassId::SHADOW)
+        };
+        passUniforms.Set(&passUniformData);
+        passUniforms.BindBase(3);
+        
+        auto& gpuRender = world.GetSingle<Engine::GpuRender>();
+        gpuRender.PreparePass(world, Engine::RenderPassId::SHADOW);
+    }
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glUseProgram(0);
 }
@@ -393,7 +406,7 @@ void RenderPasses::DrawOpaque(World& world, bool drawAABB, Engine::Camera& camer
 
     TerrainMaterial::DrawMain(world);
 
-auto passUniformData = Engine::PassUniformData {
+    auto passUniformData = Engine::PassUniformData {
         cullingCamera.VP,
         static_cast<uint32_t>(Engine::RenderPassId::OPAQUE)
     };
@@ -401,7 +414,7 @@ auto passUniformData = Engine::PassUniformData {
     passUniforms.BindBase(3);
     
     auto& gpuRender = world.GetSingle<Engine::GpuRender>();
-    gpuRender.PreparePass(world, camera, Engine::RenderPassId::OPAQUE);
+    gpuRender.PreparePass(world, Engine::RenderPassId::OPAQUE);
 
     /*
     if(!world.input.previewTriangleDensity) {
