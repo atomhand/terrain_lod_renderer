@@ -24,8 +24,8 @@ namespace Engine {
     struct CullingFilter {
     private:
         GpuFilter filter = GpuFilter("shaders/corepass/culling.cs");
+        GpuFilter shadowFilter = GpuFilter("shaders/corepass/shadow_culling.cs");
     public:
-
         void Cull(GpuRender& gpuRender, RenderPassId pass, StorageBuffer& input, StorageBuffer& output, StorageBuffer& inputCount, StorageBuffer& outputCount);
     };
 
@@ -105,6 +105,7 @@ private:
         meshCache.attributesBuffer.BindBase(4);
         gpuRender.meshHeadersBuffer.BindBase(5);
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, gpuRender.drawCmdsBuffer.object());
+        glBindBuffer(GL_PARAMETER_BUFFER, gpuRender.materialDrawCount.object());
         glBindVertexArray(meshCache.vao);
     }
 public:
@@ -134,10 +135,12 @@ public:
         // Per-draw data
         StorageBuffer drawBaseInstanceBuffer = StorageBuffer(0, 0);
         StorageBuffer drawCmdsBuffer = StorageBuffer(0, 0);
+        StorageBuffer materialDrawCount = StorageBuffer(0);
 
         // Material and mesh headers
         StorageBuffer materialHeadersBuffer = StorageBuffer(0);
         StorageBuffer meshHeadersBuffer = StorageBuffer(0);
+        
 
         //ComputeShader cullingShader;
 
@@ -222,6 +225,7 @@ public:
             gpuRender.numDraws = currentDrawCmdOffset;
 
             gpuRender.drawCmdsBuffer.SmartResizeBytes(gpuRender.numDraws * sizeof(DrawElementsIndirectCommand));
+            gpuRender.materialDrawCount.SmartResizeBytes(gpuRender.numMaterials*sizeof(uint32_t));
             
             // Set gpu side buffer
             gpuRender.materialHeadersBuffer.Set<MaterialHeader>(gpuRender.materialHeaders.data(), gpuRender.materialHeaders.size(), 0, true);
@@ -257,6 +261,7 @@ public:
 
             // Clear draw commands
             glClearNamedBufferData(gpuRender.drawCmdsBuffer.object(), GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
+            glClearNamedBufferData(gpuRender.materialDrawCount.object(), GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
 
             // TODO filter should support an indirect dispatch
             gpuRender.materialHeadersBuffer.BindBase(6);
@@ -270,6 +275,7 @@ public:
             gpuRender.drawCmdsBuffer.BindBase(4);
             gpuRender.meshHeadersBuffer.BindBase(5);
             gpuRender.drawCounterBuffer.BindBase(6);
+            gpuRender.materialDrawCount.BindBase(7);
             gpuRender.emitDrawCommandsShader.use();
             // depends on previous kernel output so barrier is required
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
@@ -282,7 +288,8 @@ public:
             auto materialView = world.registry.view<MaterialHeader,MaterialRenderComponent>();
             for(auto entity : materialView) {
                 auto [materialHeader,materialRenderComponent] = materialView.get<MaterialHeader,MaterialRenderComponent>(entity);
-                materialRenderComponent.renderPass->Render(world, materialHeader.drawBufferOffset, materialHeader.drawCount, passId);
+                if(materialHeader.IsRenderPassEnabled(passId))
+                    materialRenderComponent.renderPass->Render(world, materialHeader.drawBufferOffset, materialHeader.drawCount, passId);
             }
             glBindVertexArray(0);
         }

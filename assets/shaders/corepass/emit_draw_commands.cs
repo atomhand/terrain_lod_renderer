@@ -35,45 +35,51 @@ layout(binding = 5, std430) readonly buffer meshHeaderSsbo {
     MeshHeader meshHeaders[];
 };
 
-layout(binding = 6, std430) readonly buffer drawountSsbo {
-    uint drawCount[];
+layout(binding = 6, std430) readonly buffer totalDrawCountSsbo {
+    uint totalDrawCount[];
+};
+
+layout(binding = 7, std430) writeonly buffer materialDrawCountSsbo {
+    uint materialDrawCount[];
 };
 
 uniform int numDraws;
 
 void main() {
-    if(gl_GlobalInvocationID.x >= drawCount[0]) return;
+    if(gl_GlobalInvocationID.x >= totalDrawCount[0]) return;
 
     uint baseInstance = drawBaseInstance[gl_GlobalInvocationID.x];
     uint nextBaseInstance;
+        
+    uint key = renderItemKeys[baseInstance].x;
+    uint materialId, meshId;
+    DecodeKey(key,materialId,meshId);
 
-    if(gl_GlobalInvocationID.x == drawCount[0]-1) {
-        // if we are the last draw, 
+    MaterialHeader materialHeader = materialHeaders[materialId];
+    MeshHeader meshHeader = meshHeaders[meshId];
+    
+    if(gl_GlobalInvocationID.x == totalDrawCount[0]-1) {
+        // if we are the last draw, "base instance" of the next draw is just the total num of draws
         nextBaseInstance = keyCount[0];
+        
+        // Last overall draw is also the last draw of its material, so write the count into the indirect draw parameter buffer
+        materialDrawCount[materialId] = gl_GlobalInvocationID.x + 1 - materialHeader.filteredDrawBufferOffset;
     } else {
         nextBaseInstance = drawBaseInstance[gl_GlobalInvocationID.x + 1];
+
+        // if we are the last draw of our material, we write the draw count to an indirect draw parameter buffer
+        uint nextMaterialId, nextMeshId;
+        DecodeKey(renderItemKeys[nextBaseInstance].x,nextMaterialId,nextMeshId);
+        if(nextMaterialId != materialId)
+            materialDrawCount[materialId] = gl_GlobalInvocationID.x + 1 - materialHeader.filteredDrawBufferOffset;
     }
 
     DrawElementsIndirectCommand drawCmd;
     drawCmd.instanceCount = nextBaseInstance - baseInstance;
-    drawCmd.count = 0;
-    drawCmd.firstIndex = 0;
+    drawCmd.count = meshHeader.count;
+    drawCmd.firstIndex = meshHeader.firstIndex;
     drawCmd.baseVertex = 0;
     drawCmd.baseInstance = 0; // unused
-
-    if(drawCmd.instanceCount > 0) {        
-        uint key = renderItemKeys[baseInstance].x;
-        uint materialId, meshId;
-        DecodeKey(key,materialId,meshId);
-        MeshHeader meshHeader = meshHeaders[meshId];
-        MaterialHeader materialHeader = materialHeaders[materialId];
-
-
-        drawCmd.firstIndex = meshHeader.firstIndex;
-
-        drawCmd.count = meshHeader.count;
-
-        uint offsetInDraw = gl_GlobalInvocationID.x - materialHeader.filteredDrawBufferOffset;
-        drawCommands[gl_GlobalInvocationID.x - materialHeader.filteredDrawBufferOffset + materialHeader.drawBufferOffset] = drawCmd;
-    }
+    uint offsetInDraw = gl_GlobalInvocationID.x - materialHeader.filteredDrawBufferOffset;
+    drawCommands[gl_GlobalInvocationID.x - materialHeader.filteredDrawBufferOffset + materialHeader.drawBufferOffset] = drawCmd;
 }

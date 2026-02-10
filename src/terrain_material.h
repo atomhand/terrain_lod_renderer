@@ -24,12 +24,12 @@ private:
                 cache.shadowShader.use();
                 glUniform1i(cache.shadowIdLocation,header.id);
                 cache.BindTextures();
-                glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(Engine::DrawElementsIndirectCommand)), drawCount, 0);
+                glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.drawBufferOffset*sizeof(uint32_t), drawCount, 0);
             } else {
                 cache.shader.use();
                 glUniform1i(cache.idLocation,header.id);
                 cache.BindTextures();
-                glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(Engine::DrawElementsIndirectCommand)), drawCount, 0);
+                glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.drawBufferOffset*sizeof(uint32_t), drawCount, 0);
             }
         }
     };

@@ -35,11 +35,11 @@ private:
                 if(pass == Engine::RenderPassId::SHADOW) {                  
                     manager.shadowShader.use();
                     glUniform1i(manager.shadowIdLocation,header.id);
-                    glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(Engine::DrawElementsIndirectCommand)), drawCount, 0);
+                    glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.drawBufferOffset*sizeof(uint32_t), drawCount, 0);
                 } else {
                     manager.shader.use();
                     glUniform1i(manager.idLocation,header.id);
-                    glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(Engine::DrawElementsIndirectCommand)), drawCount, 0);
+                    glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.drawBufferOffset*sizeof(uint32_t), drawCount, 0);
                 }
             }
         }

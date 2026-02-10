@@ -135,7 +135,9 @@ struct WaterMaterial {
 
     class WaterRenderPass : MaterialRenderPass {
         void Render(World& world, uint32_t drawOffset, uint32_t drawCount, Engine::RenderPassId pass) override {
-            auto& cache = world.GetSingle<Cache>();
+            auto cacheView = world.registry.view<Cache,MaterialHeader>();
+            auto [cache,header] = cacheView.get(cacheView.front());
+
             if(pass == Engine::RenderPassId::OPAQUE) {                
                 DebugUi(world);
             }
@@ -143,7 +145,7 @@ struct WaterMaterial {
             // Bind material specific datacache.shader.use();
             cache.shader.use();
             glUniform1f(cache.timeOffset,world.shaderAnimTime);
-            glUniform1i(cache.idOffset,cache.materialId);
+            glUniform1i(cache.idOffset,header.id);
             
             int texOffset = GL_TEXTURE0;
             glActiveTexture(texOffset++);
@@ -156,13 +158,13 @@ struct WaterMaterial {
 
             // draw colour
             glDepthMask(GL_FALSE);
-            glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), drawCount, 0);
+            glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.drawBufferOffset*sizeof(uint32_t), drawCount, 0);
 
             // draw depth
             glDepthMask(GL_TRUE);
             cache.depthOnlyShader.use();
-            glUniform1i(cache.depthOnlyIdOffset,cache.materialId);
-            glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT,(void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), drawCount, 0);
+            glUniform1i(cache.depthOnlyIdOffset,header.id);
+            glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT,(void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.drawBufferOffset*sizeof(uint32_t), drawCount, 0);
         }
     };
 
@@ -212,7 +214,6 @@ public:
     struct Cache {
     public:
         uint32_t meshId;
-        int materialId = -1;
         
         size_t capacity;
         Engine::Shader shader;
@@ -247,13 +248,21 @@ public:
         }
 
         entt::entity CreateWaterItem(World& world, glm::vec3 pos, glm::vec3 extent) {
-            auto water_entity = world.registry.create();
-            auto& waterItem = world.registry.emplace<WaterMaterial>(water_entity);
-            auto& transform = world.registry.emplace<Transform>(water_entity);
+            auto cacheView = world.registry.view<Cache,MaterialHeader>();
+            auto [cache,header] = cacheView.get(cacheView.front());
+
+            auto entity = world.registry.create();
+            auto& waterItem = world.registry.emplace<WaterMaterial>(entity);
+            auto& transform = world.registry.emplace<Transform>(entity);
 
             transform.global = glm::translate(glm::mat4(1.), pos) * glm::scale(glm::mat4(1.), glm::vec3(extent.x,256.f,extent.z));
-            world.registry.emplace<Engine::AABB>(water_entity, glm::vec3(-0.2,-0.5,-0.2), glm::vec3(1.2,0.5,1.2));
-            return water_entity;
+            world.registry.emplace<Engine::AABB>(entity, glm::vec3(-0.2,-0.5,-0.2), glm::vec3(1.2,0.5,1.2));
+
+            auto& instance = world.registry.emplace<Engine::GpuMaterialInstance>(entity);
+            instance.materialId = header.id;
+            instance.meshId = cache.meshId;
+
+            return entity;
         }
     };
 
@@ -281,13 +290,5 @@ public:
         auto [cache,header] = cacheView.get(cacheView.front());
 
         cache.depthTarget = depthTexture;
-        cache.materialId = header.id;
-
-        auto itemView = world.registry.view<WaterMaterial>(entt::exclude<Engine::GpuMaterialInstance>);
-        for(auto entity : itemView) {
-            auto& instance = world.registry.emplace<Engine::GpuMaterialInstance>(entity);
-            instance.materialId = cache.materialId;
-            instance.meshId = cache.meshId;
-        }
     }
 };
