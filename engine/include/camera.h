@@ -33,6 +33,11 @@ namespace Engine
         glm::mat4 VP;
         glm::mat4 invCamera;
 
+
+        // lighting uses a non-infinite far plane
+        glm::mat4 lightingVP;
+        glm::mat4 lightingInvVP;
+
         // Distance to nearest and furthest items that passed culling
         float nearestItem;
         float furthestItem;
@@ -43,29 +48,20 @@ namespace Engine
         }
 
         glm::mat4 makeProjection(float nearOverride, float farOverride) const {
-            return Perspective::infinitePerspectiveFovReverseZLH_ZO(glm::radians(fov), width, height, nearOverride);
-            //return Perspective::reverse_z(Perspective::normalize_unit_range(glm::perspective(glm::radians(fov), width/height, nearOverride, farOverride)));
+            if(farOverride == 0.f) {
+                // infinite far plane
+                return Perspective::infinitePerspectiveFovReverseZLH_ZO(glm::radians(fov), width, height, nearOverride);
+            } else {                
+                return Perspective::reverse_z(Perspective::normalize_unit_range(glm::perspective(glm::radians(fov), width/height, nearOverride, farOverride)));
+            }
         }
 
         glm::mat4 makeProjection() const {
-            return makeProjection(near,far);
+            return makeProjection(near,0.f);
         }
 
         glm::mat4 makeView(const Transform& transform) const {
             return glm::inverse(transform.global);
-        }
-
-        // Return the center of the subsection of the camera frustum bounded on the view-space z
-        // axis by the near and far overrides
-        glm::vec3 CascadeFrustumCenter(float nearOverride, float farOverride) {
-
-            glm::mat4 proj = Perspective::reverse_z(Perspective::normalize_unit_range(glm::perspective(glm::radians(fov), width/height, nearOverride, farOverride)));
-
-            glm::mat4 invCamera = glm::inverse(proj * view);
-
-            // returns frustum center
-            glm::vec4 hc = invCamera * glm::vec4(0.,0.,0.5,1.);
-            return glm::vec3(hc) / hc.w;
         }
 
         // Return the corners of the camera frustum projected into world space
@@ -103,6 +99,9 @@ namespace Engine
             camera.view = camera.makeView(transform);
             camera.VP = camera.projection * camera.view;
             camera.invCamera = glm::inverse(camera.VP);
+
+            camera.lightingVP = camera.makeProjection(camera.near,camera.far) * camera.view;
+            camera.lightingInvVP = glm::inverse(camera.lightingVP);
         }
     }
 }

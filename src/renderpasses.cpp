@@ -170,13 +170,13 @@ void RenderPasses::DrawDebugOverlays(World& world, Engine::Camera& cameraToDebug
     //glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
 
+    glDepthMask(GL_FALSE);
     debugWireframeMaterial.use();
     if(drawCameraFrustum) {
         debugWireframeMaterial.SetColor(glm::vec3(1.0,0.0,0.0));
         debugWireframeMaterial.SetModel(cameraToDebug.invCamera);
         Engine::DrawUtil::DrawCubeNdc();
     }
-    
     auto lightView = world.registry.view<Engine::DirectionalLight>();
     for(auto entity : lightView) {
         auto& light = lightView.get<Engine::DirectionalLight>(entity);
@@ -190,6 +190,7 @@ void RenderPasses::DrawDebugOverlays(World& world, Engine::Camera& cameraToDebug
             rgb = glm::vec3(rgb.z,rgb.x,rgb.y);
         }
     }
+    glDepthMask(GL_TRUE);
     
     glEnable(GL_DEPTH_TEST);
     glPolygonMode( GL_FRONT_AND_BACK, GL_FILL);
@@ -211,26 +212,31 @@ void RenderPasses::DrawShadowMaps(World& world, Engine::Camera& cameraMain) {
         return;
     }
 
-    sun.MakeLightSpaceMatrices(world, cameraMain);
-
     auto lightUniformData = LightUniformData {
         cameraMain.view,
         glm::vec4(sun.direction,1.f),
         glm::vec4(sun.color,1.f),
 
     };
+    lightUniformData.cascadeCount = world.input.drawShadows() ? sun.NumCascades : 0;
+    lightUniforms.Set(&lightUniformData);
+    lightUniforms.BindBase(1);
 
+    if(!world.input.debugMetaCam )
+        sun.MakeLightSpaceMatrices(world, cameraMain, deferred.gBuffer.depthAttachment, lightUniforms);
+    
     for(int i =0; i<sun.lightSpaceMatrices.size(); i++) {
         lightUniformData.lightSpaceMatrices[i] = sun.lightSpaceMatrices[i];
     }
 
-    lightUniformData.cascadeCount = world.input.drawShadows() ? sun.NumCascades() : 0;
     for(int i =0; i<sun.cascadeLevels.size(); i++) {
         lightUniformData.cascadePlaneDistances[i] = glm::vec4(sun.cascadeLevels[i],sun.cascadeLevels[i],sun.cascadeLevels[i],sun.cascadeLevels[i]);
-    } 
-
+    }
+    
     lightUniforms.Set(&lightUniformData);
     lightUniforms.BindBase(1);
+
+    glEnable(GL_DEPTH_CLAMP);
 
     // No face culling for shadows right now, because it doesn't work with my 
     // non-manifold terrain mesh
@@ -263,6 +269,8 @@ void RenderPasses::DrawShadowMaps(World& world, Engine::Camera& cameraMain) {
         auto& gpuRender = world.GetSingle<Engine::GpuRender>();
         gpuRender.PreparePass(world, Engine::RenderPassId::SHADOW);
     }
+
+    glDisable(GL_DEPTH_CLAMP);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glUseProgram(0);
@@ -377,6 +385,7 @@ void RenderPasses::DrawOpaque(World& world, bool drawAABB, Engine::Camera& camer
     }
 
     if(world.input.wireFrame) {
+        glDepthMask(GL_FALSE);
         glPolygonMode( GL_FRONT_AND_BACK, GL_LINE);
 
         debugWireframeMaterial.use(); 
@@ -390,6 +399,7 @@ void RenderPasses::DrawOpaque(World& world, bool drawAABB, Engine::Camera& camer
         }
 
         glPolygonMode( GL_FRONT_AND_BACK, GL_FILL);
+        glDepthMask(GL_TRUE);
     }
     
     /*
@@ -428,6 +438,7 @@ void RenderPasses::DrawOpaque(World& world, bool drawAABB, Engine::Camera& camer
     if(drawAABB) {
         glPolygonMode( GL_FRONT_AND_BACK, GL_LINE);
         glDisable(GL_CULL_FACE);
+        glDepthMask(GL_FALSE);
 
         debugWireframeMaterial.use();
         debugWireframeMaterial.SetColor(glm::vec3(100.,100.,100.));
@@ -446,6 +457,7 @@ void RenderPasses::DrawOpaque(World& world, bool drawAABB, Engine::Camera& camer
             Engine::DrawUtil::DrawCube();
         }
 
+        glDepthMask(GL_TRUE);
         glPolygonMode( GL_FRONT_AND_BACK, GL_FILL);
         glEnable(GL_CULL_FACE);
     }
@@ -486,6 +498,7 @@ void RenderPasses::DrawTransparent(World& world, bool drawAABB) {
         item.material->unbind();
 
         if(drawAABB) {
+            glDepthMask(GL_FALSE);
             glPolygonMode( GL_FRONT_AND_BACK, GL_LINE);
             glDisable(GL_CULL_FACE);
 
@@ -499,6 +512,7 @@ void RenderPasses::DrawTransparent(World& world, bool drawAABB) {
 
             glPolygonMode( GL_FRONT_AND_BACK, GL_FILL);
             glEnable(GL_CULL_FACE);
+            glDepthMask(GL_TRUE);
         }
     }
 }

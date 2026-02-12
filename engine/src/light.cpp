@@ -8,84 +8,96 @@
 
 #include "light.h"
 #include "render_item.h"
+#include "imgui.h"
 
-void Engine::DirectionalLight::MakeLightSpaceMatrices(World& world, Camera& camera) {
-    float farPlane = std::min(camera.far,camera.furthestItem);
-    float nearPlane = std::max(camera.near,camera.nearestItem);
+void Engine::DirectionalLight::MakeLightSpaceMatrices(World& world, Camera& camera, Texture& depthBuffer, UniformBuffer& lightUniforms) {
 
-    float zScale = farPlane - nearPlane;
-    cascadeLevels = { nearPlane + zScale / 25.0f, nearPlane + zScale / 10.0f, nearPlane + zScale / 5.0f, nearPlane + zScale / 2.0f, farPlane };
+    ImGui::Begin("Cascades Debug window");
 
-    lightSpaceMatrices.clear();
+    int depthOutput[2] = {0x7fffffff,-0x7fffffff};
+    depthAnalysisOutput.Set<int>(&depthOutput[0], 2, 0);
 
-    world.registry.clear<SurvivedLightCullingTag>();
-
-    // Set up 
-    std::vector<Cascade> cascades;
-    cascades.reserve(cascadeLevels.size());
-    cascades.push_back(Cascade(nearPlane,cascadeLevels[0],camera,direction));
-    for(size_t i =1; i<cascadeLevels.size(); i++) {
-        cascades.push_back(Cascade(cascadeLevels[i-1],cascadeLevels[i],camera,direction));
+    std::vector<int> cascadeOutput;
+    for(int i =0; i<NumCascades*3; i++) {
+        cascadeOutput.push_back(0x7fffffff);
+        cascadeOutput.push_back(-0x7fffffff);
     }
+    cascadeAnalysisOutput.Set<int>(cascadeOutput.data(), cascadeOutput.size(), 0);
 
-    // Expand cascades to fit visible (non-culled) AABBs
-    auto visibleItemsView = world.registry.view<Transform,AABB,CullingResult>();
-    glm::vec4 corners[8];
-    for(auto entity : visibleItemsView) {
-        auto [transform,aabb,cullingResult] = visibleItemsView.get(entity);
-        if(!cullingResult.viewResult)
-            continue;
+    depthAnalysisKernel.use();    
+    glActiveTexture(GL_TEXTURE0);
+    depthBuffer.bind();
+    depthAnalysisOutput.BindBase(0);
+    glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
+    depthAnalysisKernel.Dispatch((depthBuffer.width+15)/16,(depthBuffer.height+15)/16,1);
 
-        aabb.Corners(corners);
-        for(auto& cascade : cascades) {
-            if(cullingResult.viewDepthMin > cascade.far || cullingResult.viewDepthMax < cascade.near) {
-                continue;
-            }
-            glm::mat4 MV = cascade.view * transform.global;
-            for(int i =0; i<8; i++) {
-                // Transform AABB corners into the light's coordinate system
-                glm::vec4 p = MV * corners[i];
-                p.z = -p.z;
-                cascade.min = glm::min(cascade.min,glm::vec3(p));
-                cascade.max = glm::max(cascade.max,glm::vec3(p));
-            }
-        }
-    }
+    //depthAnalysisOutput.Readback<int>(&depthOutput[0], 2, 0);
 
-    for(auto& cascade : cascades) {
-        cascade.updateProjection();
-    }
+    //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, lightUniforms.object());
+    lightSpaceMatricesBuffer.BindBase(1);
+    cascadePlaneDistancesBuffer.BindBase(2);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    chooseMatricesKernel.Dispatch(1,1,1);
+
+    cascadeAnalysisKernel.use();    
+    glActiveTexture(GL_TEXTURE0);
+    depthBuffer.bind();
+    cascadeAnalysisOutput.BindBase(0);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    cascadeAnalysisKernel.Dispatch((depthBuffer.width+15)/16,(depthBuffer.height+15)/16,1);
+
     
-    // Move the near plane so that all shadow casters (that are within the x,y bounds)
-    // are in front of the near plane
-    auto shadowCastersView = world.registry.view<Transform,AABB,ShadowCaster>();
-    for(auto entity : shadowCastersView) {
-        auto [transform,aabb] = shadowCastersView.get(entity);
-        aabb.Corners(corners);
+    glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
+    cascadeAnalysisOutput.Readback<int>(cascadeOutput.data(), cascadeOutput.size(), 0);
+    
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    finishMatricesKernel.Dispatch(1,1,1);
 
-        bool passedCulling = false;
+    //float farPlane = std::min(camera.far,camera.furthestItem);
+    //float nearPlane = std::max(camera.near,camera.nearestItem);
+    //float farPlane = std::min(camera.far,float(depthOutput[1])/1000.f);
+    //float nearPlane = std::max(camera.near,float(depthOutput[0])/1000.f);
+
+    //float zScale = farPlane - nearPlane;
+    /*
+    for(unsigned int i =0; i<NumCascades; i++) {
+        float p = float(i+1) / float(NumCascades);
+        float logSplit = nearPlane * std::pow(farPlane/nearPlane, p);
+        //float uniformSplit = nearPlane + (farPlane-nearPlane)*p;
+        cascadeLevels.push_back(logSplit);
+    }*/
+
+    glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
+
+    lightSpaceMatrices.resize(NumCascades);
+    lightSpaceMatricesBuffer.Readback<glm::mat4>(lightSpaceMatrices.data(), NumCascades,0);
+
+    cascadeLevels.resize(NumCascades);
+    cascadePlaneDistancesBuffer.Readback<float>(cascadeLevels.data(), NumCascades,0);
+
+    for(int i =0; i<NumCascades; i++) {
+        glm::mat4 proj = glm::ortho(-500.f,500.f,-500.f,500.f,-500.f,500.f);
+        //lightSpaceMatrices[i] = proj * lightSpaceMatrices[i];
+
+        ImGui::Text("cascade %i ", i);
+
+        ImGui::Text("plane distance %f", cascadeLevels[i]);
+
         
-        for(auto& cascade : cascades) {
-            glm::mat4 MV = cascade.view * transform.global;
-            glm::mat4 MVP = cascade.projection * MV;
-            // We can skip shadowcasters that are outside the x,y bounds of the projection
+        ImGui::Text("ortho ranges (%f, %f) (%f, %f) (%f, %f)",
+            cascadeOutput[i*6+0]/1000.f,
+            cascadeOutput[i*6+1]/1000.f,
+            cascadeOutput[i*6+2]/1000.f,
+            cascadeOutput[i*6+3]/1000.f,
+            cascadeOutput[i*6+4]/1000.f,
+            cascadeOutput[i*6+5]/1000.f);
 
-            // Could combine the frustum test/min-z determination to save a little work
-            if(FrustumAABBTestIgnoreZ(MVP, aabb)) {
-                passedCulling = true;
-                for(int i =0; i<8; i++) {
-                    glm::vec4 p = MV * corners[i];
-                    cascade.min.z = std::min(cascade.min.z,-p.z);
-                }
-            } 
-        }
 
-        if(passedCulling)
-            world.registry.emplace<SurvivedLightCullingTag>(entity);
+        for(int j=0; j<4; j++)
+            ImGui::Text("[ %f, %f, %f, %f]", lightSpaceMatrices[i][0][j],lightSpaceMatrices[i][1][j],lightSpaceMatrices[i][2][j],lightSpaceMatrices[i][3][j]);
+
+        ImGui::Separator();
     }
 
-    for(auto& cascade : cascades) {
-        cascade.updateProjection();
-        lightSpaceMatrices.push_back(cascade.projection * cascade.view);
-    }
+    ImGui::End();
 }

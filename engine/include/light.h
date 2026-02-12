@@ -20,6 +20,10 @@
 #include "material.h"
 #include "perspective.h"
 
+#include "storage_buffer.h"
+#include "compute_shader.h"
+#include "uniform_buffer.h"
+
 namespace Engine {
     class RenderItem;
 
@@ -39,7 +43,43 @@ namespace Engine {
             glm::vec3 direction;
             glm::mat4 projection;
 
-            Cascade(float near, float far, Camera& camera, glm::vec3 direction) : near(near), far(far), frustumCenter(camera.CascadeFrustumCenter(near,far)), direction(direction) {
+            static glm::vec3 center(glm::mat4 inverseVp, float near, float far) {
+                glm::dvec4 frustumCorners[8] = {
+                    glm::vec4(-1.0,    -1.0,   0.0,1.0),
+                    glm::vec4(1.0,     -1.0,   0.0,1.0),
+                    glm::vec4(-1.0,    1.0,    0.0,1.0),
+                    glm::vec4(1.0,     1.0,    0.0,1.0),
+                    
+                    glm::vec4(-1.0,    -1.0,   1.0,1.0),
+                    glm::vec4(1.0,     -1.0,   1.0,1.0),
+                    glm::vec4(-1.0,    1.0,    1.0,1.0),
+                    glm::vec4(1.0,     1.0,    1.0,1.0),
+                };
+
+                // get view frustum corners
+                for(int i=0; i<8; i++) {
+                    frustumCorners[i] = inverseVp * frustumCorners[i];
+                    frustumCorners[i] /= frustumCorners[i].w;
+                }
+
+                // get cascade frustum
+                for(int i =0; i<4; i++) {
+                    glm::vec4 ro = frustumCorners[i];
+                    glm::vec4 rd = normalize(frustumCorners[i+4]-frustumCorners[i]);
+
+                    frustumCorners[i] = ro + near * rd;
+                    frustumCorners[i+4] = ro + far * rd;
+                }
+
+                glm::vec4 centroid = glm::vec4(0.0);
+                for(int i=0; i<8; i++) {
+                    centroid += frustumCorners[i];
+                }
+                centroid /= 8.0;
+                return glm::vec3(centroid);
+            }
+
+            Cascade(float near, float far, Camera& camera, glm::vec3 direction) : near(near), far(far), frustumCenter(center(camera.lightingInvVP,near,far)), direction(direction) {
                 view = glm::lookAt(frustumCenter,
                                     frustumCenter+direction,
                                 glm::vec3(0.f,1.f,0.f));
@@ -49,6 +89,16 @@ namespace Engine {
                 projection = Perspective::reverse_z(Perspective::normalize_unit_range(glm::ortho(min.x,max.x,min.y,max.y,min.z,max.z)));
             }
         };
+
+        StorageBuffer depthAnalysisOutput = StorageBuffer(2 * sizeof(uint32_t));
+        StorageBuffer cascadeAnalysisOutput = StorageBuffer(16 * 6 * sizeof(uint32_t));
+        StorageBuffer lightSpaceMatricesBuffer = StorageBuffer(16 * sizeof(glm::mat4));
+        StorageBuffer cascadePlaneDistancesBuffer = StorageBuffer(16 * sizeof(float));
+
+        ComputeShader depthAnalysisKernel = ComputeShader("shaders/corepass/sdsm_depth_reduction.cs");
+        ComputeShader chooseMatricesKernel = ComputeShader("shaders/corepass/sdsm_light_view.cs");
+        ComputeShader cascadeAnalysisKernel = ComputeShader("shaders/corepass/sdsm_cascade_reduction.cs");
+        ComputeShader  finishMatricesKernel = ComputeShader("shaders/corepass/sdsm_light_proj.cs");
     public:
         DirectionalShadowCascadeMap shadowMap;
         glm::vec3 color = glm::vec3(1.0,1.0,1.0);
@@ -60,9 +110,7 @@ namespace Engine {
         
         std::vector<float> cascadeLevels;
 
-        unsigned int NumCascades() {
-            return cascadeLevels.size();
-        }
+        const unsigned int NumCascades = 5;
 
         // Activate the shadow (depth map) shader ready for drawing
         Material& UseShadowMaterial() {
@@ -70,7 +118,7 @@ namespace Engine {
         }
 
         // Build the world-to-light-space matrices for all cascades
-        void MakeLightSpaceMatrices(World& world, Camera& camera);
+        void MakeLightSpaceMatrices(World& world, Camera& camera, Texture& depthBuffer, UniformBuffer& lightUniforms);
 
         std::vector<glm::mat4> lightSpaceMatrices;
 

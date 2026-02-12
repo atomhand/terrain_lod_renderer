@@ -13,13 +13,6 @@ layout(binding=1) uniform sampler2D gAlbedo;
 layout(binding=2) uniform sampler2D gArm;
 layout(binding=3) uniform sampler2D gDepth;
 
-// https://therealmjp.github.io/posts/reconstructing-position-from-depth/
-vec3 WorldPosFromDepth(vec2 uv, float depth) {
-    vec3 ndc = UvToNdc(vec3(uv,depth));
-    vec4 wPos = inverseViewProjection * vec4(ndc,1.0);
-    return wPos.xyz / wPos.w;
-}
-
 
 void main()
 {

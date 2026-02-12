@@ -23,6 +23,8 @@ namespace Engine {
 
         std::shared_ptr<UniformBufferData> buffer;
     public:
+        GLuint object() { return buffer->object; }
+
         template<typename T> void Set(T* data) {
             glNamedBufferData(buffer->object, sizeof(T), data, GL_STATIC_DRAW);
         }

@@ -8,6 +8,7 @@ namespace Engine {
         glm::mat4 projection;
         glm::mat4 viewProjection;
         glm::mat4 inverseViewProjection;
+        glm::mat4 boundedInverseViewProjection;
         glm::vec4 viewPos;
         float nearPlane;
         float farPlane;
@@ -16,6 +17,7 @@ namespace Engine {
         ViewUniformData(Engine::Camera& camera, Transform& transform) {
             view = camera.view;
             projection = camera.projection;
+            boundedInverseViewProjection = camera.lightingInvVP;
             viewPos = glm::vec4(transform.position(),1.f);
             nearPlane = camera.near;
             farPlane = camera.far;
