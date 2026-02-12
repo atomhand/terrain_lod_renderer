@@ -22,8 +22,6 @@ layout (std140, binding=1) uniform LightUniformData {
 
     vec4 lightDirection;
     vec4 lightColor;
-    mat4 lightSpaceMatrices[16];
-    vec4 cascadePlaneDistances[16];
     int cascadeCount;
 };
 
@@ -40,8 +38,20 @@ layout (std140, binding=2) uniform MiscUniformData {
     float displacementScale;
 };
 
-layout (std140, binding=3) uniform PassUniformData {
+
+layout(std140, binding=3) uniform LightSpaceMatricesData {
+    mat4 lightSpaceMatrices[16];
+};
+
+layout(std140, binding=4) uniform CascadePlaneDistancesData {
+    vec4 cascadePlaneDistances[16];
+};
+
+layout (std140, binding=5) uniform PassCullingVPUniform {
     mat4 cullingVP;
+};
+
+layout (std140, binding=6) uniform PassRenderPassIdUniform {
     uint renderPassId;
 };
 

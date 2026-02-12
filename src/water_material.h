@@ -138,9 +138,11 @@ struct WaterMaterial {
             auto cacheView = world.registry.view<Cache,MaterialHeader>();
             auto [cache,header] = cacheView.get(cacheView.front());
 
+            /*
             if(pass == Engine::RenderPassId::OPAQUE) {                
                 DebugUi(world);
             }
+            */
 
             // Bind material specific datacache.shader.use();
             cache.shader.use();

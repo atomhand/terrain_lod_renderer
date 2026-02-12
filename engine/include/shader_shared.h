@@ -31,8 +31,6 @@ namespace Engine {
         glm::mat4 view;
         glm::vec4 lightDirection;
         glm::vec4 lightColor;
-        glm::mat4 lightSpaceMatrices[16];
-        glm::vec4 cascadePlaneDistances[16];
         int cascadeCount;
     };
     struct MiscUniformData {
@@ -46,11 +44,6 @@ namespace Engine {
         float enableStochasticBlending;
         float applyExposure;
         float displacementScale;
-    };
-
-    struct PassUniformData {
-        glm::mat4 cullingVP;
-        uint32_t renderPassId;
     };
 
     // GPU DRIVEN RENDER

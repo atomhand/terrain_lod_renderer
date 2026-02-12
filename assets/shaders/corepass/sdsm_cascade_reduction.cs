@@ -16,7 +16,7 @@ layout(binding = 1, std430) readonly buffer ssbo2 {
 };
 
 layout(binding = 2, std430) readonly buffer ssbo3 {
-    float s_cascadePlaneDistances[];
+    vec4 s_cascadePlaneDistances[];
 };
 
 layout(binding=0) uniform sampler2D depthBuffer;

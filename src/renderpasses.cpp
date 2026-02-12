@@ -24,6 +24,11 @@ void RenderPasses::Init(World& world) {
 
     GpuRender::Init(world);
 
+    // Make sure passCullingVpUniform is allocated on GPU with sufficient capacity
+    // (because it can be set by glCopyBufferSubData, which does not resize)
+    glm::mat4 dummy = glm::mat4(1.f);
+    passCullingVpUniform.Set(&dummy);
+
     glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);    
     glClearColor(0.f,0.f,0.,0.0f);
     glClearDepth(0.f);
@@ -60,8 +65,7 @@ void RenderPasses::RunAll(World& world, Engine::Application& app) {
 
     bool skipDeferred = world.input.previewTriangleDensity;
 
-    RetrieveData(world,app,cullingCamera,cullingCameraTransform);        
-    DrawShadowMaps(world, cullingCamera);
+    RetrieveData(world,app,cullingCamera,cullingCameraTransform);    
 
     if(skipDeferred) {
         hdr.BindHdrFramebuffer(display_w,display_h);
@@ -71,7 +75,8 @@ void RenderPasses::RunAll(World& world, Engine::Application& app) {
     } else {
         deferred.BindGBuffer(display_w,display_h);
         PrepareMain(world,*cameraMain,*cameraMainTransform);
-        DrawOpaque(world,world.input.drawAABBs, *cameraMain, cullingCamera);
+        DrawOpaque(world,world.input.drawAABBs, *cameraMain, cullingCamera);    
+        DrawShadowMaps(world, cullingCamera);
 
         hdr.BindHdrFramebuffer(display_w,display_h);
         deferred.LightingPass(world);
@@ -93,6 +98,7 @@ void RenderPasses::RunAll(World& world, Engine::Application& app) {
 
 void RenderPasses::RetrieveData(World& world, Engine::Application& app, Engine::Camera& cameraMain, Engine::Transform& cameraMainTransform) {
     auto profileHandle = Profiler::StartCpu("RenderPasses::RetrieveData");
+    auto gpuProfileHandle = Profiler::StartGpu("RenderPasses::RetrieveData");
 
     auto& gpuRender = world.GetSingle<Engine::GpuRender>();
     gpuRender.PrePrepare(world);
@@ -100,8 +106,6 @@ void RenderPasses::RetrieveData(World& world, Engine::Application& app, Engine::
     WaterMaterial::PrepareMain(world, deferred.gBuffer.depthAttachment);
 
     gpuRender.PrepareGpuScene(world);
-
-
 
     glm::mat4 VP = cameraMain.projection * cameraMain.view;
     glm::vec3 cameraPos = cameraMainTransform.position();
@@ -167,7 +171,6 @@ void RenderPasses::DrawDebugOverlays(World& world, Engine::Camera& cameraToDebug
     auto gpuProfileHandle = Profiler::StartGpu("RenderPasses::DrawDebugOverlays");
 
     glPolygonMode( GL_FRONT_AND_BACK, GL_LINE);
-    //glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
 
     glDepthMask(GL_FALSE);
@@ -180,8 +183,11 @@ void RenderPasses::DrawDebugOverlays(World& world, Engine::Camera& cameraToDebug
     auto lightView = world.registry.view<Engine::DirectionalLight>();
     for(auto entity : lightView) {
         auto& light = lightView.get<Engine::DirectionalLight>(entity);
+
+        std::vector lightSpaceMatrices = light.ReadbackLightMatrices();
+
         glm::vec3 rgb = glm::vec3(1,0.5,0);
-        for(auto lsm : light.lightSpaceMatrices) {                
+        for(auto lsm : lightSpaceMatrices) {                
             glm::mat4 invLsm = glm::inverse(lsm);
             debugWireframeMaterial.SetColor(rgb);
             debugWireframeMaterial.SetModel(invLsm);
@@ -191,8 +197,7 @@ void RenderPasses::DrawDebugOverlays(World& world, Engine::Camera& cameraToDebug
         }
     }
     glDepthMask(GL_TRUE);
-    
-    glEnable(GL_DEPTH_TEST);
+
     glPolygonMode( GL_FRONT_AND_BACK, GL_FILL);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -222,25 +227,16 @@ void RenderPasses::DrawShadowMaps(World& world, Engine::Camera& cameraMain) {
     lightUniforms.Set(&lightUniformData);
     lightUniforms.BindBase(1);
 
-    if(!world.input.debugMetaCam )
+    if(!world.input.debugMetaCam ) {
         sun.MakeLightSpaceMatrices(world, cameraMain, deferred.gBuffer.depthAttachment, lightUniforms);
-    
-    for(int i =0; i<sun.lightSpaceMatrices.size(); i++) {
-        lightUniformData.lightSpaceMatrices[i] = sun.lightSpaceMatrices[i];
+        sun.BindUniforms();
     }
-
-    for(int i =0; i<sun.cascadeLevels.size(); i++) {
-        lightUniformData.cascadePlaneDistances[i] = glm::vec4(sun.cascadeLevels[i],sun.cascadeLevels[i],sun.cascadeLevels[i],sun.cascadeLevels[i]);
-    }
-    
-    lightUniforms.Set(&lightUniformData);
-    lightUniforms.BindBase(1);
 
     glEnable(GL_DEPTH_CLAMP);
 
     // No face culling for shadows right now, because it doesn't work with my 
     // non-manifold terrain mesh
-    glDisable(GL_CULL_FACE);
+    //glDisable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
     auto& material = sun.UseShadowMaterial();
             
@@ -256,15 +252,13 @@ void RenderPasses::DrawShadowMaps(World& world, Engine::Camera& cameraMain) {
     //WaterMaterial::DrawShadow(world);
     //TerrainMaterial::DrawShadow(world);
 
-    for(int i =0; i<sun.lightSpaceMatrices.size(); i++) {
+    glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
+    for(int i =0; i<sun.NumCascades; i++) {
         sun.shadowMap.PrepareFramebufferLayer(i);
-
-        auto passUniformData = Engine::PassUniformData {
-            sun.lightSpaceMatrices[i],
-            static_cast<uint32_t>(Engine::RenderPassId::SHADOW)
-        };
-        passUniforms.Set(&passUniformData);
-        passUniforms.BindBase(3);
+        sun.BindCascadeToCullingVPUniform(passCullingVpUniform, i);
+        uint32_t id = static_cast<uint32_t>(Engine::RenderPassId::SHADOW);
+        passIdUniform.Set(&id);
+        passIdUniform.BindBase(6);
         
         auto& gpuRender = world.GetSingle<Engine::GpuRender>();
         gpuRender.PreparePass(world, Engine::RenderPassId::SHADOW);
@@ -416,12 +410,12 @@ void RenderPasses::DrawOpaque(World& world, bool drawAABB, Engine::Camera& camer
 
     //TerrainMaterial::DrawMain(world);
 
-    auto passUniformData = Engine::PassUniformData {
-        cullingCamera.VP,
-        static_cast<uint32_t>(Engine::RenderPassId::OPAQUE)
-    };
-    passUniforms.Set(&passUniformData);
-    passUniforms.BindBase(3);
+    passCullingVpUniform.Set(&cullingCamera.VP);
+    passCullingVpUniform.BindBase(5);
+
+    uint32_t id =  static_cast<uint32_t>(Engine::RenderPassId::OPAQUE);
+    passIdUniform.Set(&id);
+    passIdUniform.BindBase(6);
     
     auto& gpuRender = world.GetSingle<Engine::GpuRender>();
     gpuRender.PreparePass(world, Engine::RenderPassId::OPAQUE);

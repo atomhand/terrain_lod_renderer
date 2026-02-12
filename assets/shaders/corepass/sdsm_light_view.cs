@@ -15,7 +15,7 @@ layout(binding = 1, std430) buffer ssbo2 {
 };
 
 layout(binding = 2, std430) buffer ssbo3 {
-    float s_cascadePlaneDistances[];
+    vec4 s_cascadePlaneDistances[];
 };
 
 void main()
@@ -33,7 +33,7 @@ void main()
     float cascadeNear = near * pow(far/near, iCascade / m);
     float cascadeFar = near * pow(far/near, (iCascade+1.0f)/m);
 
-    s_cascadePlaneDistances[gl_LocalInvocationIndex] = cascadeFar;
+    s_cascadePlaneDistances[gl_LocalInvocationIndex] = vec4(cascadeFar, 0.f,0.f,0.f);
 
     vec3 frustumCorners[8] = {
         vec3(-1.0,    1.0,   1.0),

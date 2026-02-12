@@ -72,6 +72,7 @@ public:
     }
 
     void BindHdrFramebuffer(int display_w, int display_h) {
+        glViewport(0,0,display_w,display_h);
         hdrFramebuffer.width = display_w;
         hdrFramebuffer.height = display_h;
         hdrFramebuffer.Apply();

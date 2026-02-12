@@ -90,25 +90,22 @@ namespace Engine {
             }
         };
 
+        StorageBuffer lightSpaceMatricesBuffer = StorageBuffer(16 * sizeof(glm::mat4));
         StorageBuffer depthAnalysisOutput = StorageBuffer(2 * sizeof(uint32_t));
         StorageBuffer cascadeAnalysisOutput = StorageBuffer(16 * 6 * sizeof(uint32_t));
-        StorageBuffer lightSpaceMatricesBuffer = StorageBuffer(16 * sizeof(glm::mat4));
-        StorageBuffer cascadePlaneDistancesBuffer = StorageBuffer(16 * sizeof(float));
+
+        // vec4 format because UBO requires std140 alignment
+        StorageBuffer cascadePlaneDistancesBuffer = StorageBuffer(16 * sizeof(glm::vec4));
 
         ComputeShader depthAnalysisKernel = ComputeShader("shaders/corepass/sdsm_depth_reduction.cs");
         ComputeShader chooseMatricesKernel = ComputeShader("shaders/corepass/sdsm_light_view.cs");
         ComputeShader cascadeAnalysisKernel = ComputeShader("shaders/corepass/sdsm_cascade_reduction.cs");
         ComputeShader  finishMatricesKernel = ComputeShader("shaders/corepass/sdsm_light_proj.cs");
+
     public:
         DirectionalShadowCascadeMap shadowMap;
         glm::vec3 color = glm::vec3(1.0,1.0,1.0);
         glm::vec3 direction = glm::normalize(glm::vec3(4.0,-2.0,4.0));
-
-        glm::mat4 lightView;
-        glm::mat4 lightProjection;
-
-        
-        std::vector<float> cascadeLevels;
 
         const unsigned int NumCascades = 5;
 
@@ -120,7 +117,24 @@ namespace Engine {
         // Build the world-to-light-space matrices for all cascades
         void MakeLightSpaceMatrices(World& world, Camera& camera, Texture& depthBuffer, UniformBuffer& lightUniforms);
 
-        std::vector<glm::mat4> lightSpaceMatrices;
+        void BindUniforms() {
+            glBindBufferBase(GL_UNIFORM_BUFFER, 3, lightSpaceMatricesBuffer.object());
+            glBindBufferBase(GL_UNIFORM_BUFFER, 4, cascadePlaneDistancesBuffer.object());
+        }
+
+        void BindCascadeToCullingVPUniform(UniformBuffer& targetBuffer, uint32_t cascade) {
+            glCopyNamedBufferSubData(lightSpaceMatricesBuffer.object(), targetBuffer.object(), cascade*sizeof(glm::mat4), 0, sizeof(glm::mat4));
+            targetBuffer.BindBase(5);
+            //glMemoryBarrier(GL_UNIFORM_BARRIER_BIT);
+        }
+
+        std::vector<glm::mat4> ReadbackLightMatrices() {
+            std::vector<glm::mat4> ret;
+            ret.resize(NumCascades);
+            glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
+            lightSpaceMatricesBuffer.Readback<glm::mat4>(ret.data(), NumCascades, 0);
+            return ret;
+        }
 
         DirectionalLight() : shadowMap(DirectionalShadowCascadeMap(2048)) {
         }

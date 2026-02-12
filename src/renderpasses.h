@@ -33,7 +33,8 @@ private:
     Engine::UniformBuffer viewUniforms;
     Engine::UniformBuffer lightUniforms;
     Engine::UniformBuffer miscUniforms;
-    Engine::UniformBuffer passUniforms;
+    Engine::UniformBuffer passCullingVpUniform;
+    Engine::UniformBuffer passIdUniform;
 
     entt::entity debugCameraEntity;
 
