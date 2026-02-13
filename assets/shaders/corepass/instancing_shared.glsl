@@ -3,8 +3,6 @@
 
 #include "corepass/corepass_shared.glsl"
 
-uniform int materialId;
-
 layout(binding = 0, std430) readonly buffer keysSsbo {
     uvec2 keys[];
 };

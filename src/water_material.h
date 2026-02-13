@@ -146,7 +146,6 @@ struct WaterMaterial {
 
             // Bind material specific datacache.shader.use();
             cache.shader.use();
-            glUniform1i(cache.idOffset,header.id);
             
             int texOffset = GL_TEXTURE0;
             glActiveTexture(texOffset++);
@@ -164,7 +163,6 @@ struct WaterMaterial {
             // draw depth
             glDepthMask(GL_TRUE);
             cache.depthOnlyShader.use();
-            glUniform1i(cache.depthOnlyIdOffset,header.id);
             glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT,(void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
         }
     };
@@ -224,9 +222,6 @@ public:
 
         Engine::Texture depthTarget;
 
-        int idOffset;
-        int depthOnlyIdOffset;
-
         std::vector<Engine::Texture> textures;
 
         Cache(size_t capacity, uint32_t meshId) :
@@ -236,9 +231,6 @@ public:
             depthOnlyShader(Engine::Shader("shaders/water.vert","shaders/shadow.frag")),
             storage(capacity * sizeof(glm::mat4)) {
             transforms.reserve(capacity);
-
-            idOffset = glGetUniformLocation(shader.programId(), "materialId");
-            depthOnlyIdOffset = glGetUniformLocation(depthOnlyShader.programId(), "materialId");
 
             textures.push_back(Engine::Texture("textures/waterN1.jpg"));
             textures.push_back(Engine::Texture("textures/waterN2.jpg"));
@@ -265,7 +257,7 @@ public:
 
     static void Setup(Engine::World& world, size_t capacity, float scale, int chunk_size) {
         GpuMeshBuilder builder;
-        SetupMesh(builder, scale, chunk_size);
+        SetupMesh(builder, scale, chunk_size/4);
 
         auto& meshCache = world.GetSingle<MeshCache>();
         uint32_t meshId = meshCache.RegisterMesh(builder);

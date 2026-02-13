@@ -33,18 +33,17 @@ private:
 
         std::vector<const char*> defs = {"#define VERTEX_NORMAL","#define VERTEX_UV"};
         Engine::Shader shader = Engine::Shader("shaders/bird.vert","shaders/bird.frag", defs);
+
+
         std::vector<const char*> shadow_defs = {"#define SHADOW_PASS"};
+        Engine::Shader wireframeShader = Engine::Shader("shaders/bird.vert","shaders/primitive/wireframe.frag","shaders/primitive/triangle_density.geom", shadow_defs);
+        Engine::Shader triangleDensityShader = Engine::Shader("shaders/bird.vert","shaders/primitive/basic.frag","shaders/primitive/triangle_density.geom", shadow_defs);
+
         Engine::Shader shadowShader = Engine::Shader("shaders/bird.vert","shaders/shadow.frag", shadow_defs);
 
         Engine::Texture texture = Engine::Texture("textures/BirdUVTexture.jpeg");
 
-        uint32_t idLocation;
-        uint32_t shadowIdLocation;
-
         BirdMaterialManager() {
-            idLocation = glGetUniformLocation(shader.programId(), "materialId");
-            shadowIdLocation = glGetUniformLocation(shadowShader.programId(), "materialId");
-
             albedoLocation = glGetUniformLocation(shader.programId(), "mAlbedo");
             metallicLocation = glGetUniformLocation(shader.programId(), "mMetallic");
             roughnessLocation = glGetUniformLocation(shader.programId(), "mRoughness");
@@ -69,6 +68,26 @@ private:
             manager.instanceDataBuffer.Set<BirdMaterial>(manager.instanceData.data(), manager.instanceData.size(), 0, true);
         }
 
+        void RenderWireframe(World& world, uint32_t drawOffset, uint32_t drawCount, Engine::RenderPassId pass) override {
+            auto view = world.registry.view<BirdMaterialManager,MaterialHeader>();
+            for(auto entity : view) {
+                auto [manager,header] = view.get(entity);
+                manager.wireframeShader.use();
+                manager.instanceDataBuffer.BindBase(6);
+                glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
+            }
+        }
+
+        void RenderTriangleDensity(World& world, uint32_t drawOffset, uint32_t drawCount, Engine::RenderPassId pass) override {
+            auto view = world.registry.view<BirdMaterialManager,MaterialHeader>();
+            for(auto entity : view) {
+                auto [manager,header] = view.get(entity);
+                manager.triangleDensityShader.use();
+                manager.instanceDataBuffer.BindBase(6);
+                glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
+            }
+        }
+
         void Render(World& world, uint32_t drawOffset, uint32_t drawCount, Engine::RenderPassId pass) override {
             auto view = world.registry.view<BirdMaterialManager,MaterialHeader>();
             for(auto entity : view) {
@@ -76,13 +95,11 @@ private:
 
                 if(pass == Engine::RenderPassId::SHADOW) {                  
                     manager.shadowShader.use();
-                    glUniform1i(manager.shadowIdLocation,header.id);
                     manager.instanceDataBuffer.BindBase(6);
 
                     glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
                 } else {
                     manager.shader.use();
-                    glUniform1i(manager.idLocation,header.id);
                     manager.instanceDataBuffer.BindBase(6);
                     glActiveTexture(GL_TEXTURE0);
                     manager.texture.bind();

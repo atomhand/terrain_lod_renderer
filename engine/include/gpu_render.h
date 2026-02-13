@@ -8,6 +8,7 @@
 #include "compute_shader.h"
 #include "shader.h"
 #include "storage_buffer.h"
+#include "uniform_buffer.h"
 #include "gpu_sort.h"
 #include "gpu_filter.h"
 #include "shader_shared.h"
@@ -22,6 +23,22 @@ namespace Engine {
         SHADOW
     };
 
+    struct DebugRenderUtil {
+    public:
+        Shader wireframeShader = Shader("shaders/basic_instanced.vert","shaders/primitive/wireframe.frag","shaders/primitive/triangle_density.geom");
+        Shader triangleDensityShader = Shader("shaders/basic_instanced.vert","shaders/primitive/basic.frag","shaders/primitive/triangle_density.geom");
+
+        uint32_t wireframeIdPos;
+        uint32_t densityIdPos;
+
+        void BindTriangleDensity(uint32_t materialId) {
+            triangleDensityShader.use();
+        }
+        void BindWireframe(uint32_t materialId) {
+            wireframeShader.use();
+        }
+    };
+
     struct CullingFilter {
     private:
         GpuFilter filter = GpuFilter("shaders/corepass/culling.cs");
@@ -32,8 +49,19 @@ namespace Engine {
 
     class MaterialRenderPass {
     public:
+        virtual bool SupportsWireframe() { return true; }
+        virtual bool SupportsTriangleDensity() { return true; }
+
         // called once per frame, opportunity to fill buffers
         virtual void Prepare(World& world) {};
+
+        virtual void RenderWireframe(World& world, uint32_t offset, uint32_t count, RenderPassId pass) {
+            glMultiDrawElementsIndirect(GL_TRIANGLES,  GL_UNSIGNED_INT, (void*)(offset*sizeof(DrawElementsIndirectCommand)), count, 0);
+        }
+        
+        virtual void RenderTriangleDensity(World& world, uint32_t offset, uint32_t count, RenderPassId pass) {
+            glMultiDrawElementsIndirect(GL_TRIANGLES,  GL_UNSIGNED_INT, (void*)(offset*sizeof(DrawElementsIndirectCommand)), count, 0);
+        }
 
         virtual void Render(World& world, uint32_t offset, uint32_t count, RenderPassId pass) {            
             // Uniforms that should always be set
@@ -114,6 +142,7 @@ private:
     }
 public:
         GpuSort gpuSorter;
+        DebugRenderUtil debugRenderUtil;
 
         GpuFilter baseInstanceFilter = GpuFilter("shaders/corepass/draw_base_instance.cs");
         CullingFilter cullingFilter;
@@ -144,7 +173,8 @@ public:
         // Material and mesh headers
         StorageBuffer materialHeadersBuffer = StorageBuffer(0);
         StorageBuffer meshHeadersBuffer = StorageBuffer(0);
-        
+
+        UniformBuffer passIdUniform;
 
         //ComputeShader cullingShader;
 
@@ -273,6 +303,9 @@ public:
         
         static void ExecutePass(Engine::World& world, RenderPassId passId) {
             auto& gpuRender = world.GetSingle<GpuRender>();
+            glm::uvec2 idd = glm::uvec2(static_cast<uint32_t>(passId),0);
+            gpuRender.passIdUniform.Set(&idd);
+            gpuRender.passIdUniform.BindBase(6);
 
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
             gpuRender.cullingFilter.Cull(gpuRender, passId, gpuRender.inputKeysBuffer, gpuRender.passCulledKeysBuffer, gpuRender.keyCounterBuffer, gpuRender.culledKeyCounterBuffer);
@@ -308,11 +341,51 @@ public:
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_ELEMENT_ARRAY_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
             // Iterate materials, bind and draw
             auto materialView = world.registry.view<MaterialHeader,MaterialRenderComponent>();
-            for(auto entity : materialView) {
-                auto [materialHeader,materialRenderComponent] = materialView.get<MaterialHeader,MaterialRenderComponent>(entity);
-                if(materialHeader.IsRenderPassEnabled(passId))
-                    materialRenderComponent.renderPass->Render(world, materialHeader.drawBufferOffset, materialHeader.drawCount, passId);
+
+            if(world.input.wireFrame) {
+                if(passId == RenderPassId::OPAQUE || passId == RenderPassId::POST_OPAQUE) {                    
+                    for(auto entity : materialView) {
+                        auto [materialHeader,materialRenderComponent] = materialView.get<MaterialHeader,MaterialRenderComponent>(entity);
+                        if(materialHeader.IsRenderPassEnabled(passId) && materialRenderComponent.renderPass->SupportsWireframe()) {
+                            uint32_t id =  static_cast<uint32_t>(passId);
+                            glm::uvec2 ids = glm::uvec2(id,materialHeader.id);
+                            gpuRender.passIdUniform.Set(&ids);
+                            gpuRender.passIdUniform.BindBase(6);
+
+                            gpuRender.debugRenderUtil.BindWireframe(materialHeader.id);
+                            materialRenderComponent.renderPass->RenderWireframe(world, materialHeader.drawBufferOffset, materialHeader.drawCount, passId);
+                        }
+                    }
+                }
+            } else if(world.input.previewTriangleDensity) {
+                if(passId == RenderPassId::OPAQUE || passId == RenderPassId::POST_OPAQUE) {                    
+                    for(auto entity : materialView) {
+                        auto [materialHeader,materialRenderComponent] = materialView.get<MaterialHeader,MaterialRenderComponent>(entity);
+                        if(materialHeader.IsRenderPassEnabled(passId) && materialRenderComponent.renderPass->SupportsTriangleDensity()) {
+                            uint32_t id =  static_cast<uint32_t>(passId);
+                            glm::uvec2 ids = glm::uvec2(id,materialHeader.id);
+                            gpuRender.passIdUniform.Set(&ids);
+                            gpuRender.passIdUniform.BindBase(6);
+
+                            gpuRender.debugRenderUtil.BindTriangleDensity(materialHeader.id);
+                            materialRenderComponent.renderPass->RenderTriangleDensity(world, materialHeader.drawBufferOffset, materialHeader.drawCount, passId);
+                        }
+                    }
+                }
+            } else {
+                for(auto entity : materialView) {
+                    auto [materialHeader,materialRenderComponent] = materialView.get<MaterialHeader,MaterialRenderComponent>(entity);
+                    if(materialHeader.IsRenderPassEnabled(passId)) {
+                        uint32_t id =  static_cast<uint32_t>(passId);
+                        glm::uvec2 ids = glm::uvec2(id,materialHeader.id);
+                        gpuRender.passIdUniform.Set(&ids);
+                        gpuRender.passIdUniform.BindBase(6);
+
+                        materialRenderComponent.renderPass->Render(world, materialHeader.drawBufferOffset, materialHeader.drawCount, passId);
+                    }
+                }
             }
+
             glBindVertexArray(0);
         }
 

@@ -16,14 +16,6 @@ private:
         std::vector<const char*> defs = {"#define VERTEX_NORMAL","#define VERTEX_UV"};
         Engine::Shader shader = Engine::Shader("shaders/pbr.vert","shaders/pbr.frag", defs);
         Engine::Shader shadowShader = Engine::Shader("shaders/gpu_shadow.vert","shaders/shadow.frag", defs);
-
-        uint32_t idLocation;
-        uint32_t shadowIdLocation;
-
-        TestGpuMaterialManager() {            
-            idLocation = glGetUniformLocation(shader.programId(), "materialId");
-            shadowIdLocation = glGetUniformLocation(shadowShader.programId(), "materialId");
-        }
     };
 
     class TestRenderPass : MaterialRenderPass {
@@ -34,11 +26,9 @@ private:
 
                 if(pass == Engine::RenderPassId::SHADOW) {                  
                     manager.shadowShader.use();
-                    glUniform1i(manager.shadowIdLocation,header.id);
                     glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
                 } else {
                     manager.shader.use();
-                    glUniform1i(manager.idLocation,header.id);
                     glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
                 }
             }

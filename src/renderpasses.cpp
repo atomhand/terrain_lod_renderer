@@ -63,7 +63,7 @@ void RenderPasses::RunAll(World& world, Engine::Application& app) {
         debugCamera.main = false;
     }
 
-    bool skipDeferred = world.input.previewTriangleDensity;
+    bool skipDeferred = world.input.previewTriangleDensity || world.input.wireFrame;
 
     RetrieveData(world,app,cullingCamera,cullingCameraTransform);    
 
@@ -82,7 +82,7 @@ void RenderPasses::RunAll(World& world, Engine::Application& app) {
         deferred.LightingPass(world);
     }
 
-    if(world.input.previewTriangleDensity) {
+    if(world.input.previewTriangleDensity || world.input.wireFrame) {
         hdr.ApplyHeatmapping(world);
     } else {
         DrawSkybox(world, *cameraMain);
@@ -193,9 +193,6 @@ void RenderPasses::DrawShadowMaps(World& world, Engine::Camera& cameraMain) {
     for(int i =0; i<sun.NumCascades; i++) {
         sun.shadowMap.PrepareFramebufferLayer(i);
         sun.BindCascadeToCullingVPUniform(passCullingVpUniform, i);
-        uint32_t id = static_cast<uint32_t>(Engine::RenderPassId::SHADOW);
-        passIdUniform.Set(&id);
-        passIdUniform.BindBase(6);
         
         auto& gpuRender = world.GetSingle<Engine::GpuRender>();
         gpuRender.ExecutePass(world, Engine::RenderPassId::SHADOW);
@@ -287,17 +284,9 @@ void RenderPasses::DrawOpaque(World& world, bool drawAABB, Engine::Camera& camer
 
     passCullingVpUniform.Set(&cullingCamera.VP);
     passCullingVpUniform.BindBase(5);
-
-    uint32_t id =  static_cast<uint32_t>(Engine::RenderPassId::OPAQUE);
-    passIdUniform.Set(&id);
-    passIdUniform.BindBase(6);
     
     auto& gpuRender = world.GetSingle<Engine::GpuRender>();
     gpuRender.ExecutePass(world, Engine::RenderPassId::OPAQUE);
-    
-    id =  static_cast<uint32_t>(Engine::RenderPassId::POST_OPAQUE);
-    passIdUniform.Set(&id);
-    passIdUniform.BindBase(6);
     gpuRender.ExecutePass(world, Engine::RenderPassId::POST_OPAQUE);
 
     /*
@@ -343,10 +332,6 @@ void RenderPasses::DrawTransparent(World& world, bool drawAABB) {
     auto gpuProfileHandle = Profiler::StartGpu("RenderPasses::DrawTransparent");
 
     auto& sun = world.GetSingle<Engine::DirectionalLight>();
-    
-    uint32_t id =  static_cast<uint32_t>(Engine::RenderPassId::TRANSPARENT);
-    passIdUniform.Set(&id);
-    passIdUniform.BindBase(6);
 
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);        

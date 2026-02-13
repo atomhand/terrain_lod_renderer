@@ -54,6 +54,7 @@ layout (std140, binding=5) uniform PassCullingVPUniform {
 
 layout (std140, binding=6) uniform PassRenderPassIdUniform {
     uint renderPassId;
+    uint materialId;
 };
 
 #endif

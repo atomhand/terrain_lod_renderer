@@ -33,17 +33,11 @@ private:
     Engine::UniformBuffer lightUniforms;
     Engine::UniformBuffer miscUniforms;
     Engine::UniformBuffer passCullingVpUniform;
-    Engine::UniformBuffer passIdUniform;
 
     entt::entity debugCameraEntity;
 
-    Engine::Material prepassMaterial = Engine::Material(Engine::Shader("shaders/depth_prepass.vert","shaders/shadow.frag"));
-
     Engine::Material debugCascadeMaterial = Engine::Material(Engine::Shader("shaders/primitive/fullscreen_quad.vert","shaders/primitive/fullscreen_quad_texture2darray.frag"));
     Engine::Material debugWireframeMaterial = Engine::Material(Engine::Shader("shaders/primitive/basic.vert","shaders/primitive/basic.frag"));
-    Engine::Material debugTriangleDensityMaterial = Engine::Material(Engine::Shader("shaders/primitive/basic_geom.vert","shaders/primitive/basic.frag","shaders/primitive/triangle_density.geom"));
-
-    const float viewDistanceLevels[3] = {4096.,1024.,2048.};
 
     // Retrieve render data from the scene (since the scene queries are not very efficient
     // it's better to cache anything that will be used more than once)

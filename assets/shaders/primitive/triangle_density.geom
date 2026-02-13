@@ -10,6 +10,7 @@ layout(triangle_strip, max_vertices = 3) out;
 
 uniform mat4 model;
 
+out vec3 wireframeDist;
 out vec3 fColor;
 
 vec4 DepthInv(vec4 input) {
@@ -32,14 +33,17 @@ void main()
 
     gl_Position = DepthInv(gl_in[0].gl_Position);
     fColor = vec3(col);
+    wireframeDist = vec3(1.f,0.f,0.f);
     EmitVertex();
 
     gl_Position = DepthInv(gl_in[1].gl_Position);
     fColor = vec3(col);
+    wireframeDist = vec3(0.f,1.f,0.f);
     EmitVertex();
 
     gl_Position = DepthInv(gl_in[2].gl_Position);
     fColor = vec3(col);
+    wireframeDist = vec3(0.f,0.f,1.f);
     EmitVertex();
 
     EndPrimitive();

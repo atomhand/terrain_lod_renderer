@@ -16,18 +16,34 @@ using Engine::World, Engine::Transform, Engine::GpuRender, Engine::MaterialHeade
 struct TerrainMaterial {
 private:
     class TerrainRenderPass : MaterialRenderPass {
+        void RenderTriangleDensity(World& world, uint32_t drawOffset, uint32_t drawCount, Engine::RenderPassId pass) override {
+            auto cacheView = world.registry.view<Cache,MaterialHeader>();
+            auto [cache,header] = cacheView.get(cacheView.front());
+
+            cache.triangleDensityShader.use();
+            cache.BindTextures();
+            glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
+        }
+
+        void RenderWireframe(World& world, uint32_t drawOffset, uint32_t drawCount, Engine::RenderPassId pass) override {
+            auto cacheView = world.registry.view<Cache,MaterialHeader>();
+            auto [cache,header] = cacheView.get(cacheView.front());
+
+            cache.wireframeShader.use();
+            cache.BindTextures();
+            glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
+        }
+
         void Render(World& world, uint32_t drawOffset, uint32_t drawCount, Engine::RenderPassId pass) override {
             auto cacheView = world.registry.view<Cache,MaterialHeader>();
             auto [cache,header] = cacheView.get(cacheView.front());
 
             if(pass == Engine::RenderPassId::SHADOW) {                  
                 cache.shadowShader.use();
-                glUniform1i(cache.shadowIdLocation,header.id);
                 cache.BindTextures();
                 glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
             } else {
                 cache.shader.use();
-                glUniform1i(cache.idLocation,header.id);
                 cache.BindTextures();
                 glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
             }
@@ -87,6 +103,7 @@ public:
         uint32_t meshId;
         Engine::Shader shader;
         Engine::Shader depthOnlyShader;
+        Engine::Shader wireframeShader;
         Engine::Shader shadowShader;
         
         Engine::Shader triangleDensityShader;
@@ -118,10 +135,6 @@ public:
             return entity;
         }
 
-        uint32_t idLocation;
-        uint32_t depthOnlyIdLocation;
-        uint32_t shadowIdLocation;
-
         void BindTextures() {            
             int offset = GL_TEXTURE0;
             glActiveTexture(offset++);
@@ -138,15 +151,12 @@ public:
             meshId(meshId),
             shader(Engine::Shader("shaders/terrain.vert", "shaders/terrain_pbr.frag")),
             depthOnlyShader(Engine::Shader("shaders/terrain.vert","shaders/shadow.frag")),
+            wireframeShader(Engine::Shader("shaders/terrain.vert","shaders/primitive/wireframe.frag","shaders/primitive/triangle_density.geom")),
             triangleDensityShader(Engine::Shader("shaders/terrain.vert","shaders/primitive/basic.frag","shaders/primitive/triangle_density.geom"))
             //wireframeShader(Engine::Shader("shaders/terrain.vert","shaders/wireframe.frag","shaders/wireframe.geom")),
         {
             auto defines = std::vector<const char*>{ "#define SHADOW_PASS"};
             shadowShader = Engine::Shader("shaders/terrain.vert","shaders/shadow.frag", defines);
-
-            idLocation = glGetUniformLocation(shader.programId(), "materialId");
-            depthOnlyIdLocation = glGetUniformLocation(depthOnlyShader.programId(), "materialId");
-            shadowIdLocation = glGetUniformLocation(shadowShader.programId(), "materialId");
 
             terrainDataTex.Configure(1, GL_RGBA32F, chunkSize, chunkSize, capacity, GL_LINEAR, GL_CLAMP_TO_EDGE);
 
