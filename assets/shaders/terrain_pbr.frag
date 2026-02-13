@@ -5,18 +5,13 @@
 
 in vec3 WorldPos;
 in vec3 Normal;
+in vec3 debugColor;
 
 in vec2 erosionFactor;
 
 #include "shared/uniforms_shared.glsl"
 #include "terrain_shared.glsl"
 #include "shared/deferred_shared.glsl"
-
-// material parameters
-uniform vec3 mAlbedo;
-uniform float mMetallic;
-uniform float mRoughness;
-uniform float mAo;
 
 void main()
 {

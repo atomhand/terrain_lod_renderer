@@ -9,9 +9,11 @@ layout (std140, binding=0) uniform Matrices
     mat4 inverseViewProjection;
     mat4 boundedInverseViewProjection; // vp without infinite far plane
     vec4 viewPos;
+    vec2 screenDimensions;
     float nearPlane;
     float farPlane;
-    vec2 screenDimensions;
+    float lodFovFactor;
+    float lodControlParam;
 };
 
 layout (std140, binding=1) uniform LightUniformData {

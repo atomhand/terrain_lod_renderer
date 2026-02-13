@@ -158,7 +158,7 @@ public:
             auto defines = std::vector<const char*>{ "#define SHADOW_PASS"};
             shadowShader = Engine::Shader("shaders/terrain.vert","shaders/shadow.frag", defines);
 
-            terrainDataTex.Configure(1, GL_RGBA32F, chunkSize*2, chunkSize*2, capacity, GL_LINEAR, GL_CLAMP_TO_EDGE);
+            terrainDataTex.Configure(1, GL_RGBA32F, chunkSize*2+1, chunkSize*2+1, capacity, GL_LINEAR, GL_CLAMP_TO_EDGE);
 
             texturearrays.push_back(Engine::Texture2DArray::Import({
                 "textures/grass/diff_4k.jpg",

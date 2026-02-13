@@ -10,11 +10,13 @@ namespace Engine {
         glm::mat4 inverseViewProjection;
         glm::mat4 boundedInverseViewProjection;
         glm::vec4 viewPos;
+        glm::vec2 screenDimensions;
         float nearPlane;
         float farPlane;
-        glm::vec2 screenDimensions;
+        float lodFovFactor;
+        float lodControlParam;
 
-        ViewUniformData(Engine::Camera& camera, Transform& transform) {
+        ViewUniformData(Engine::Camera& camera, Transform& transform, float lodControlParam) : lodControlParam(lodControlParam) {
             view = camera.view;
             projection = camera.projection;
             boundedInverseViewProjection = camera.lightingInvVP;
@@ -25,6 +27,8 @@ namespace Engine {
             viewProjection = camera.VP;
             inverseViewProjection = glm::inverse(viewProjection);
             screenDimensions = glm::vec2(camera.width,camera.height);
+
+            lodFovFactor = camera.lodFovFactor;
         }
     };
     struct LightUniformData {

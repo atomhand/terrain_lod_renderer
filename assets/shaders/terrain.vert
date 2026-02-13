@@ -15,8 +15,56 @@ layout(binding=0) uniform sampler2DArray dataTex; // xyz normal, w height
 out vec2 TexCoords;
 out vec3 WorldPos;
 out vec3 Normal;
+out vec3 debugColor;
 
 out vec2 erosionFactor;
+
+float TargetLodDepth(vec3 position, float geometricError) {
+    float d = distance(viewPos.xyz,position);
+    float screenSpaceErrorEstimate = (2.f * geometricError / d) * lodFovFactor;
+
+    // assumption: Geometric error approximately halves with each higher LoD level
+    // maybe it would be possible to actually measure this factor and create a better empirical heuristic?
+    float lodDiff = log2(screenSpaceErrorEstimate / lodControlParam);
+    
+    return 1.0 - lodDiff;
+}
+
+// Morph a uv towards a lower-LoD vertex
+// morphK is the reduction in LoD steps
+
+// TODO - shouldn't attempt to reduce the LoD below the minimum level
+vec2 morphVertex(vec2 uv, vec2 nodeDimension, float morphK) {
+    // Snap the uv/vertex K level LoDs down, where K 
+    // is the whole part of morphK
+    float kFloor = floor(morphK);
+    vec2 scale = nodeDimension.xy / (2 << int(kFloor));
+    vec2 fracPart = fract(uv*scale) / scale;
+    uv -= fracPart;
+
+    // For the fractional part of morphK, blend between
+    // the snapped vertex and the next-lower LoD
+    float kFract = morphK - kFloor;
+    scale *= 0.5f;
+    fracPart = fract(uv*scale)/scale;
+    uv -= fracPart * kFract;
+
+    return uv;
+}
+
+// Remap  UV in 0..1 range to target a specific subquadrant
+// and such that (unmorphed) vertices correspond to exact texels
+vec2 RemapUv(vec2 uv, uint materialInstanceId) {
+    // target quadrant is encoded in materialInstanceId
+    uint local = materialInstanceId % 4;
+
+    // params to map (unmorphed) vertices to exact texels
+    vec2 texel = vec2(1.0) / vec2(textureSize(dataTex,0).xy);
+    vec2 dimension = vec2(textureSize(dataTex,0).xy);
+    vec2 scale = (dimension-1)/dimension;
+
+    return (uv + vec2(local>>1,local&1) + texel) * 0.5f * scale;
+}
 
 void main()
 {
@@ -24,16 +72,22 @@ void main()
     Vertex vert;
     uint materialInstanceId = GetModelVertex(model,vert);
 
-    uint local = materialInstanceId % 4;
     uint texArrayIndex = materialInstanceId / 4;
 
-    vec2 uv = vert.position.xz * 0.5f;
-    uv += vec2(0.5f) * vec2(local>>1,local&1);
+    vec3 initialVertPos = vec3(model * vec4(vert.position.x,0.f,vert.position.z,1.0));
+    // dimensions of a node can be derived from the texture dimensions
+    // (minor convenience, saves binding a uniforms)
+    vec2 nodeDimension = (textureSize(dataTex,0).xy-1.0) / 2.0;
+    float edgeLength = model[0][0] / nodeDimension.x * 1.73;
+    float k = TargetLodDepth(initialVertPos,edgeLength);
+    vec2 p = morphVertex(vert.position.xz,nodeDimension,k);
 
-    vec4 t = textureLod(dataTex, vec3(uv,texArrayIndex), 0);
-    WorldPos = vec3(model * vec4(vert.position.x, vert.position.y + t.w, vert.position.z, 1.0));
-    Normal = t.xyz;
+    vec2 texel = vec2(1.0) / vec2(textureSize(dataTex,0).xy);
 
+    vec4 t = textureLod(dataTex, vec3(RemapUv(p,materialInstanceId),texArrayIndex), 0);
+    WorldPos = vec3(model * vec4(p.x, vert.position.y + t.w, p.y, 1.0));
+    Normal = normalize(t.xyz);
+    debugColor = vec3(fract(RemapUv(vert.position.xz,materialInstanceId) * vec2(textureSize(dataTex,0).xy)),0);
 
 #ifdef SHADOW_PASS
     gl_Position = cullingVP * vec4(WorldPos.xyz,1.0);
