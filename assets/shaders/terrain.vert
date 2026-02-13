@@ -24,7 +24,13 @@ void main()
     Vertex vert;
     uint materialInstanceId = GetModelVertex(model,vert);
 
-    vec4 t = textureLod(dataTex, vec3(vert.position.xz,materialInstanceId), 0);
+    uint local = materialInstanceId % 4;
+    uint texArrayIndex = materialInstanceId / 4;
+
+    vec2 uv = vert.position.xz * 0.5f;
+    uv += vec2(0.5f) * vec2(local>>1,local&1);
+
+    vec4 t = textureLod(dataTex, vec3(uv,texArrayIndex), 0);
     WorldPos = vec3(model * vec4(vert.position.x, vert.position.y + t.w, vert.position.z, 1.0));
     Normal = t.xyz;
 

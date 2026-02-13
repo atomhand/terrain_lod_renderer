@@ -33,6 +33,17 @@ namespace Engine
         glm::mat4 VP;
         glm::mat4 invCamera;
 
+        float lodFovFactor;
+
+        void UpdateLodFovFactor() {
+            lodFovFactor = height / (2.0f * glm::tan(fov / 2.0f));
+            /*
+            float aspect = width / height;
+            float hFov = 2.f * glm::atan(glm::tan(fov / 2.0f) * aspect);
+
+            lodFovFactor = width / (2.0f * glm::tan(hFov / 2.0f));
+            */
+        }
 
         // lighting uses a non-infinite far plane
         glm::mat4 lightingVP;
@@ -98,6 +109,8 @@ namespace Engine
 
             camera.lightingVP = camera.makeProjection(camera.near,camera.far) * camera.view;
             camera.lightingInvVP = glm::inverse(camera.lightingVP);
+
+            camera.UpdateLodFovFactor();
         }
     }
 }

@@ -151,6 +151,12 @@ struct TerrainChunkHeader {
 struct TerrainQuadtree {
     struct InternalNode {
         unsigned short childIdx = 0; // 0 used to represent disablerd
+        uint16_t idx;
+        uint16_t parentIdx;
+        uint16_t localIdx;
+        int textureId = -1;
+
+        Engine::AABB aabb;
 
         bool hasRenderComponents = false;
 
@@ -163,7 +169,10 @@ struct TerrainQuadtree {
         entt::entity entity = entt::null;
         entt::entity water_entity = entt::null;
 
-        void Set(unsigned short x, unsigned short z, unsigned char depth) {
+        void Set(uint16_t idx, uint16_t parentIdx, uint16_t localIdx, unsigned short x, unsigned short z, unsigned char depth) {
+            this->idx = idx;
+            this->parentIdx = parentIdx;
+            this->localIdx = localIdx;
             this->x = x;
             this->z = z;
             this->depth = depth;
@@ -179,7 +188,6 @@ struct TerrainQuadtree {
 
     void AllocChildren(InternalNode& node) {
         assert(node.childIdx == 0);
-        assert(PoolSlotsAvailable() >= 4);
 
         int idx = node.childIdx = TakePoolIds();
         int depth = node.depth;
@@ -187,10 +195,10 @@ struct TerrainQuadtree {
         int baseX = node.x * 2;
         int baseZ = node.z * 2;
 
-        nodePool[idx].Set(baseX, baseZ, depth+1);
-        nodePool[idx+1].Set(baseX, baseZ+1, depth+1);
-        nodePool[idx+2].Set(baseX+1, baseZ, depth+1);
-        nodePool[idx+3].Set(baseX+1, baseZ+1, depth+1);
+        nodePool[idx].Set(idx, node.idx, 0, baseX, baseZ, depth+1);
+        nodePool[idx+1].Set(idx+1, node.idx, 1, baseX, baseZ+1, depth+1);
+        nodePool[idx+2].Set(idx+2, node.idx, 2, baseX+1, baseZ, depth+1);
+        nodePool[idx+3].Set(idx+3, node.idx, 3, baseX+1, baseZ+1, depth+1);
     }
 
     const int maxDepth;
@@ -208,16 +216,33 @@ struct TerrainQuadtree {
     std::vector<int> freeList;
     std::vector<InternalNode> nodePool;
 
-    int PoolSlotsAvailable() {
-        return 4*freeList.size() + (poolCapacity - nextPoolId);
+    std::vector<int> textureIdFreelist;
+    int nextTextureId = 0;
+
+    bool GetTextureId(int& id) {
+        if(textureIdFreelist.size() > 0) {
+            id = textureIdFreelist.back();
+            textureIdFreelist.pop_back();
+            return true;
+        } else if(nextTextureId < poolCapacity) {
+            id = nextTextureId++;
+            return true;
+        }
+        id = -1;
+        return false;
     }
+    void FreeTextureId(int id) {
+        assert(id>=0);
+        textureIdFreelist.push_back(id);
+    }
+
     int TakePoolIds() {
         if(freeList.size() > 0) {
             auto ret = freeList.back();
             freeList.pop_back();
             return ret;
         } else {
-            assert(nextPoolId+4 <= poolCapacity);
+            //assert(nextPoolId+4 <= poolCapacity);
             
             for(int i =0; i<4; i++) {
                 nodePool.emplace_back(nextPoolId++);
@@ -227,7 +252,6 @@ struct TerrainQuadtree {
         }
     }
     int TakeSinglePoolId() {
-        assert(nextPoolId < poolCapacity);
         nodePool.emplace_back(nextPoolId++);
         return nextPoolId-1;
     }
@@ -288,19 +312,18 @@ struct TerrainQuadtree {
         }
     }
 
-    float TargetLodDepth(int inputLod, glm::vec3 offset, glm::vec3 extent, Engine::AABB& aabb, Engine::Camera& camera, int lodControlParam, float cellHeight) {
-        float wh = cellHeight * std::max(camera.height,camera.width);
-
+    // Ref: "Rendering Massive Terrains using Chunked Level of Detail Control"
+    float TargetLodDepth(int inputLod, glm::vec3 offset, glm::vec3 extent, Engine::AABB& aabb, Engine::Camera& camera, int lodControlParam, float geometricError) {
         extent.y = 1.0f;
 
         glm::vec3 nearestM = glm::clamp(camera.position,aabb.min*extent+offset,aabb.max*extent+offset);
         float distance = glm::distance(camera.position,nearestM);
 
-        // lodControlParam ~= pixel length of edges (longest dimension)
-        // very rough
-        float targetW = distance * float(lodControlParam) * 1.4f;
+        float screenSpaceErrorEstimate = (geometricError / distance) * camera.lodFovFactor;
 
-        float lodDiff = std::log2(wh / targetW);
+        // assumption: Geometric error approximately halves with each higher LoD level
+        // maybe it would be possible to actually measure this factor and create a better empirical heuristic?
+        float lodDiff = std::log2(screenSpaceErrorEstimate / lodControlParam);
         float targetLod = inputLod + lodDiff;
         
         return std::clamp(targetLod, 0.f, float(maxDepth));
@@ -308,7 +331,7 @@ struct TerrainQuadtree {
 
     TerrainChunkHeader MakeChunk(glm::ivec2 chunkOffset) {
         int rootId = TakeSinglePoolId();
-        nodePool[rootId].Set(0,0,0);
+        nodePool[rootId].Set(rootId, rootId, 0, 0,0,0);
         return TerrainChunkHeader(chunkOffset,scale,rootId);
     }
 

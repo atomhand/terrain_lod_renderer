@@ -22,7 +22,7 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
 
     const int budget = std::max(4.0, 5.0 / terrainGeometry.timePerGeneratedChunk);
 
-    int updateQuota = std::min(PoolSlotsAvailable(), budget);
+    int updateQuota = budget;
     int numGenerated = 0;
     double generationDuration = 0.0;
 
@@ -51,6 +51,11 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                 node.childIdx = 0;
             }
 
+            if(node.textureId > 0) {
+                FreeTextureId(node.textureId);
+                node.textureId = -1;
+            }
+
             if(node.entity != entt::null) {
                 world.registry.destroy(node.entity);
                 node.entity = entt::null;
@@ -76,14 +81,23 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
             glm::vec3 extent = (glm::vec3(uvMax.x,0.f,uvMax.y) - glm::vec3(uvMin.x,0.f,uvMin.y))*scale;
 
             if(node.entity == entt::null) {
-                auto start = std::chrono::steady_clock::now();
-                Heightmap heightMap(terrain, chunk.positionOffset + uvMin*scale, chunk.positionOffset + uvMax*scale, terrainGeometry.CHUNK_SIZE);
-                generationDuration +=  std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
-                heightMap.FillData(terrainCache, topIdx);
+                if(node.parentIdx == node.idx) {
+                    GetTextureId(node.textureId);
+                    // special handling for root nodes
+                    auto start = std::chrono::steady_clock::now();
+                    Heightmap heightMap(terrain, chunk.positionOffset + uvMin*scale, chunk.positionOffset + uvMax*scale, terrainGeometry.CHUNK_SIZE*2);
+                    generationDuration +=  std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
+                    heightMap.FillData(terrainCache, node.textureId);
 
-                node.longestEdge = heightMap.longestEdge;
+                    node.longestEdge = heightMap.longestEdge * 2.f;
+                    node.aabb = heightMap.aabb;
+                    node.entity = terrainCache.CreateTerrainItem(world, nodePos, extent, node.aabb, node.textureId*4 + node.localIdx);
+                } else {
+                    InternalNode& parent = nodePool[node.parentIdx];
+                    node.longestEdge = parent.longestEdge / 2.f;
 
-                node.entity = terrainCache.CreateTerrainItem(world, nodePos, extent, heightMap.aabb, topIdx);
+                    node.entity = terrainCache.CreateTerrainItem(world, nodePos, extent, parent.aabb, parent.textureId*4 + node.localIdx);
+                }
             }
 
             if(node.water_entity == entt::null) {
@@ -97,10 +111,31 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                 // no children, try split
                 if(node.childIdx == 0
                     && numGenerated +4 <= updateQuota) {
-                    AllocChildren(node);
-                    numGenerated += 4;
+                    bool heightmapGenerated = node.textureId >= 0;
 
-                    node = nodePool[topIdx];
+                    if(!heightmapGenerated) {
+                        bool idAvailable = GetTextureId(node.textureId);
+
+                        if(idAvailable) {
+                            // non-root nodes need to generate map at the point of allocating their cihldren
+                            auto start = std::chrono::steady_clock::now();
+                            Heightmap heightMap(terrain, chunk.positionOffset + uvMin*scale, chunk.positionOffset + uvMax*scale, terrainGeometry.CHUNK_SIZE*2);
+                            generationDuration +=  std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
+                            heightMap.FillData(terrainCache, node.textureId);
+
+                            node.longestEdge = heightMap.longestEdge * 2.f;
+                            node.aabb = heightMap.aabb;
+
+                            heightmapGenerated = true;
+                        }
+                    }
+
+                    if(heightmapGenerated) {
+                        AllocChildren(node);
+                        numGenerated += 4;
+
+                        node = nodePool[topIdx];
+                    }                    
                 }
                 
                 if(node.childIdx != 0) {
@@ -124,6 +159,10 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                         mergeQueue.push(node.childIdx + i);
                     }
                     node.childIdx = 0;
+                    if(node.textureId >= 0) {
+                        FreeTextureId(node.textureId);
+                        node.textureId = -1;
+                    }
                 }
             }
 
@@ -180,10 +219,12 @@ void DebugUi(Engine::World& world) {
 
         ImGui::Text("Time per generated chunk: %fms",  terrainGeometry.timePerGeneratedChunk);
 
+        ImGui::Text("Active nodes %i", terrainGeometry.quadtree.nextPoolId - terrainGeometry.quadtree.freeList.size());
+
         ImGui::SeparatorText("Shared Pool");
-        ImGui::Text("Pooled entities available %i", terrainGeometry.quadtree.freeList.size());
-        ImGui::Text("Total %i / %i slots used",  terrainGeometry.quadtree.poolCapacity - terrainGeometry.quadtree.PoolSlotsAvailable(), terrainGeometry.quadtree.poolCapacity);
-        ImGui::Text("Total %i / %i slots allocated",  terrainGeometry.quadtree.nextPoolId, terrainGeometry.quadtree.poolCapacity);
+        ImGui::Text("Pooled texture slots available %i", terrainGeometry.quadtree.textureIdFreelist.size());
+        ImGui::Text("Total %i / %i slots used",  terrainGeometry.quadtree.nextTextureId - terrainGeometry.quadtree.textureIdFreelist.size(), terrainGeometry.quadtree.poolCapacity);
+        ImGui::Text("Total %i / %i slots allocated",  terrainGeometry.quadtree.nextTextureId, terrainGeometry.quadtree.poolCapacity);
 
         auto view = world.registry.view<TerrainChunkHeader>();
         for(auto entity : view) {
