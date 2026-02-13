@@ -17,6 +17,7 @@ namespace Engine {
     class GpuRender;
     enum class RenderPassId : uint32_t {
         OPAQUE,
+        POST_OPAQUE,
         TRANSPARENT,
         SHADOW
     };
@@ -31,6 +32,9 @@ namespace Engine {
 
     class MaterialRenderPass {
     public:
+        // called once per frame, opportunity to fill buffers
+        virtual void Prepare(World& world) {};
+
         virtual void Render(World& world, uint32_t offset, uint32_t count, RenderPassId pass) {            
             // Uniforms that should always be set
             // - Material header index
@@ -177,6 +181,8 @@ public:
         std::vector<std::unordered_set<uint32_t>> materialMeshPairs;
 
         void GatherRenderItems(World& world) {
+            auto& meshCache = world.GetSingle<MeshCache>();
+
             materialMeshPairs.resize(numMaterials);
             for(auto& set : materialMeshPairs) {
                 set.clear();
@@ -185,9 +191,19 @@ public:
             // Gather render items
             materialKeys.clear();
             renderItemData.clear();
-            auto itemsView = world.registry.view<Transform,AABB,GpuMaterialInstance,Engine::CullingResult>();
+            auto itemsView = world.registry.view<Transform,GpuMaterialInstance,Engine::CullingResult>();
             for(auto entity : itemsView) {
-                auto [transform,aabb,material,cc] = itemsView.get(entity);
+                auto [transform,material,cc] = itemsView.get(entity);
+
+                Engine::AABB* aabbPtr = world.registry.try_get<AABB>(entity);
+
+                Engine::AABB aabb;
+                if(aabbPtr != nullptr) {
+                    aabb = *aabbPtr;
+                } else {
+                    auto& mesh = meshCache.meshHeaders[material.meshId];
+                    aabb = AABB(mesh.aabbMin,mesh.aabbMax);
+                }
 
                 // Key 
                 materialKeys.push_back(glm::uvec2(PackKey(material.materialId, material.meshId), renderItemData.size()));
@@ -201,7 +217,13 @@ public:
             renderItemBuffer.Set<RenderItemData>(renderItemData.data(), renderItemData.size(), 0, true);
         }
 
-        static void PrepareGpuScene(World& world) {      
+        static void PrepareGpuScene(World& world) {
+            auto renderComponentView = world.registry.view<MaterialHeader,MaterialRenderComponent>();
+            for(auto entity : renderComponentView) {
+                auto [materialHeader,materialRenderComponent] = renderComponentView.get<MaterialHeader,MaterialRenderComponent>(entity);
+                materialRenderComponent.renderPass->Prepare(world);
+            }
+
             auto& gpuRender = world.GetSingle<GpuRender>();
             auto& meshCache = world.GetSingle<MeshCache>();
             meshCache.FlushStagingBuffer();
@@ -249,7 +271,7 @@ public:
             gpuRender.keyCounterBuffer.Set<uint32_t>(&gpuRender.numRenderItems, 1);
         }
         
-        static void PreparePass(Engine::World& world, RenderPassId passId) {
+        static void ExecutePass(Engine::World& world, RenderPassId passId) {
             auto& gpuRender = world.GetSingle<GpuRender>();
 
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);

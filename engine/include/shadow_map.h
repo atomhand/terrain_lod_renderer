@@ -80,8 +80,6 @@ namespace Engine {
             }
         };
 
-        Material shadowMaterial = Material(Shader("shaders/shadow_cascade.vert","shaders/shadow.frag","shaders/shadow_cascade.geom"));
-
         std::shared_ptr<DirectionalShadowCascadeMapData> data;
     public:
         GLuint depthMaps() {
@@ -106,11 +104,6 @@ namespace Engine {
             assert(layer < data->NUM_CASCADES);
             glViewport(0, 0, data->width, data->height);
             glBindFramebuffer(GL_FRAMEBUFFER, data->layerFBO[layer]);
-        }
-
-        Material& UseShadowMaterial() {
-            shadowMaterial.use();
-            return shadowMaterial;
         }
     };
 

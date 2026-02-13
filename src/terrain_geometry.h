@@ -13,7 +13,6 @@
 #include "terrain.h"
 #include "culling.h"
 #include "material.h"
-#include "render_item.h"
 #include "light.h"
 
 #include "terrain_material.h"
@@ -343,9 +342,6 @@ struct TerrainGeometry {
     double timePerGeneratedChunk = 0.1;
 
     TerrainQuadtree quadtree;
-
-    // temp
-    std::shared_ptr<Engine::PbrMaterial> terrain_mat_ptr;
 public:
     // Update - Chunks get a chance to regenerate if their current position is invalid (too far from the camera)
     // The number of chunks that can generate per frame is rate-limited, hopefully preventing any significant loading stutter.

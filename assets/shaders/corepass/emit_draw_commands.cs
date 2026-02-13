@@ -80,6 +80,5 @@ void main() {
     drawCmd.firstIndex = meshHeader.firstIndex;
     drawCmd.baseVertex = 0;
     drawCmd.baseInstance = 0; // unused
-    uint offsetInDraw = gl_GlobalInvocationID.x - materialHeader.filteredDrawBufferOffset;
     drawCommands[gl_GlobalInvocationID.x - materialHeader.filteredDrawBufferOffset + materialHeader.drawBufferOffset] = drawCmd;
 }

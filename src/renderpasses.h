@@ -6,13 +6,12 @@
 #include "application.h"
 #include "uniform_buffer.h"
 #include "camera.h"
-#include "render_item.h"
 #include "material.h"
 #include "compute_shader.h"
 #include "hdr.h"
 #include "deferred.h"
 
-using Engine::RenderPass, Engine::World, Engine::Camera, Engine::Transform;
+using Engine::World, Engine::Camera, Engine::Transform;
 // 
 class RenderPasses {
 public:

@@ -136,7 +136,6 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                 if(!node.hasRenderComponents) {
                     world.registry.emplace<Engine::CullingResult>(node.entity);
                     world.registry.emplace<Engine::ShadowCaster>(node.entity);
-                    world.registry.emplace<Engine::OpaqueRenderTag>(node.entity);
 
                     if(node.water_entity != entt::null) {                            
                         world.registry.emplace<Engine::CullingResult>(node.water_entity);
@@ -145,7 +144,7 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                 node.hasRenderComponents = true;
             } else {
                 if(node.hasRenderComponents) {
-                    world.registry.remove<Engine::CullingResult,Engine::ShadowCaster,Engine::OpaqueRenderTag>(node.entity);
+                    world.registry.remove<Engine::CullingResult,Engine::ShadowCaster>(node.entity);
                     if(node.water_entity != entt::null) {
                         world.registry.remove<Engine::CullingResult>(node.water_entity);
                     }

@@ -8,9 +8,45 @@
 #include "culling.h"
 #include <iostream>
 #include "storage_buffer.h"
-#include "mesh.h"
 
 namespace Engine {
+    struct VertexFormat {
+        bool normalsEnabled = false;
+        bool uvEnabled = false;
+        bool hasTangents = false;
+
+        GLsizei stride() {
+            return sizeof(glm::vec3) + (normalsEnabled ? sizeof(glm::vec3) : 0) + (uvEnabled ? sizeof(glm::vec2) : 0) + (hasTangents ? sizeof(glm::vec3) * 2: 0);
+        }
+
+        size_t normalsOffset() {
+            return sizeof(glm::vec3);
+        }
+        size_t uvOffset() {
+            return normalsOffset()  + (normalsEnabled ? sizeof(glm::vec3) : 0);
+        }
+        size_t tangentOffset() {
+            return uvOffset() + (uvEnabled ? sizeof(glm::vec2) : 0);
+        }
+        size_t bitangentOffset() {
+            return tangentOffset() + sizeof(glm::vec3);
+        }
+
+        std::vector<const char*> GetShaderDefs() {
+            std::vector<const char*> defs;
+            if(normalsEnabled) defs.push_back("#define VERTEX_NORMAL");
+            if(uvEnabled) defs.push_back("#define VERTEX_UV");
+            if(hasTangents) defs.push_back("#define VERTEX_TANGENT");
+            return defs;
+        }
+
+        GLuint positionAttributeIndex() { return 0; }
+        GLuint normalAttributeIndex() { return 1; }
+        GLuint uvAttributeIndex() { return 2; }
+        GLuint tangentAttributeIndex() { return 3; }
+        GLuint bitangentAttributeIndex() { return 4; }
+    };
+
     class GpuMeshBuilder {     
     public:  
         std::vector<glm::vec3> verts;

@@ -7,8 +7,10 @@
 #include <glm/gtc/random.hpp>
 #include "world.h"
 #include "terrain.h"
+#include "bird_material.h"
+#include "profiler.h"
 
-using Engine::RenderItem, Engine::Transform, Engine::Camera, Engine::World;
+using Engine::Transform, Engine::Camera, Engine::World;
 
 // Instantiates a flock of birds which fly around randomly
 // When they get too far from the main camera they'll teleport to a new position a bit closer to it
@@ -111,49 +113,43 @@ private:
     };
 
     // Make 1 bird
-    static void MakeBird(Engine::World &world, std::shared_ptr<Engine::PbrMaterial>& birdMaterialPtr, Engine::Mesh& mesh) {
+    static void MakeBird(Engine::World &world, uint32_t meshId) {
         auto bird_entity = world.registry.create();
 
         auto& bird = world.registry.emplace<Bird>(bird_entity);
         auto& transform = world.registry.emplace<Transform>(bird_entity);
-        auto& renderItem = world.registry.emplace<RenderItem>(bird_entity);
-        world.registry.emplace<Engine::AABB>(bird_entity,mesh.aabb.min,mesh.aabb.max);
+
         world.registry.emplace<Engine::CullingResult>(bird_entity);
-        world.registry.emplace<Engine::OpaqueRenderTag>(bird_entity);
 
-        //renderItem.quickCulling = true;
-        renderItem.material = birdMaterialPtr;
-        renderItem.SetMesh(mesh);
-        renderItem.prepass = false;
-        renderItem.shadowCastingEnabled = true; // barely show up with the current shadow setup, so it's not worth the performance cost
-        renderItem.animationPhaseOffset = glm::linearRand(0.f,1.f);
+        bird.Randomise(glm::vec3(0.f), 2048.f,nullptr);
 
-        bird.Randomise(glm::vec3(0.f), 768.f,nullptr);
+        float animationPhaseOffset = glm::linearRand(0.f,1.f);
+        BirdMaterial::InitBirdItem(world, bird_entity, meshId, animationPhaseOffset);
     }
 
     std::vector<Bird*> birds;
 public:
     // On entering the scenegraph
     static void Setup(World& world) {
-        Engine::Shader shader = Engine::Shader("shaders/bird.vert", "shaders/bird.frag");
-        Engine::Mesh birdMesh = Engine::AssimpWrapper::ImportMesh("models/Bird_Asset.fbx")[0];
+        BirdMaterial::Setup(world);
 
-        Engine::PbrMaterial birdMaterial(shader);
-        birdMaterial.textures.push_back(Engine::Texture("textures/BirdUVTexture.jpeg"));
-        birdMaterial.roughness = 0.5f;
-        std::shared_ptr<Engine::PbrMaterial> birdMaterialPtr = std::make_shared<Engine::PbrMaterial>(birdMaterial);
+        auto& meshCache = world.GetSingle<Engine::MeshCache>();
 
-        float width = birdMesh.aabb.max.x - birdMesh.aabb.min.x;
+        uint32_t birdMeshId = Engine::AssimpWrapper::ImportMesh(meshCache, "models/Bird_Asset.fbx")[0];
+        auto& birdMeshHeader = meshCache.meshHeaders[birdMeshId];
+
+        float width = birdMeshHeader.aabbMax.x - birdMeshHeader.aabbMin.x;
         float scale = 9.0 / width;
         birdModelTransform = glm::rotate(glm::mat4(1.0f), glm::radians(180.f), glm::vec3(0.f,1.f,0.f)) * glm::scale(glm::mat4(1.0f), glm::vec3(scale));
 
-        for(int i =0; i<200;i++) {
-            MakeBird(world, birdMaterialPtr, birdMesh);
+        for(int i =0; i<1000;i++) {
+            MakeBird(world, birdMeshId);
         }
     }
 
     // Update bird positions (and rerandomise them if they are too far from the main camera)
     static void Update(Engine::World& world) {
+        auto profileHandle = Engine::Profiler::StartCpu("BirdFlock::Update");
         Engine::Camera* cameraMain;
         Engine::Transform* cameraMainTransform;
         auto cameraView = world.registry.view<Camera,Transform>();
@@ -178,8 +174,8 @@ public:
 
             glm::vec2 birdxz = glm::vec2(bird.pos.x,bird.pos.z);
             glm::vec2 camxz = glm::vec2(cameraPos.x,cameraPos.z);
-            float rad = std::max(cameraPos.y,768.f);
-            if(glm::distance(birdxz,camxz) > rad*2.f)
+            float rad = std::max(cameraPos.y,2048.f);
+            if(glm::distance(birdxz,camxz) > rad * 1.5f)
                 bird.Randomise(cameraPos, rad,terrain);
             bird.UpdateMotion(transform,world.input.deltaTime*world.input.animSpeed,terrain);
         }

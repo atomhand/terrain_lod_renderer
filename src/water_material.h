@@ -14,7 +14,7 @@
 
 #include "imgui.h"
 
-using Engine::World, Engine::Mesh, Engine::Transform, Engine::GpuRender, Engine::MaterialHeader, Engine::MaterialRenderComponent, Engine::MaterialRenderPass, Engine::DrawElementsIndirectCommand, Engine::MeshCache, Engine::GpuMeshBuilder;
+using Engine::World, Engine::Transform, Engine::GpuRender, Engine::MaterialHeader, Engine::MaterialRenderComponent, Engine::MaterialRenderPass, Engine::DrawElementsIndirectCommand, Engine::MeshCache, Engine::GpuMeshBuilder;
 
 struct WaterMaterial {
     struct Cache;
@@ -138,15 +138,14 @@ struct WaterMaterial {
             auto cacheView = world.registry.view<Cache,MaterialHeader>();
             auto [cache,header] = cacheView.get(cacheView.front());
 
-            /*
+            
             if(pass == Engine::RenderPassId::OPAQUE) {                
                 DebugUi(world);
             }
-            */
+            
 
             // Bind material specific datacache.shader.use();
             cache.shader.use();
-            glUniform1f(cache.timeOffset,world.shaderAnimTime);
             glUniform1i(cache.idOffset,header.id);
             
             int texOffset = GL_TEXTURE0;
@@ -160,13 +159,13 @@ struct WaterMaterial {
 
             // draw colour
             glDepthMask(GL_FALSE);
-            glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.drawBufferOffset*sizeof(uint32_t), drawCount, 0);
+            glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
 
             // draw depth
             glDepthMask(GL_TRUE);
             cache.depthOnlyShader.use();
             glUniform1i(cache.depthOnlyIdOffset,header.id);
-            glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT,(void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.drawBufferOffset*sizeof(uint32_t), drawCount, 0);
+            glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT,(void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
         }
     };
 
@@ -220,13 +219,11 @@ public:
         size_t capacity;
         Engine::Shader shader;
         Engine::Shader depthOnlyShader;
-        Engine::Shader shadowShader;
         Engine::StorageBuffer storage;
         std::vector<glm::mat4> transforms;
 
         Engine::Texture depthTarget;
 
-        int timeOffset;
         int idOffset;
         int depthOnlyIdOffset;
 
@@ -237,11 +234,9 @@ public:
             capacity(capacity),
             shader(Engine::Shader("shaders/water.vert", "shaders/water_pbr.frag")),
             depthOnlyShader(Engine::Shader("shaders/water.vert","shaders/shadow.frag")),
-            shadowShader(Engine::Shader("shaders/water.vert","shaders/shadow.frag","shaders/shadow_cascade.geom")),
             storage(capacity * sizeof(glm::mat4)) {
             transforms.reserve(capacity);
 
-            timeOffset = glGetUniformLocation(shader.programId(), "time");
             idOffset = glGetUniformLocation(shader.programId(), "materialId");
             depthOnlyIdOffset = glGetUniformLocation(depthOnlyShader.programId(), "materialId");
 
@@ -280,7 +275,7 @@ public:
         world.registry.emplace<Cache>(headerEntity, capacity, meshId);
         
         auto& materialHeader = gpuRender.RegisterMaterial(world, headerEntity);
-        materialHeader.SetRenderPass(Engine::RenderPassId::OPAQUE);
+        materialHeader.SetRenderPass(Engine::RenderPassId::POST_OPAQUE);
 
         world.registry.emplace<MaterialRenderComponent>(headerEntity, (MaterialRenderPass*)new WaterRenderPass());
     }

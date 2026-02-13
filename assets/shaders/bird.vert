@@ -1,39 +1,44 @@
-#version 420
+#version 460
+#inject
 // Tom Kellett 2025
 // TBN snippet from: https://learnopengl.com/Advanced-Lighting/Normal-Mapping
-
-layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec3 aNormal;
-layout (location = 2) in vec2 aTexCoords;
-layout(location = 3) in vec2 aTexCoords2;
 
 out vec2 TexCoords;
 out vec3 WorldPos;
 out vec3 Normal;
 
-out vec3 testCol;
-
-uniform float time;
-
 #include "shared/uniforms_shared.glsl"
-
-uniform mat4 model;
-uniform mat3 normalMatrix;
-
 #include "shared/curvature_shared.glsl"
+#include "corepass/instancing_shared.glsl"
+
+layout(binding = 6, std430) readonly buffer instancingSsbo {
+    float animOffsets[];
+};
 
 void main()
 {
+    mat4 model;
+    Vertex vert;
+    uint materialInstanceId = GetModelVertex(model,vert);
+
+    float animOffset = animOffsets[materialInstanceId];
+
+    float animTime = time + animOffset;
+
     // Very basic wing flapping by vertex diplsacement
-    float shift = 0.75 * max(0.,abs(aPos.x)-0.4) * (sin(time*3.0)*2.0 - 1.0);
-    float d = length(aPos);
-    vec3 pos = normalize(aPos + vec3(0,shift,0)) * d;
+    float shift = 0.75 * max(0.,abs(vert.position.x)-0.4) * (sin(animTime*3.0)*2.0 - 1.0);
+    float d = length(vert.position);
+    vec3 pos = normalize(vert.position + vec3(0,shift,0)) * d;
 
+#ifdef SHADOW_PASS
+    gl_Position = cullingVP * model * vec4(pos,1.0);
+#else
+    mat3 normalMatrix = mat3(transpose(inverse(model)));
 
-    TexCoords = aTexCoords;//
+    TexCoords = vert.uv;//
     WorldPos = vec3(model * vec4(pos, 1.0));
-    Normal = normalMatrix * aNormal;
-
+    Normal = normalMatrix * vert.normal;
 
     gl_Position = projection * view * vec4(getCurvedPosition(WorldPos.xyz),1.0);
+#endif
 }

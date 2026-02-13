@@ -27,7 +27,7 @@
 
 using namespace std;
 
-const char * title = "GPU Programming Coursework App";
+const char * title = "Terrain Rendering Project";
 Engine::Application app = Engine::Application(1920,1080,title);
 Engine::World world;
 

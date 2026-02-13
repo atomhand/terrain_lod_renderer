@@ -36,6 +36,7 @@ layout (std140, binding=2) uniform MiscUniformData {
     float enableStochasticBlending;
     float applyExposure;
     float displacementScale;
+    float time;
 };
 
 

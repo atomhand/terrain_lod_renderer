@@ -1,4 +1,5 @@
-#version 420
+#version 460
+#inject
 // Tom Kellett 2025
 
 #include "shared/uniforms_shared.glsl"
@@ -12,7 +13,6 @@ uniform float mAo;
 #include "shared/deferred_shared.glsl"
 
 in vec2 TexCoords;
-
 in vec3 WorldPos;
 in vec3 Normal;
 

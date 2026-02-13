@@ -109,11 +109,6 @@ namespace Engine {
 
         const unsigned int NumCascades = 5;
 
-        // Activate the shadow (depth map) shader ready for drawing
-        Material& UseShadowMaterial() {
-            return shadowMap.UseShadowMaterial();
-        }
-
         // Build the world-to-light-space matrices for all cascades
         void MakeLightSpaceMatrices(World& world, Camera& camera, Texture& depthBuffer, UniformBuffer& lightUniforms);
 

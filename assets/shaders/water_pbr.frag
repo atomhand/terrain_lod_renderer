@@ -20,8 +20,6 @@ layout(binding=0) uniform sampler2D depthBuffer;
 layout(binding=1) uniform sampler2D normalMap1;
 layout(binding=2) uniform sampler2D normalMap2;
 
-uniform float time;
-
 void main()
 {
     // For a wave/ripple effect I combine 2 scrolling normal maps

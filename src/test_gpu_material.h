@@ -35,11 +35,11 @@ private:
                 if(pass == Engine::RenderPassId::SHADOW) {                  
                     manager.shadowShader.use();
                     glUniform1i(manager.shadowIdLocation,header.id);
-                    glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.drawBufferOffset*sizeof(uint32_t), drawCount, 0);
+                    glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
                 } else {
                     manager.shader.use();
                     glUniform1i(manager.idLocation,header.id);
-                    glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.drawBufferOffset*sizeof(uint32_t), drawCount, 0);
+                    glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
                 }
             }
         }
@@ -66,7 +66,6 @@ public:
             auto entity = world.registry.create();
 
             world.registry.emplace<Engine::CullingResult>(entity);
-            world.registry.emplace<Engine::AABB>(entity, sphere.aabb);
             auto& instance = world.registry.emplace<Engine::GpuMaterialInstance>(entity);
             instance.materialId = header.id;
             instance.meshId = sphereId;
@@ -82,7 +81,6 @@ public:
             auto entity = world.registry.create();
 
             world.registry.emplace<Engine::CullingResult>(entity);
-            world.registry.emplace<Engine::AABB>(entity, cube.aabb);
             auto& instance = world.registry.emplace<Engine::GpuMaterialInstance>(entity);
             instance.materialId = header.id;
             instance.meshId = cubeId;

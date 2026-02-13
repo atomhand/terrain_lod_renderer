@@ -38,10 +38,6 @@ namespace Engine
         glm::mat4 lightingVP;
         glm::mat4 lightingInvVP;
 
-        // Distance to nearest and furthest items that passed culling
-        float nearestItem;
-        float furthestItem;
-
         void setViewport(int width, int height) {
             this->width = float(width);
             this->height = float(height);

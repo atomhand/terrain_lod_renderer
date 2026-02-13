@@ -52,12 +52,12 @@ Vertex FetchVertex(uint index, MeshHeader mesh) {
 #endif
 
 #ifdef VERTEX_UV
-    vertex.uv = vec2(attributes[mesh.uvOffset],attributes[mesh.uvOffset+1]);
+    vertex.uv = vec2(attributes[index+mesh.uvOffset],attributes[index+mesh.uvOffset+1]);
 #endif
 
 #ifdef VERTEX_TANGENT    
-    vertex.tangent = vec3(attributes[mesh.tangentOffset+0],attributes[mesh.tangentOffset+1],attributes[mesh.tangentOffset+2]);
-    vertex.bitangent = vec3(attributes[mesh.tangentOffset+3],attributes[mesh.tangentOffset+4],attributes[mesh.tangentOffset+5]);
+    vertex.tangent = vec3(attributes[index+mesh.tangentOffset+0],attributes[index+mesh.tangentOffset+1],attributes[index+mesh.tangentOffset+2]);
+    vertex.bitangent = vec3(attributes[index+mesh.tangentOffset+3],attributes[index+mesh.tangentOffset+4],attributes[index+mesh.tangentOffset+5]);
 #endif
     return vertex;
 }

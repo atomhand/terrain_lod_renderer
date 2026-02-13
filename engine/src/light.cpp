@@ -7,7 +7,6 @@
 // because I came up with my own algorithm to calculate the frustum/projection for each cascade
 
 #include "light.h"
-#include "render_item.h"
 
 void Engine::DirectionalLight::MakeLightSpaceMatrices(World& world, Camera& camera, Texture& depthBuffer, UniformBuffer& lightUniforms) {
     int depthOutput[2] = {0x7fffffff,-0x7fffffff};

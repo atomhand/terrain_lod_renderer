@@ -44,6 +44,7 @@ namespace Engine {
         float enableStochasticBlending;
         float applyExposure;
         float displacementScale;
+        float time;
     };
 
     // GPU DRIVEN RENDER

@@ -11,7 +11,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-#include "mesh.h"
+#include "gpu_mesh.h"
 #include "asset_helper.h"
 
 namespace Engine {
@@ -21,7 +21,8 @@ namespace Engine {
         static void RecursiveImportMesh(
             const aiScene* scene,
             const aiNode* nd,
-            std::vector<Mesh> &meshes)
+            MeshCache& meshCache,
+            std::vector<uint32_t> &meshIds)
         {
             unsigned int i;
             unsigned int n = 0, t, v;
@@ -79,7 +80,7 @@ namespace Engine {
 
                 std::cout << "Imported mesh with assimp, " << verts.size() << " verts, " << uvs.size() << " uvs, " << normals.size() << " normals, " << indices.size() << " indices" << std::endl;
                 
-                Mesh::MeshBuilder outMesh;
+                GpuMeshBuilder outMesh;
                 outMesh.SetVerts(verts);
                 if(normals.size() == verts.size())
                     outMesh.SetNormals(normals); {}
@@ -88,28 +89,29 @@ namespace Engine {
                 if(tangents.size() == verts.size())
                     outMesh.SetTangentsAndBitangents(tangents,bitangents);
                 outMesh.SetIndices(indices);
-                meshes.push_back(outMesh.CreateMesh());
+
+                meshIds.push_back(meshCache.RegisterMesh(outMesh));
             }
 
             /* import all children */
             for (n = 0; n < nd->mNumChildren; ++n) {
-                RecursiveImportMesh(scene, nd->mChildren[n], meshes);
+                RecursiveImportMesh(scene, nd->mChildren[n], meshCache, meshIds);
             }
         }
     public:
         // Import mesh from file
         // File path is provided relative to the assets directory
-        static std::vector<Mesh> ImportMesh(const char *filePath) {
+        static std::vector<uint32_t> ImportMesh(MeshCache& meshCache, const char *filePath) {
             std::filesystem::path path = AssetHelper::assetPath(filePath);
 
             std::cout << "importing " << path.string() << std::endl;
             const aiScene* scene = aiImportFile(path.string().c_str(),aiProcessPreset_TargetRealtime_MaxQuality);
 
-            std::vector<Mesh> meshes;
+            std::vector<uint32_t> meshIds;
 
-            RecursiveImportMesh(scene, scene->mRootNode,meshes);
+            RecursiveImportMesh(scene, scene->mRootNode,meshCache,meshIds);
             
-            return meshes;
+            return meshIds;
         }
     };
 }
