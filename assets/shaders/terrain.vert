@@ -35,12 +35,16 @@ float TargetLodDepth(vec3 position, float geometricError) {
 
 // TODO - shouldn't attempt to reduce the LoD below the minimum level
 vec2 morphVertex(vec2 uv, vec2 nodeDimension, float morphK) {
+    if(morphK <= 0.f) {
+        return uv;
+    }
     // Snap the uv/vertex K level LoDs down, where K 
     // is the whole part of morphK
     float kFloor = floor(morphK);
-    vec2 scale = nodeDimension.xy / (2 << int(kFloor));
+    vec2 scale = nodeDimension.xy / (1 << int(kFloor));
     vec2 fracPart = fract(uv*scale) / scale;
-    uv -= fracPart;
+    if(kFloor > 0.f)
+        uv -= fracPart;
 
     // For the fractional part of morphK, blend between
     // the snapped vertex and the next-lower LoD
@@ -87,7 +91,9 @@ void main()
     vec4 t = textureLod(dataTex, vec3(RemapUv(p,materialInstanceId),texArrayIndex), 0);
     WorldPos = vec3(model * vec4(p.x, vert.position.y + t.w, p.y, 1.0));
     Normal = normalize(t.xyz);
-    debugColor = vec3(fract(RemapUv(vert.position.xz,materialInstanceId) * vec2(textureSize(dataTex,0).xy)),0);
+#ifdef TERRAIN_HEATMAP
+    debugColor = vec3(k,k,k) / 2.0f;
+#endif
 
 #ifdef SHADOW_PASS
     gl_Position = cullingVP * vec4(WorldPos.xyz,1.0);
