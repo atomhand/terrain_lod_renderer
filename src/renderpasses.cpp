@@ -18,6 +18,8 @@ void RenderPasses::Init(World& world) {
     debugCamera.main = false;
     world.registry.emplace<Transform>(debugCameraEntity);
 
+    world.registry.emplace<Engine::LodControlCamera>(debugCameraEntity);
+
     // Mesh cache that stores all mesh data, needs to be intialised before we start loading any meshes
     // maybe a better place this could be initialised, review later
     world.registry.emplace<Engine::MeshCache>(world.registry.create());
@@ -69,12 +71,12 @@ void RenderPasses::RunAll(World& world, Engine::Application& app) {
 
     if(skipDeferred) {
         hdr.BindHdrFramebuffer(display_w,display_h);
-        PrepareMain(world,*cameraMain,*cameraMainTransform);
+        PrepareMain(world,*cameraMain,*cameraMainTransform,cullingCameraTransform);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         DrawOpaque(world,world.input.drawAABBs, *cameraMain, cullingCamera);
     } else {
         deferred.BindGBuffer(display_w,display_h);
-        PrepareMain(world,*cameraMain,*cameraMainTransform);
+        PrepareMain(world,*cameraMain,*cameraMainTransform,cullingCameraTransform);
         DrawOpaque(world,world.input.drawAABBs, *cameraMain, cullingCamera);    
         DrawShadowMaps(world, cullingCamera);
 
@@ -205,7 +207,7 @@ void RenderPasses::DrawShadowMaps(World& world, Engine::Camera& cameraMain) {
 }
 
 // Prepare framebuffer for the main pass
-void RenderPasses::PrepareMain(World& world, Engine::Camera& camera, Engine::Transform& cameraTransform) {
+void RenderPasses::PrepareMain(World& world, Engine::Camera& camera, Engine::Transform& cameraTransform, Engine::Transform& cullingCameraTransform) {
     auto profileHandle = Profiler::StartCpu("RenderPasses::PrepareMain");
     auto gpuProfileHandle = Profiler::StartGpu("RenderPasses::PrepareMain");
 
@@ -213,7 +215,7 @@ void RenderPasses::PrepareMain(World& world, Engine::Camera& camera, Engine::Tra
     glViewport(0, 0, display_w, display_h);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    ViewUniformData viewUniformData(camera,cameraTransform, float(world.input.lodControlParam));
+    ViewUniformData viewUniformData(camera,cameraTransform, cullingCameraTransform.position(), float(world.input.lodControlParam));
     viewUniforms.Set(&viewUniformData);
     viewUniforms.BindBase(0);
 

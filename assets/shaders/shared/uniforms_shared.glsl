@@ -9,6 +9,7 @@ layout (std140, binding=0) uniform Matrices
     mat4 inverseViewProjection;
     mat4 boundedInverseViewProjection; // vp without infinite far plane
     vec4 viewPos;
+    vec4 lodViewPos; // typically the same as viewPos, different in debug modes
     vec2 screenDimensions;
     float nearPlane;
     float farPlane;

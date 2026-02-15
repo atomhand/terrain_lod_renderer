@@ -220,6 +220,11 @@ struct TerrainQuadtree {
     int nextTextureId = 0;
 
     bool GetTextureId(int& id) {
+        if(id >= 0) {
+            assert(id < poolCapacity);
+            return true;
+        }
+
         if(textureIdFreelist.size() > 0) {
             id = textureIdFreelist.back();
             textureIdFreelist.pop_back();
@@ -233,6 +238,7 @@ struct TerrainQuadtree {
     }
     void FreeTextureId(int id) {
         assert(id>=0);
+        assert(id<poolCapacity);
         textureIdFreelist.push_back(id);
     }
 

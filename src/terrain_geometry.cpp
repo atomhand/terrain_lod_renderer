@@ -51,7 +51,7 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                 node.childIdx = 0;
             }
 
-            if(node.textureId > 0) {
+            if(node.textureId >= 0) {
                 FreeTextureId(node.textureId);
                 node.textureId = -1;
             }
@@ -82,20 +82,20 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
 
             if(node.entity == entt::null) {
                 if(node.parentIdx == node.idx) {
-                    GetTextureId(node.textureId);
-                    // special handling for root nodes
-                    auto start = std::chrono::steady_clock::now();
-                    Heightmap heightMap(terrain, chunk.positionOffset + uvMin*scale, chunk.positionOffset + uvMax*scale, terrainGeometry.CHUNK_SIZE*2+1);
-                    generationDuration +=  std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
-                    heightMap.FillData(terrainCache, node.textureId);
+                    if(GetTextureId(node.textureId)) {                        
+                        // special handling for root nodes
+                        auto start = std::chrono::steady_clock::now();
+                        Heightmap heightMap(terrain, chunk.positionOffset + uvMin*scale, chunk.positionOffset + uvMax*scale, terrainGeometry.CHUNK_SIZE*2+1);
+                        generationDuration +=  std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
+                        heightMap.FillData(terrainCache, node.textureId);
 
-                    //node.longestEdge = heightMap.longestEdge * 2.f;
-                    node.aabb = heightMap.aabb;
-                    node.entity = terrainCache.CreateTerrainItem(world, nodePos, extent, node.aabb, node.textureId*4 + node.localIdx);
+                        //node.longestEdge = heightMap.longestEdge * 2.f;
+                        node.aabb = heightMap.aabb;
+                        node.entity = terrainCache.CreateTerrainItem(world, nodePos, extent, node.aabb, node.textureId*4 + node.localIdx);
+                    }
                 } else {
                     InternalNode& parent = nodePool[node.parentIdx];
                     //node.longestEdge = parent.longestEdge / 2.f;
-
                     node.entity = terrainCache.CreateTerrainItem(world, nodePos, extent, parent.aabb, parent.textureId*4 + node.localIdx);
                 }
 
@@ -116,9 +116,7 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                     bool heightmapGenerated = node.textureId >= 0;
 
                     if(!heightmapGenerated) {
-                        bool idAvailable = GetTextureId(node.textureId);
-
-                        if(idAvailable) {
+                        if(GetTextureId(node.textureId)) {
                             // non-root nodes need to generate map at the point of allocating their cihldren
                             auto start = std::chrono::steady_clock::now();
                             Heightmap heightMap(terrain, chunk.positionOffset + uvMin*scale, chunk.positionOffset + uvMax*scale, terrainGeometry.CHUNK_SIZE*2+1);
@@ -135,19 +133,19 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                     if(heightmapGenerated) {
                         AllocChildren(node);
                         numGenerated += 4;
-
-                        node = nodePool[topIdx];
                     }                    
                 }
                 
                 if(node.childIdx != 0) {
                     float priority = targetDepth - node.depth;
                     
+                    /*
                     // Reduce split priority significantly for cells that failed culling
                     Engine::CullingResult* cullingResult = world.registry.try_get<Engine::CullingResult>(node.entity);
                     if(cullingResult == nullptr || cullingResult->viewResult == false) {
                         priority -= maxDepth;
                     }
+                    */
 
                     for(unsigned short i =0; i<4; i++) {
                         traversalQueue.push(TraversalItem{unsigned short(node.childIdx + i),item.chunkId, priority});
@@ -176,7 +174,6 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
             if(shouldDraw) {
                 if(!node.hasRenderComponents) {
                     world.registry.emplace<Engine::CullingResult>(node.entity);
-                    world.registry.emplace<Engine::ShadowCaster>(node.entity);
 
                     if(node.water_entity != entt::null) {                            
                         world.registry.emplace<Engine::CullingResult>(node.water_entity);
@@ -185,7 +182,7 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                 node.hasRenderComponents = true;
             } else {
                 if(node.hasRenderComponents) {
-                    world.registry.remove<Engine::CullingResult,Engine::ShadowCaster>(node.entity);
+                    world.registry.remove<Engine::CullingResult>(node.entity);
                     if(node.water_entity != entt::null) {
                         world.registry.remove<Engine::CullingResult>(node.water_entity);
                     }
@@ -245,7 +242,7 @@ void DebugUi(Engine::World& world) {
 // The number of chunks that can generate per frame is rate-limited, hopefully preventing any significant loading stutter.
 // The limit is waived on startup
 void TerrainGeometry::Update(Engine::World& world) {
-    auto camView = world.registry.view<Engine::Camera,Engine::Transform>();
+    auto camView = world.registry.view<Engine::Camera,Engine::Transform,Engine::LodControlCamera>();
     auto [camera,camTransform] = camView.get(camView.front());
     glm::vec3 camPos = camTransform.position();
 

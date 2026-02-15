@@ -51,7 +51,7 @@ private:
     void DrawShadowMaps(World& world, Engine::Camera& cameraMain);
 
     // Prepare framebuffer for the main pass
-    void PrepareMain(World& world, Engine::Camera& camera, Engine::Transform& cameraTransform);
+    void PrepareMain(World& world, Engine::Camera& camera, Engine::Transform& cameraTransform, Engine::Transform& cullingCameraTransform);
 
     // To draw the debug camera output to the screen (press Q)
     void DrawDebugQuad(World& world);

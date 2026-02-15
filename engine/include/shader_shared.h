@@ -10,19 +10,21 @@ namespace Engine {
         glm::mat4 inverseViewProjection;
         glm::mat4 boundedInverseViewProjection;
         glm::vec4 viewPos;
+        glm::vec4 lodViewPos;
         glm::vec2 screenDimensions;
         float nearPlane;
         float farPlane;
         float lodFovFactor;
         float lodControlParam;
 
-        ViewUniformData(Engine::Camera& camera, Transform& transform, float lodControlParam) : lodControlParam(lodControlParam) {
+        ViewUniformData(Engine::Camera& camera, Transform& transform, glm::vec3 lodCameraViewPos, float lodControlParam) : lodControlParam(lodControlParam) {
             view = camera.view;
             projection = camera.projection;
             boundedInverseViewProjection = camera.lightingInvVP;
             viewPos = glm::vec4(transform.position(),1.f);
             nearPlane = camera.near;
             farPlane = camera.far;
+            lodViewPos = glm::vec4(lodCameraViewPos,1.0f);
 
             viewProjection = camera.VP;
             inverseViewProjection = glm::inverse(viewProjection);

@@ -14,6 +14,9 @@
 
 namespace Engine
 {
+    // marker
+    struct LodControlCamera{};
+
     struct Camera {
     public:
         float width = 1024.f;
