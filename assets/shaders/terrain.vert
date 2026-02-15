@@ -84,6 +84,13 @@ void main()
     vec2 nodeDimension = (textureSize(dataTex,0).xy-1.0) / 2.0;
     float edgeLength = model[0][0] / nodeDimension.x * 1.73;
     float k = TargetLodDepth(initialVertPos,edgeLength);
+
+    // vertexes on chunk edges should snap to a whole number LoD
+    // This is effective at preventing cracks in practice
+    if(min(vert.position.x,vert.position.z) <= 0.001f || max(vert.position.x,vert.position.z) >= 0.999f) {
+        k = round(k);
+    }
+
     vec2 p = morphVertex(vert.position.xz,nodeDimension,k);
 
     vec2 texel = vec2(1.0) / vec2(textureSize(dataTex,0).xy);

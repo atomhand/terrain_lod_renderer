@@ -60,6 +60,46 @@ private:
         int cw = chunk_size;
         assert(cw >= 2);
 
+        // no skirts
+        int vw = cw+1;
+        int iz;
+        for(iz=0; iz<vw; iz++) {
+            for(int ix=0; ix<vw; ix++) {
+                glm::vec3 pos = glm::vec3(ix / float(cw),0.f,iz / float(cw));
+                verts.push_back(pos);
+                //normals.push_back(glm::vec3(0,1,0));
+            }
+        }
+
+        for(iz=0; iz<vw-1; iz++) {            
+            for(int ix=0; ix<vw-1; ix++) {
+                GLuint i00 = ix + iz*(vw);
+                GLuint i10 = (ix+1) + iz*(vw);
+                GLuint i01 = ix + (iz+1)*(vw);
+                GLuint i11 = (ix+1) + (iz+1)*(vw);
+
+                indices.push_back(i00);
+                indices.push_back(i01);
+                indices.push_back(i11);
+
+                indices.push_back(i00);
+                indices.push_back(i11);
+                indices.push_back(i10);
+            }
+        }
+
+        meshBuilder.aabb = Engine::AABB(glm::vec3(-0.25,-1.5,-0.25),glm::vec3(1.25,1.5,1.25));
+
+        /*
+        auto& verts = meshBuilder.verts;
+        auto& indices = meshBuilder.indices;
+
+        verts.clear();
+        indices.clear();
+
+        int cw = chunk_size;
+        assert(cw >= 2);
+
         int vw = cw+3;
 
         int iz;
@@ -95,6 +135,7 @@ private:
         }
 
         meshBuilder.aabb = Engine::AABB(glm::vec3(0.,-1.,0.),glm::vec3(1.0,1.0,1.0));
+        */
     }
 public:
     struct Cache {
@@ -151,10 +192,12 @@ public:
             meshId(meshId),
             shader(Engine::Shader("shaders/terrain.vert", "shaders/terrain_pbr.frag")),
             depthOnlyShader(Engine::Shader("shaders/terrain.vert","shaders/shadow.frag")),
-            wireframeShader(Engine::Shader("shaders/terrain.vert","shaders/primitive/wireframe.frag","shaders/primitive/triangle_density.geom")),
             triangleDensityShader(Engine::Shader("shaders/terrain.vert","shaders/primitive/basic.frag","shaders/primitive/triangle_density.geom"))
             //wireframeShader(Engine::Shader("shaders/terrain.vert","shaders/wireframe.frag","shaders/wireframe.geom")),
         {
+            std::vector<const char*> wireframeDef = { "#define TERRAIN_HEATMAP"};
+            wireframeShader = Engine::Shader("shaders/terrain.vert","shaders/primitive/wireframe.frag","shaders/primitive/triangle_density.geom",wireframeDef);
+
             auto defines = std::vector<const char*>{ "#define SHADOW_PASS"};
             shadowShader = Engine::Shader("shaders/terrain.vert","shaders/shadow.frag", defines);
 
