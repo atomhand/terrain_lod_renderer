@@ -70,6 +70,12 @@ vec2 RemapUv(vec2 uv, uint materialInstanceId) {
     return (uv + vec2(local>>1,local&1) + texel) * 0.5f * scale;
 }
 
+vec3 GetBaseVertPos(vec3 inPosition, uint materialInstanceId, uint texArrayIndex, mat4 model) {
+    vec2 uv = RemapUv(vec2(inPosition.x,inPosition.z),materialInstanceId);
+    float baseHeight = textureLod(dataTex, vec3(uv,texArrayIndex), 0).x;
+    return (model * vec4(inPosition.x,baseHeight,inPosition.z,1.0f)).xyz;
+}
+
 void main()
 {
     mat4 model;
@@ -78,7 +84,7 @@ void main()
 
     uint texArrayIndex = materialInstanceId / 4;
 
-    vec3 initialVertPos = vec3(model * vec4(vert.position.x,0.f,vert.position.z,1.0));
+    vec3 initialVertPos = GetBaseVertPos(vert.position,materialInstanceId,texArrayIndex,model);
     // dimensions of a node can be derived from the texture dimensions
     // (minor convenience, saves binding a uniforms)
     vec2 nodeDimension = (textureSize(dataTex,0).xy-1.0) / 2.0;
@@ -96,7 +102,7 @@ void main()
     vec2 texel = vec2(1.0) / vec2(textureSize(dataTex,0).xy);
 
     vec4 t = textureLod(dataTex, vec3(RemapUv(p,materialInstanceId),texArrayIndex), 0);
-    WorldPos = vec3(model * vec4(p.x, vert.position.y + t.w, p.y, 1.0));
+    WorldPos = vec3(model * vec4(p.x, t.w, p.y, 1.0));
     Normal = normalize(t.xyz);
 #ifdef TERRAIN_HEATMAP
     debugColor = vec3(k,k,k) / 2.0f;

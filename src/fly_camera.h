@@ -80,7 +80,7 @@ public:
                     flyCamera.fallSpeed = 0.f;
                 }
                 flyCamera.pos.y = std::max(flyCamera.pos.y,terrainHeight);
-                clearance = flyCamera.pos.y - terrainHeight;
+                clearance = flyCamera.pos.y - terrainHeight - 1.f;
             }
             float clearanceFactor = std::clamp(clearance / 10000.f,0.f,1.f);
 
