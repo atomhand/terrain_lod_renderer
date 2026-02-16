@@ -53,6 +53,9 @@ float ShadowAtSurface(vec3 L, vec3 wPos) {
 
     // TODO - reivist dynamic bias Bias calculation
     float bias = 0.01;// max(0.005 * (1.0 - dot(geometryNormal, L)), 0.0005);
+    // Apply bias
+    // don't let the bias increase depth over 1
+    fragDepth = min(1.0-1e-6,fragDepth+bias);
 
     // Stratified Poisson sampling
 
@@ -86,7 +89,7 @@ float ShadowAtSurface(vec3 L, vec3 wPos) {
     float inverseOcclusion = 0.0;
     for(int i =0; i<4; i++) {
         int index = int(16.f*hash14(vec4(wPos.xyz,i)));
-        inverseOcclusion += 0.25 * texture(shadowMap, vec4(uv.xy + poissonDisk[index] * texelSize.xy,layer,fragDepth+bias)).r;
+        inverseOcclusion += 0.25 * texture(shadowMap, vec4(uv.xy + poissonDisk[index] * texelSize.xy,layer,fragDepth)).r;
     }
 
     return inverseOcclusion;

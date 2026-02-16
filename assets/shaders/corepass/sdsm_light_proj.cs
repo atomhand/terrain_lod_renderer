@@ -14,14 +14,14 @@ layout(binding = 1, std430) buffer ssbo2 {
     mat4 s_lightSpaceMatrices[];
 };
 
-const mat4 normalize_range = mat4(1.0f, 0.0f, 0.0f, 0.0f,
-                                0.0f, 1.0f, 0.0f, 0.0f,
-                                0.0f, 0.0f, 0.5f, 0.0f,
-                                0.0f, 0.0f, 0.5f, 1.0f);
-const mat4 reverse_z = mat4(1.0f, 0.0f,  0.0f, 0.0f,
-                        0.0f, 1.0f,  0.0f, 0.0f,
-                        0.0f, 0.0f, -1.0f, 0.0f,
-                        0.0f, 0.0f,  1.0f, 1.0f);
+
+layout(binding = 3, std430) buffer ssbo3 {
+    mat4 s_lightViewMatrices[];
+};
+
+layout(binding = 4, std430) buffer ssbo4 {
+    float s_frustumPlanes[];
+};
 
 void main()
 {
@@ -36,11 +36,27 @@ void main()
     float near = float(depthMinMax[gl_LocalInvocationIndex*6 + 4])/1000.f;
     float far = float(depthMinMax[gl_LocalInvocationIndex*6 + 5])/1000.f;
 
+    // reverse Z orthographic projection
     mat4 ortho = mat4(1.f );
     ortho[0] = vec4(2.f / (r-l), 0.f,0.f,0.f);
     ortho[1] = vec4(0.f,2.f/(t-b), 0.f,0.f);
-    ortho[2] = vec4(0.f,0.f, -2.f/(far-near),0.f);
-    ortho[3] = vec4(-(r+l)/(r-l),-(t+b)/(t-b),-(far+near)/(far-near),1.0f);
+    ortho[2] = vec4(0.f,0.f, 1.f/(far-near),0.f);
+    ortho[3] =  vec4(-(r+l)/(r-l),-(t+b)/(t-b),(far)/(far-near),1.0f);
+    //ortho = normalize_range * ortho;
 
-    s_lightSpaceMatrices[gl_LocalInvocationIndex] = reverse_z * normalize_range * ortho * s_lightSpaceMatrices[gl_LocalInvocationIndex];
+    //mat4 translation = mat4(1.f);
+    //translation[3] = vec4(-(r+l)/2.f,-(t+b)/2.f,(far)/2.f,1.0f);
+
+    s_frustumPlanes[gl_LocalInvocationIndex*6+0] = l;
+    s_frustumPlanes[gl_LocalInvocationIndex*6+1] = r;
+    s_frustumPlanes[gl_LocalInvocationIndex*6+2] = b;
+    s_frustumPlanes[gl_LocalInvocationIndex*6+3] = t;
+    s_frustumPlanes[gl_LocalInvocationIndex*6+4] = near;
+    s_frustumPlanes[gl_LocalInvocationIndex*6+5] = far;
+
+    // view matrix
+    s_lightViewMatrices[gl_LocalInvocationIndex] = s_lightSpaceMatrices[gl_LocalInvocationIndex];
+
+    // combined projection+view
+    s_lightSpaceMatrices[gl_LocalInvocationIndex] = ortho * s_lightSpaceMatrices[gl_LocalInvocationIndex];
 }

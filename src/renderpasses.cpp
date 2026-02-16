@@ -136,7 +136,8 @@ void RenderPasses::DrawDebugOverlays(World& world, Engine::Camera& cameraToDebug
     for(auto entity : lightView) {
         auto& light = lightView.get<Engine::DirectionalLight>(entity);
 
-        std::vector lightSpaceMatrices = light.ReadbackLightMatrices();
+        std::vector lightSpaceMatrices = light.ReadbackLightMatrices();        
+        std::vector<glm::mat4> debugFrusta = light.DebugLightCullingFrusta();
 
         glm::vec3 rgb = glm::vec3(1,0.5,0);
         for(auto lsm : lightSpaceMatrices) {                
@@ -144,6 +145,15 @@ void RenderPasses::DrawDebugOverlays(World& world, Engine::Camera& cameraToDebug
             debugWireframeMaterial.SetColor(rgb);
             debugWireframeMaterial.SetModel(invLsm);
             Engine::DrawUtil::DrawCubeNdc();
+
+            rgb = glm::vec3(rgb.z,rgb.x,rgb.y);
+        }
+
+        rgb = glm::vec3(0.,0.0,1.);
+        for(auto lsm : debugFrusta) {             
+            debugWireframeMaterial.SetColor(rgb);
+            debugWireframeMaterial.SetModel(lsm);
+            Engine::DrawUtil::DrawCube();
 
             rgb = glm::vec3(rgb.z,rgb.x,rgb.y);
         }
@@ -197,7 +207,7 @@ void RenderPasses::DrawShadowMaps(World& world, Engine::Camera& cameraMain) {
         sun.BindCascadeToCullingVPUniform(passCullingVpUniform, i);
         
         auto& gpuRender = world.GetSingle<Engine::GpuRender>();
-        gpuRender.ExecutePass(world, Engine::RenderPassId::SHADOW);
+        gpuRender.ExecutePass(world, Engine::RenderPassId::SHADOW, i);
     }
 
     glDisable(GL_DEPTH_CLAMP);
@@ -284,12 +294,14 @@ void RenderPasses::DrawOpaque(World& world, bool drawAABB, Engine::Camera& camer
 
     //TerrainMaterial::DrawMain(world);
 
-    passCullingVpUniform.Set(&cullingCamera.VP);
+    Engine::PassCullingVPUniform cullingVpUniform(cullingCamera);
+
+    passCullingVpUniform.Set(&cullingVpUniform);
     passCullingVpUniform.BindBase(5);
     
     auto& gpuRender = world.GetSingle<Engine::GpuRender>();
-    gpuRender.ExecutePass(world, Engine::RenderPassId::OPAQUE);
-    gpuRender.ExecutePass(world, Engine::RenderPassId::POST_OPAQUE);
+    gpuRender.ExecutePass(world, Engine::RenderPassId::OPAQUE, 0);
+    gpuRender.ExecutePass(world, Engine::RenderPassId::POST_OPAQUE, 0);
 
     /*
     if(!world.input.previewTriangleDensity) {
@@ -340,6 +352,6 @@ void RenderPasses::DrawTransparent(World& world, bool drawAABB) {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     auto& gpuRender = world.GetSingle<Engine::GpuRender>();
-    gpuRender.ExecutePass(world, Engine::RenderPassId::TRANSPARENT);
+    gpuRender.ExecutePass(world, Engine::RenderPassId::TRANSPARENT, 0);
     glDisable(GL_BLEND);
 }

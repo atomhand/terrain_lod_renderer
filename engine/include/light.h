@@ -91,6 +91,8 @@ namespace Engine {
         };
 
         StorageBuffer lightSpaceMatricesBuffer = StorageBuffer(16 * sizeof(glm::mat4));
+        StorageBuffer lightViewMatricesBuffer = StorageBuffer(16 * sizeof(glm::mat4));
+        StorageBuffer lightFrustumPlanesBuffer = StorageBuffer(16 * 6 * sizeof(float));
         StorageBuffer depthAnalysisOutput = StorageBuffer(2 * sizeof(uint32_t));
         StorageBuffer cascadeAnalysisOutput = StorageBuffer(16 * 6 * sizeof(uint32_t));
 
@@ -112,9 +114,52 @@ namespace Engine {
         // Build the world-to-light-space matrices for all cascades
         void MakeLightSpaceMatrices(World& world, Camera& camera, Texture& depthBuffer, UniformBuffer& lightUniforms);
 
+        std::vector<glm::mat4> DebugLightCullingFrusta() {
+            std::vector<float> frustumVals;
+
+            std::vector<glm::mat4> debugFrusta;
+
+            debugFrusta.resize(NumCascades);
+            frustumVals.resize(NumCascades * 6);
+            glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
+            lightFrustumPlanesBuffer.Readback<float>(frustumVals.data(), NumCascades*6, 0);
+            lightViewMatricesBuffer.Readback<glm::mat4>(debugFrusta.data(), NumCascades, 0);
+
+            if(ImGui::Begin("Light frustum debug")) {
+                for(int i =0; i<NumCascades; i++ ) {
+                    ImGui::Separator();
+                    ImGui::Text("Cascade %i", i);
+                    ImGui::Text("l %f", frustumVals[i*6+0]);
+                    ImGui::Text("r %f", frustumVals[i*6+1]);
+                    ImGui::Text("b %f", frustumVals[i*6+2]);
+                    ImGui::Text("t %f", frustumVals[i*6+3]);
+                    ImGui::Text("near %f", frustumVals[i*6+4]);
+                    ImGui::Text("far %f", frustumVals[i*6+5]);
+
+                    float l = frustumVals[i*6+0];
+                    float r= frustumVals[i*6+1];
+                    float b = frustumVals[i*6+2];
+                    float t = frustumVals[i*6+3];
+                    float near = -frustumVals[i*6+4];
+                    float far = -frustumVals[i*6+5];
+
+                    glm::vec3 extents = glm::vec3(r-l,t-b,far-near)/2.f;
+                    glm::vec3 center = glm::vec3(r,t,far)-extents;
+
+                    debugFrusta[i] = glm::inverse(debugFrusta[i]) * glm::translate(glm::mat4(1.f), center) * glm::scale(glm::mat4(1.),extents);
+                }
+            }
+
+            ImGui::End();
+            return debugFrusta;
+        }
+
         void BindUniforms() {
             glBindBufferBase(GL_UNIFORM_BUFFER, 3, lightSpaceMatricesBuffer.object());
             glBindBufferBase(GL_UNIFORM_BUFFER, 4, cascadePlaneDistancesBuffer.object());
+
+            lightViewMatricesBuffer.BindBase(8);
+            lightFrustumPlanesBuffer.BindBase(9);
         }
 
         void BindCascadeToCullingVPUniform(UniformBuffer& targetBuffer, uint32_t cascade) {

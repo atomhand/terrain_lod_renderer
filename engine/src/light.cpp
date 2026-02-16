@@ -41,6 +41,8 @@ void Engine::DirectionalLight::MakeLightSpaceMatrices(World& world, Camera& came
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
     cascadeAnalysisKernel.Dispatch((depthBuffer.width+15)/16,(depthBuffer.height+15)/16,1);
     
+    lightViewMatricesBuffer.BindBase(3);
+    lightFrustumPlanesBuffer.BindBase(4);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
     finishMatricesKernel.Dispatch(1,1,1);
 }

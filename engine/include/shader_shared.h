@@ -62,4 +62,38 @@ namespace Engine {
         unsigned int  baseVertex;
         unsigned int  baseInstance;
     };
+
+    struct PassRenderPassIdUniform{
+        glm::uvec4 renderPassId;
+        glm::uvec4 materialId;
+        glm::uvec4 subPassId;
+
+        PassRenderPassIdUniform(uint32_t renderPassId, uint32_t materialId, uint32_t subPassId) : renderPassId(renderPassId,0,0,0), materialId(materialId,0,0,0), subPassId(subPassId,0,0,0) {};
+    };
+
+    struct PassCullingVPUniform {
+        glm::mat4 cullingVP;
+        glm::mat4 cullingView;
+        glm::vec4 frustum; // right, top, near, far
+
+        PassCullingVPUniform(Camera& camera) {
+            cullingVP = camera.VP;
+            cullingView = camera.view;
+
+            float tan_fov = std::tan(0.5f * camera.fov);
+
+            glm::mat4 invProj= inverse(camera.projection);
+            glm::vec4 x_near_h = invProj * glm::vec4(1.0,0.0,1.0,1.0);
+            glm::vec4 y_near_h = invProj * glm::vec4(0.0,1.0,1.0,1.0);
+            glm::vec4 z_near_h = invProj * glm::vec4(0.0,0.0,1.0,1.0);
+            glm::vec4 z_far_h = invProj * glm::vec4(0.0,0.0,0.0,1.0);
+
+            frustum = glm::vec4(
+                x_near_h.x / x_near_h.w,//camera.aspect_ratio * camera.near * tan_fov, //x_near
+                y_near_h.y / y_near_h.w, // y_near
+                -camera.near, // near
+                -camera.far // far
+            );
+        }
+    };
 }

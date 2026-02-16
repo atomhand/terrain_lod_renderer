@@ -21,7 +21,7 @@ namespace Engine
     public:
         float width = 1024.f;
         float height = 768.f;
-        float fov = 45.0f;
+        float fov = 45.0f; // vertical fov
         float near= 0.1f;
         // The camera far plane is used for culling
         // The camera projection doesn't actually have a finite far plane
@@ -37,6 +37,8 @@ namespace Engine
         glm::mat4 invCamera;
 
         float lodFovFactor;
+
+        float aspect_ratio;
 
         void UpdateLodFovFactor() {
             lodFovFactor = height / (2.0f * glm::tan(fov / 2.0f));
@@ -55,6 +57,7 @@ namespace Engine
         void setViewport(int width, int height) {
             this->width = float(width);
             this->height = float(height);
+            aspect_ratio = float(width)/float(height);
         }
 
         glm::mat4 makeProjection(float nearOverride, float farOverride) const {

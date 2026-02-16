@@ -42,7 +42,6 @@ layout (std140, binding=2) uniform MiscUniformData {
     float time;
 };
 
-
 layout(std140, binding=3) uniform LightSpaceMatricesData {
     mat4 lightSpaceMatrices[16];
 };
@@ -53,11 +52,14 @@ layout(std140, binding=4) uniform CascadePlaneDistancesData {
 
 layout (std140, binding=5) uniform PassCullingVPUniform {
     mat4 cullingVP;
+    mat4 cullingView;
+    vec4 cullingFrustum; // right, top, near, far
 };
 
 layout (std140, binding=6) uniform PassRenderPassIdUniform {
-    uint renderPassId;
-    uint materialId;
+    uvec4 renderPassId;
+    uvec4 passMaterialId;
+    uvec4 subPassId;
 };
 
 #endif

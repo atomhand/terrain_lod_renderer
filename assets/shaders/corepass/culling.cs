@@ -12,6 +12,7 @@
 #include "shared/uniforms_shared.glsl"
 #include "algorithm/filter_shared.glsl"
 #include "corepass/corepass_shared.glsl"
+#include "algorithm/separating_axis.glsl"
 
 layout(binding = 6, std430) readonly buffer materialHeaderSsbo {
     MaterialHeader materialHeaders[];
@@ -57,13 +58,17 @@ bool CullingTest(uvec2 key) {
 
     MaterialHeader header = materialHeaders[materialId];
 
-    if(((header.renderPassesMask >> renderPassId)&1) !=1) {
+    if(((header.renderPassesMask >> renderPassId.x)&1) !=1) {
         return false;
     }
 
     RenderItem item = renderItemData[key.y];
 
-    return FrustumAABBTest(item.model, item.aabbMin.xyz, item.aabbMax.xyz);
+    AABB aabb;
+    aabb.m_Min = item.aabbMin.xyz;
+    aabb.m_Max = item.aabbMax.xyz;
+
+    return SAT_visibility(item.model, aabb, cullingView, cullingFrustum);
 }
 
 void main() {

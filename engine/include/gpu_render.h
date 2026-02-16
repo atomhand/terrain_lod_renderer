@@ -301,10 +301,10 @@ public:
             gpuRender.keyCounterBuffer.Set<uint32_t>(&gpuRender.numRenderItems, 1);
         }
         
-        static void ExecutePass(Engine::World& world, RenderPassId passId) {
+        static void ExecutePass(Engine::World& world, RenderPassId passId, uint32_t subPassIndex) {
             auto& gpuRender = world.GetSingle<GpuRender>();
-            glm::uvec2 idd = glm::uvec2(static_cast<uint32_t>(passId),0);
-            gpuRender.passIdUniform.Set(&idd);
+            PassRenderPassIdUniform passIdUniformData(static_cast<uint32_t>(passId),0,subPassIndex);
+            gpuRender.passIdUniform.Set(&passIdUniformData);
             gpuRender.passIdUniform.BindBase(6);
 
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
@@ -347,9 +347,8 @@ public:
                     for(auto entity : materialView) {
                         auto [materialHeader,materialRenderComponent] = materialView.get<MaterialHeader,MaterialRenderComponent>(entity);
                         if(materialHeader.IsRenderPassEnabled(passId) && materialRenderComponent.renderPass->SupportsWireframe()) {
-                            uint32_t id =  static_cast<uint32_t>(passId);
-                            glm::uvec2 ids = glm::uvec2(id,materialHeader.id);
-                            gpuRender.passIdUniform.Set(&ids);
+                            passIdUniformData.materialId.x = materialHeader.id;
+                            gpuRender.passIdUniform.Set(&passIdUniformData);
                             gpuRender.passIdUniform.BindBase(6);
 
                             gpuRender.debugRenderUtil.BindWireframe(materialHeader.id);
@@ -362,9 +361,8 @@ public:
                     for(auto entity : materialView) {
                         auto [materialHeader,materialRenderComponent] = materialView.get<MaterialHeader,MaterialRenderComponent>(entity);
                         if(materialHeader.IsRenderPassEnabled(passId) && materialRenderComponent.renderPass->SupportsTriangleDensity()) {
-                            uint32_t id =  static_cast<uint32_t>(passId);
-                            glm::uvec2 ids = glm::uvec2(id,materialHeader.id);
-                            gpuRender.passIdUniform.Set(&ids);
+                            passIdUniformData.materialId.x = materialHeader.id;
+                            gpuRender.passIdUniform.Set(&passIdUniformData);
                             gpuRender.passIdUniform.BindBase(6);
 
                             gpuRender.debugRenderUtil.BindTriangleDensity(materialHeader.id);
@@ -376,9 +374,8 @@ public:
                 for(auto entity : materialView) {
                     auto [materialHeader,materialRenderComponent] = materialView.get<MaterialHeader,MaterialRenderComponent>(entity);
                     if(materialHeader.IsRenderPassEnabled(passId)) {
-                        uint32_t id =  static_cast<uint32_t>(passId);
-                        glm::uvec2 ids = glm::uvec2(id,materialHeader.id);
-                        gpuRender.passIdUniform.Set(&ids);
+                        passIdUniformData.materialId.x = materialHeader.id;
+                        gpuRender.passIdUniform.Set(&passIdUniformData);
                         gpuRender.passIdUniform.BindBase(6);
 
                         materialRenderComponent.renderPass->Render(world, materialHeader.drawBufferOffset, materialHeader.drawCount, passId);

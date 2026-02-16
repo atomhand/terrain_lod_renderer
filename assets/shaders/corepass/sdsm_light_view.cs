@@ -24,8 +24,8 @@ void main()
         return;
     }
 
-    float near = max(nearPlane,float(depthMinMax[0])/1000.0f);
-    float far = min(farPlane,float(depthMinMax[1])/1000.0f);
+    float near = depthMinMax[0]/1000.0f;
+    float far = depthMinMax[1]/1000.0f;
 
     float m = float(cascadeCount);
     float iCascade = float(gl_LocalInvocationIndex);
@@ -89,6 +89,7 @@ void main()
     lightMatrix[2] = vec4(forward[0],forward[1],forward[2],0.0);
     lightMatrix[3] = vec4(center,1.0);
 
+    /*
     mat4 translation;
     translation[0] = vec4(1.f,0.f,0.f,0.f);
     translation[1] = vec4(0.f,1.f,0.f,0.f);
@@ -97,6 +98,7 @@ void main()
     translation[3][1] = -center.y;
     translation[3][2] = -center.z;
     translation[3][3] = 1.0;
+    */
 
     s_lightSpaceMatrices[gl_LocalInvocationIndex] = inverse(lightMatrix);
 }
