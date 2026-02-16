@@ -72,7 +72,7 @@ vec2 RemapUv(vec2 uv, uint materialInstanceId) {
 
 vec3 GetBaseVertPos(vec3 inPosition, uint materialInstanceId, uint texArrayIndex, mat4 model) {
     vec2 uv = RemapUv(vec2(inPosition.x,inPosition.z),materialInstanceId);
-    float baseHeight = textureLod(dataTex, vec3(uv,texArrayIndex), 0).x;
+    float baseHeight = textureLod(dataTex, vec3(uv,texArrayIndex), 0).w;
     return (model * vec4(inPosition.x,baseHeight,inPosition.z,1.0f)).xyz;
 }
 
