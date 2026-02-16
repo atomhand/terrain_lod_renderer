@@ -82,32 +82,23 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
 
             if(node.entity == entt::null) {
                 if(node.parentIdx == node.idx) {
-                    if(GetTextureId(node.textureId)) {                        
-                        // special handling for root nodes
-                        auto start = std::chrono::steady_clock::now();
-                        Heightmap heightMap(terrain, chunk.positionOffset + uvMin*scale, chunk.positionOffset + uvMax*scale, terrainGeometry.CHUNK_SIZE*2+1);
-                        generationDuration +=  std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
-                        heightMap.FillData(terrainCache, node.textureId);
-
-                        //node.longestEdge = heightMap.longestEdge * 2.f;
-                        node.aabb = heightMap.aabb;
-                        node.entity = terrainCache.CreateTerrainItem(world, nodePos, extent, node.aabb, node.textureId*4 + node.localIdx);
-                    }
+                    node.entity = world.registry.create();
+                    node.aabb = Engine::AABB(glm::vec3(0.,-1.f,0.f), glm::vec3(1.f,terrain.MaxHeight(),1.f));
+                    world.registry.emplace<Engine::AABB>(node.entity, node.aabb);
                 } else {
                     InternalNode& parent = nodePool[node.parentIdx];
-                    //node.longestEdge = parent.longestEdge / 2.f;
                     node.entity = terrainCache.CreateTerrainItem(world, nodePos, extent, parent.aabb, parent.textureId*4 + node.localIdx);
                 }
 
                 node.longestEdge = extent.x / float(terrainGeometry.CHUNK_SIZE) * 1.73;
             }
 
-            if(node.water_entity == entt::null) {
+            if(node.water_entity == entt::null && node.parentIdx != node.idx) {
                 node.water_entity = waterCache.CreateWaterItem(world, nodePos, extent);
             }
 
             float targetDepth = TargetLodDepth(node.depth, nodePos, extent, world.registry.get<Engine::AABB>(node.entity),camera, world.input.lodControlParam, node.longestEdge);
-            if(targetDepth > node.depth) {
+            if(targetDepth > node.depth || node.parentIdx == node.idx) {
                 // wants to split
                 // (or keep children, if they already exist)
                 // no children, try split
@@ -122,8 +113,6 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                             Heightmap heightMap(terrain, chunk.positionOffset + uvMin*scale, chunk.positionOffset + uvMax*scale, terrainGeometry.CHUNK_SIZE*2+1);
                             generationDuration +=  std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
                             heightMap.FillData(terrainCache, node.textureId);
-
-                            //node.longestEdge = heightMap.longestEdge * 2.f;
                             node.aabb = heightMap.aabb;
 
                             heightmapGenerated = true;
@@ -166,28 +155,30 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                 }
             }
 
-            bool shouldDraw = node.childIdx == 0;
+            if(node.idx != node.parentIdx) {                
+                bool shouldDraw = node.childIdx == 0;
 
-            auto& mat = world.registry.get<TerrainMaterial>(node.entity);
-            mat.enabled = shouldDraw;
+                auto& mat = world.registry.get<TerrainMaterial>(node.entity);
+                mat.enabled = shouldDraw;
 
-            if(shouldDraw) {
-                if(!node.hasRenderComponents) {
-                    world.registry.emplace<Engine::CullingResult>(node.entity);
+                if(shouldDraw) {
+                    if(!node.hasRenderComponents) {
+                        world.registry.emplace<Engine::CullingResult>(node.entity);
 
-                    if(node.water_entity != entt::null) {                            
-                        world.registry.emplace<Engine::CullingResult>(node.water_entity);
+                        if(node.water_entity != entt::null) {                            
+                            world.registry.emplace<Engine::CullingResult>(node.water_entity);
+                        }
                     }
-                }
-                node.hasRenderComponents = true;
-            } else {
-                if(node.hasRenderComponents) {
-                    world.registry.remove<Engine::CullingResult>(node.entity);
-                    if(node.water_entity != entt::null) {
-                        world.registry.remove<Engine::CullingResult>(node.water_entity);
+                    node.hasRenderComponents = true;
+                } else {
+                    if(node.hasRenderComponents) {
+                        world.registry.remove<Engine::CullingResult>(node.entity);
+                        if(node.water_entity != entt::null) {
+                            world.registry.remove<Engine::CullingResult>(node.water_entity);
+                        }
                     }
+                    node.hasRenderComponents = false;
                 }
-                node.hasRenderComponents = false;
             }
         }       
     }    

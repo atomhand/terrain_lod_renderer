@@ -81,6 +81,10 @@ public:
         }        
     }
 
+    float MaxHeight() {
+        return config.FINAL_SCALE;
+    }
+
     float Height(float x, float z);
     
     void SampleRegion(glm::vec2 origin, glm::vec2 extent, int cellW, std::span<float> output, std::span<glm::vec2> extraOutput);
