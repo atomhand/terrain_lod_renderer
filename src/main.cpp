@@ -67,7 +67,7 @@ int main()
 #endif
 
 	// Sun
-	auto &sun = world.registry.emplace<Engine::DirectionalLight>(world.registry.create());
+	auto &sun = world.registry.emplace<Engine::DirectionalLight>(world.registry.create(), world.input.numCascades);
 	sun.direction= glm::normalize(glm::vec3(2.0,-1.,-4.0));
 	sun.color = glm::vec3(15.0,15.,15.);
 

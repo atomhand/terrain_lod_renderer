@@ -9,6 +9,14 @@
 #include "light.h"
 
 void Engine::DirectionalLight::MakeLightSpaceMatrices(World& world, Camera& camera, Texture& depthBuffer, UniformBuffer& lightUniforms) {
+    NumCascades = world.input.numCascades;
+    assert(NumCascades > 0);
+    assert(NumCascades <= 16);
+    if(NumCascades != shadowMap.NumCascades()) {
+        shadowMap = DirectionalShadowCascadeMap(2048,NumCascades);
+    }
+
+
     int depthOutput[2] = {0x7fffffff,-0x7fffffff};
     depthAnalysisOutput.Set<int>(&depthOutput[0], 2, 0);
 

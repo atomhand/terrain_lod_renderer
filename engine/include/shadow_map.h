@@ -14,16 +14,14 @@ namespace Engine {
             DirectionalShadowCascadeMapData & operator=(const DirectionalShadowCascadeMapData&) = delete;
             DirectionalShadowCascadeMapData(const DirectionalShadowCascadeMapData&) = delete;
 
-            GLuint depthMapFBO;
             std::vector<GLuint> layerFBO;
             GLuint depthMaps; // texture object
             const unsigned int width;
             const unsigned int height;
 
-            static const unsigned int NUM_CASCADES = 5;
+            const unsigned int NUM_CASCADES;
 
-            DirectionalShadowCascadeMapData(unsigned int width, unsigned int height) : width(width), height(height) {
-                glGenFramebuffers(1,&depthMapFBO);                
+            DirectionalShadowCascadeMapData(unsigned int width, unsigned int height, uint32_t numCascades) : width(width), height(height), NUM_CASCADES(numCascades) {             
                 glGenTextures(1, &depthMaps);
 
                 // Set up depth map texture
@@ -41,19 +39,6 @@ namespace Engine {
                 glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
                 float white[] = { 1.0f, 1.0f, 1.0f, 1.0f };
                 glTexParameterfv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BORDER_COLOR, white);
-
-                // Set up framebuffer
-                glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-                glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthMaps, 0);
-                glDrawBuffer(GL_NONE);
-                glReadBuffer(GL_NONE);
-
-                int status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-                if (status != GL_FRAMEBUFFER_COMPLETE)
-                {
-                    std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!";
-                    throw 0;
-                }
 
                 layerFBO.resize(NUM_CASCADES);
                 glGenFramebuffers(NUM_CASCADES, layerFBO.data());
@@ -75,13 +60,17 @@ namespace Engine {
             }
 
             ~DirectionalShadowCascadeMapData() {
-                glDeleteFramebuffers(1,&depthMapFBO);
+                glDeleteFramebuffers(NUM_CASCADES,layerFBO.data());
                 glDeleteTextures(1,&depthMaps);
             }
         };
 
         std::shared_ptr<DirectionalShadowCascadeMapData> data;
     public:
+        uint32_t NumCascades() {
+            return data->NUM_CASCADES;
+        }
+        
         GLuint depthMaps() {
             return data->depthMaps;
         }
@@ -90,20 +79,15 @@ namespace Engine {
             glBindTexture(GL_TEXTURE_2D_ARRAY,data->depthMaps);
         }
 
-        DirectionalShadowCascadeMap(unsigned int width) {
-            data = std::make_shared<DirectionalShadowCascadeMapData>(width,width);
-        }
-        
-        void PrepareFramebuffer() {
-            glViewport(0, 0, data->width, data->height);
-            glBindFramebuffer(GL_FRAMEBUFFER, data->depthMapFBO);
-            glClear(GL_DEPTH_BUFFER_BIT);
+        DirectionalShadowCascadeMap(unsigned int width, uint32_t numCascades) {
+            data = std::make_shared<DirectionalShadowCascadeMapData>(width,width,numCascades);
         }
         
         void PrepareFramebufferLayer(uint32_t layer) {
             assert(layer < data->NUM_CASCADES);
             glViewport(0, 0, data->width, data->height);
             glBindFramebuffer(GL_FRAMEBUFFER, data->layerFBO[layer]);
+            glClear(GL_DEPTH_BUFFER_BIT);
         }
     };
 

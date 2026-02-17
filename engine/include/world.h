@@ -55,6 +55,7 @@ namespace Engine {
         // debug lights
         int shadowTestingMode = 0;
         bool previewCascades = false;
+        int numCascades = 5;
 
         // Terrain render     
         bool stochasticBlending = true;

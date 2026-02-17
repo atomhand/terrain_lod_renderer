@@ -172,8 +172,6 @@ void RenderPasses::DrawShadowMaps(World& world, Engine::Camera& cameraMain) {
     // directional lights
     auto& sun = world.GetSingle<Engine::DirectionalLight>();
 
-    sun.shadowMap.PrepareFramebuffer();
-
     if(!world.input.drawShadows()) {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         return;

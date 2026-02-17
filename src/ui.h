@@ -40,6 +40,7 @@ static void DrawConfigWindow(bool* p_open, Engine::World& world) {
     ImGui::Checkbox("previewCascades", &world.input.previewCascades);
     ImGui::SliderInt("shadowTestingMode", &world.input.shadowTestingMode, 0, 2);
     ImGui::SliderInt("previewNormalsMode", &world.input.previewNormalsMode, 0, 3);
+    ImGui::SliderInt("numCascades", &world.input.numCascades, 1, 16);
 
     ImGui::SeparatorText("Terrain Rendering");
 

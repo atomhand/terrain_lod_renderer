@@ -109,7 +109,7 @@ namespace Engine {
         glm::vec3 color = glm::vec3(1.0,1.0,1.0);
         glm::vec3 direction = glm::normalize(glm::vec3(4.0,-2.0,4.0));
 
-        const unsigned int NumCascades = 5;
+        uint32_t NumCascades;
 
         // Build the world-to-light-space matrices for all cascades
         void MakeLightSpaceMatrices(World& world, Camera& camera, Texture& depthBuffer, UniformBuffer& lightUniforms);
@@ -176,7 +176,7 @@ namespace Engine {
             return ret;
         }
 
-        DirectionalLight() : shadowMap(DirectionalShadowCascadeMap(2048)) {
+        DirectionalLight(uint32_t NumCascades) : NumCascades(NumCascades), shadowMap(DirectionalShadowCascadeMap(2048,NumCascades)) {
         }
     };
 }
