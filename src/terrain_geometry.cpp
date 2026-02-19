@@ -35,12 +35,9 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
         chunks[i]->nodeCount = 0;
     }
 
-    std::stack<unsigned short> mergeQueue;
-
     while(!traversalQueue.empty() || !mergeQueue.empty()) {
         if(!mergeQueue.empty()) {
-            unsigned short topIdx = mergeQueue.top();
-            InternalNode& node = nodePool[topIdx];
+            InternalNode& node = nodePool[mergeQueue.top()];
             mergeQueue.pop();
 
             if(node.childIdx != 0) {
@@ -69,10 +66,9 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
             node.hasRenderComponents = false;
         } else {
             TraversalItem item = traversalQueue.top();
-            int topIdx = item.id;
             TerrainChunkHeader& chunk = *chunks[item.chunkId];
             chunk.nodeCount += 1;
-            InternalNode& node = nodePool[topIdx];
+            InternalNode& node = nodePool[item.id];
             glm::vec2 uvMin, uvMax;
             NodeUvs(node.x, node.z, node.depth, uvMin, uvMax);
             traversalQueue.pop();
@@ -92,7 +88,7 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
 
                 node.longestEdge = extent.x / float(terrainGeometry.CHUNK_SIZE) * 1.73;
             }
-
+            
             if(node.water_entity == entt::null && node.parentIdx != node.idx) {
                 node.water_entity = waterCache.CreateWaterItem(world, nodePos, extent);
             }
@@ -148,14 +144,14 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                         mergeQueue.push(node.childIdx + i);
                     }
                     node.childIdx = 0;
-                    if(node.textureId >= 0) {
-                        FreeTextureId(node.textureId);
-                        node.textureId = -1;
-                    }
+                }
+                if(node.textureId >= 0) {
+                    FreeTextureId(node.textureId);
+                    node.textureId = -1;
                 }
             }
 
-            if(node.idx != node.parentIdx) {                
+            if(node.idx != node.parentIdx) {    
                 bool shouldDraw = node.childIdx == 0;
 
                 auto& mat = world.registry.get<TerrainMaterial>(node.entity);
@@ -180,7 +176,7 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                     node.hasRenderComponents = false;
                 }
             }
-        }       
+        }
     }    
 
     if(numGenerated > 0) {
@@ -209,7 +205,7 @@ void DebugUi(Engine::World& world) {
 
         ImGui::Text("Time per generated chunk: %fms",  terrainGeometry.timePerGeneratedChunk);
 
-        ImGui::Text("Active nodes %i", terrainGeometry.quadtree.nextPoolId - terrainGeometry.quadtree.freeList.size());
+        ImGui::Text("Active nodes %i", terrainGeometry.quadtree.nodePool.size() - terrainGeometry.quadtree.freeList.size());
 
         ImGui::SeparatorText("Shared Pool");
         ImGui::Text("Pooled texture slots available %i", terrainGeometry.quadtree.textureIdFreelist.size());

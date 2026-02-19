@@ -150,7 +150,7 @@ struct TerrainChunkHeader {
 
 struct TerrainQuadtree {
     struct InternalNode {
-        unsigned short childIdx = 0; // 0 used to represent disablerd
+        unsigned short childIdx = 0; // 0 used to represent disabled
         uint16_t idx;
         uint16_t parentIdx;
         uint16_t localIdx;
@@ -168,6 +168,8 @@ struct TerrainQuadtree {
 
         entt::entity entity = entt::null;
         entt::entity water_entity = entt::null;
+
+        InternalNode(uint16_t idx) : idx(idx) {};
 
         void Set(uint16_t idx, uint16_t parentIdx, uint16_t localIdx, unsigned short x, unsigned short z, unsigned char depth) {
             this->idx = idx;
@@ -205,10 +207,10 @@ struct TerrainQuadtree {
     const float scale;
     const int chunkSize;
 
+    std::stack<unsigned short> mergeQueue;
     std::vector<LayerProperties> layerProperties;
 
     const int poolCapacity;
-    int nextPoolId = 0;
 
     // NOTE
     // The free list is used to free/allocate an entire set of children (4 nodes)
@@ -244,22 +246,21 @@ struct TerrainQuadtree {
 
     int TakePoolIds() {
         if(freeList.size() > 0) {
-            auto ret = freeList.back();
+            int newId = freeList.back();
             freeList.pop_back();
-            return ret;
+            return newId;
         } else {
-            //assert(nextPoolId+4 <= poolCapacity);
-            
+            int newId = nodePool.size();            
             for(int i =0; i<4; i++) {
-                nodePool.emplace_back(nextPoolId++);
+                nodePool.emplace_back(nodePool.size());
             }
-
-            return nextPoolId-4;
+            return newId;
         }
     }
     int TakeSinglePoolId() {
-        nodePool.emplace_back(nextPoolId++);
-        return nextPoolId-1;
+        int newId = nodePool.size();
+        nodePool.emplace_back(nodePool.size());
+        return newId;
     }
 
     void NodeUvs(int x, int z, int depth, glm::vec2& uvMin, glm::vec2& uvMax) {
@@ -269,53 +270,8 @@ struct TerrainQuadtree {
         uvMax = glm::vec2(x+1,z+1) / float(layer.sideNodes);
     }
 
-    inline void Destroy(Engine::World& world, InternalNode& node) {
-        if(node.childIdx != 0) {
-            freeList.push_back(node.childIdx);
-            node.childIdx = 0;
-        }
-
-        if(node.entity != entt::null) {
-            world.registry.destroy(node.entity);
-            node.entity = entt::null;
-        }
-
-        if(node.water_entity != entt::null) {
-            world.registry.destroy(node.water_entity);
-            node.water_entity = entt::null;
-        }
-    }
-
     void Reset(Engine::World& world, TerrainChunkHeader& chunk) {
-        std::stack<int> mergeQueue;
         mergeQueue.push(chunk.rootId);
-        chunk.nodeCount = 0;
-
-        while(!mergeQueue.empty()) {
-            int topIdx = mergeQueue.top();
-            InternalNode& node = nodePool[topIdx];
-            mergeQueue.pop();
-
-            if(node.childIdx != 0) {
-                freeList.push_back(node.childIdx);
-                for(int i =0; i<4; i++) {
-                    mergeQueue.push(node.childIdx + i);
-                }
-                node.childIdx = 0;
-            }
-
-            if(node.entity != entt::null) {
-                world.registry.destroy(node.entity);
-                node.entity = entt::null;
-            }
-
-            if(node.water_entity != entt::null) {
-                world.registry.destroy(node.water_entity);
-                node.water_entity = entt::null;
-            }
-
-            node.hasRenderComponents = false;
-        }
     }
 
     // Ref: "Rendering Massive Terrains using Chunked Level of Detail Control"
@@ -351,7 +307,6 @@ struct TerrainQuadtree {
             );
             w*=2;
         }
-
         nodePool.reserve(poolCapacity);
     }
     
