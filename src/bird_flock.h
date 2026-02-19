@@ -16,104 +16,106 @@ using Engine::Transform, Engine::Camera, Engine::World;
 // When they get too far from the main camera they'll teleport to a new position a bit closer to it
 class BirdFlockManager {
 private:
+    const static inline float ACTIVE_RADIUS = 5000.f;
+    const static inline int UPDATE_INTERVAL = 50;
+    const static inline int NUM_BIRDS = 10000;
+
     static inline glm::mat4 birdModelTransform;
 
     class Bird {        
         static inline const float SPEED = 16.0;
-        float pitch;
         float yaw;
         
         glm::vec3 birdFront = glm::vec3(0.0f, 0.0f, -1.0f);
         static inline const  glm::vec3 birdUp    = glm::vec3(0.0f, 1.0f,  0.0f); 
 
         float current_speed = 1.0;
+        float steer = 0.f;
     public:
         glm::vec3 pos = glm::vec3(0.0f,32.f,0.0f);
+        glm::vec3 direction = glm::vec3(1.f,0.f,0.f);
+        glm::vec3 targetDirection = glm::vec3(1.f,0.f,0.f);
+        int ticksSinceTrajectoryUpdate = 0;
 
         // Test the terrain in a given direction
         // Returns a higher score the more different the terrain altitude (+some clearance) is from the bird's current altitude
         // (high score is less preferred)
-        float sampleDirection(float iYaw, Terrain* terrain, glm::vec3& dir) {
-            dir = glm::vec3(cos(glm::radians(iYaw)) * cos(glm::radians(pitch)),
-                    sin(glm::radians(pitch)),
-                    sin(glm::radians(iYaw)) * cos(glm::radians(pitch)));
-            glm::vec3 front = glm::normalize(dir);
+        float sampleDirection(float iYaw, Terrain& terrain) {
+            glm::vec3 dir = glm::vec3(cos(glm::radians(iYaw)),
+                    0.f,
+                    sin(glm::radians(iYaw)));
 
             float targetY = pos.y;
 
-            if(terrain != nullptr) {
-                glm::vec3 target = pos+front*16.0f;
-                float terrainHeight = std::max(0.0f,terrain->Height(target.x,target.z));
-                targetY = terrainHeight + 96.0f;
-            }
+            glm::vec3 target = pos+dir*16.0f;
+            float terrainHeight = std::max(0.0f,terrain.Height(target.x,target.z));
+            targetY = terrainHeight + 96.0f;
 
-            return std::abs(targetY-pos.y) + 0.01;
+            return (targetY-pos.y)*(targetY-pos.y) + 1e-6;
         }
 
-        void UpdateMotion(Transform& transform, float deltaTime, Terrain* terrain) {
+        void UpdateTrajectory(Transform& transform, float deltaTime, Terrain& terrain) {
+            ticksSinceTrajectoryUpdate = 0;
             // steering behaviour
             // birds will (loosely) prefer to steer towards terrains which let them maintain a similar
             // altitude to their current one
-            glm::vec3 dir1,dir2;
 
-            float w1 = sampleDirection(yaw-15,terrain,dir1);
-            float w2 = sampleDirection(yaw+15,terrain,dir2);
+            float w1 = sampleDirection(yaw-15,terrain);
+            float w2 = sampleDirection(yaw+15,terrain);
 
-            glm::vec2 weights = glm::normalize(glm::vec2(w1,w2));
-            float steer = weights.x * 45. + weights.y * (-45.);
+            float t = w1+w2;
+            w1 /= t;
+            w2 /= t;
+            float steer = w1 * 15. + w2 * (-15.);
             yaw += steer * deltaTime;
 
-
-
-            glm::vec3 direction;
-            direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-            direction.y = sin(glm::radians(pitch));
-            direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-            birdFront = glm::normalize(direction);
+            //direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+            //direction.y = sin(glm::radians(pitch));
+            //direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+            targetDirection.x = cos(glm::radians(yaw));
+            targetDirection.z = sin(glm::radians(yaw));
+            targetDirection.y = -0.1f;
 
             // Determine whether its necessary to climb
-            glm::vec3 target = pos+birdFront*8.0f;
-            float targetY = target.y;
-            if(terrain != nullptr) {
-                for(int i =0; i<4; i++) {
-                    target = pos+birdFront* (8.0f * i);
-                    float terrainHeight = std::max(0.0f,terrain->Height(target.x,target.z));
-                    targetY = terrainHeight + 96.0f - i * 12.0f;
-                }
-                
-                target.y = std::max(target.y,targetY);
+            glm::vec3 target;
+            for(int i =0; i<4; i++) {
+                target = pos+targetDirection* (8.0f * i);
+                float terrainHeight = std::max(0.0f,terrain.Height(target.x,target.z));
+                target.y = std::max(target.y,terrainHeight + 96.0f - i * 12.0f);
             }
 
             // Slow down when climbing, speed up when diving
-            glm::vec3 dir = glm::normalize(target-pos);
-            float speed_target = std::max(0.1f,1.0f - dir.y);
+            targetDirection = glm::normalize(target-pos);
+        }
+
+        void UpdateMotion(Transform& transform, float deltaTime, Terrain& terrain) {
+            direction = glm::normalize(glm::mix(direction,targetDirection, ticksSinceTrajectoryUpdate/float(UPDATE_INTERVAL)));
+
+            float speed_target = std::max(0.1f,1.0f - direction.y);
             if(current_speed < speed_target)
                 current_speed = std::min(current_speed+0.25f * deltaTime, speed_target);
             else            
                 current_speed = std::max(current_speed-1.5f * deltaTime, speed_target);
             // Apply movement and calculate transform
-            pos += SPEED * current_speed * deltaTime * dir;
-            transform.global = glm::inverse(glm::lookAt(pos,target,birdUp)) * birdModelTransform;
+            pos += SPEED * current_speed * deltaTime * direction;
+            transform.global = glm::inverse(glm::lookAt(pos,pos+direction,birdUp)) * birdModelTransform;
         }
 
         // Reset to a random position and facing, on the edge of a circle around the camera
-        void Randomise(glm::vec3 cameraPos, float radius, Terrain* terrain) {
-            glm::vec2 posxz = glm::vec2(cameraPos.x,cameraPos.z) + glm::circularRand( radius);
+        void Randomise(glm::vec3 cameraPos, float radius, Terrain& terrain, bool initialPlacement = false) {
+            glm::vec2 posxz = glm::vec2(cameraPos.x,cameraPos.z) + (initialPlacement ? glm::diskRand(radius) : glm::circularRand( radius));
             pos.x = posxz.x;
             pos.z = posxz.y;
             
-            float terrainHeight =0.f;
-            if(terrain != nullptr) {
-                terrainHeight = std::max(0.0f,terrain->Height(pos.x,pos.z));
-            }            
-            pos.y = terrainHeight+2.f + std::abs(glm::gaussRand(0.f,16.f));
+            float terrainHeight = std::max(0.0f,terrain.Height(pos.x,pos.z));        
+            pos.y = terrainHeight+32.f + glm::gaussRand(0.f,16.f);
             
             yaw = glm::linearRand(0.f,360.f);
         }
     };
 
     // Make 1 bird
-    static void MakeBird(Engine::World &world, uint32_t meshId) {
+    static Bird& MakeBird(Engine::World &world, uint32_t meshId, int i) {
         auto bird_entity = world.registry.create();
 
         auto& bird = world.registry.emplace<Bird>(bird_entity);
@@ -121,10 +123,11 @@ private:
 
         world.registry.emplace<Engine::CullingResult>(bird_entity);
 
-        bird.Randomise(glm::vec3(0.f), 2048.f,nullptr);
+        bird.ticksSinceTrajectoryUpdate = i % UPDATE_INTERVAL;
 
         float animationPhaseOffset = glm::linearRand(0.f,1.f);
         BirdMaterial::InitBirdItem(world, bird_entity, meshId, animationPhaseOffset);
+        return bird;
     }
 
     std::vector<Bird*> birds;
@@ -142,8 +145,10 @@ public:
         float scale = 9.0 / width;
         birdModelTransform = glm::rotate(glm::mat4(1.0f), glm::radians(180.f), glm::vec3(0.f,1.f,0.f)) * glm::scale(glm::mat4(1.0f), glm::vec3(scale));
 
-        for(int i =0; i<1000;i++) {
-            MakeBird(world, birdMeshId);
+        Terrain& terrain = world.GetSingle<Terrain>();
+        for(int i =0; i<NUM_BIRDS;i++) {
+            auto& bird = MakeBird(world, birdMeshId, i);
+            bird.Randomise(glm::vec3(0.f), ACTIVE_RADIUS,terrain,true);
         }
     }
 
@@ -161,10 +166,8 @@ public:
                 break;
             }
         }
-
-        auto terrainView = world.registry.view<Terrain>();
-        Terrain* terrain = &terrainView.get<Terrain>(terrainView.front());
-
+        
+        Terrain& terrain = world.GetSingle<Terrain>();
         glm::vec3 cameraPos = cameraMainTransform->position();
 
         auto birdView = world.registry.view<Bird,Transform>();
@@ -172,11 +175,17 @@ public:
         for(auto entity : birdView) {
             auto [bird,transform] = birdView.get(entity);
 
-            glm::vec2 birdxz = glm::vec2(bird.pos.x,bird.pos.z);
-            glm::vec2 camxz = glm::vec2(cameraPos.x,cameraPos.z);
-            float rad = std::max(cameraPos.y,2048.f);
-            if(glm::distance(birdxz,camxz) > rad * 1.5f)
-                bird.Randomise(cameraPos, rad,terrain);
+            bird.ticksSinceTrajectoryUpdate += 1;
+
+            if(bird.ticksSinceTrajectoryUpdate == UPDATE_INTERVAL) {
+                glm::vec2 birdxz = glm::vec2(bird.pos.x,bird.pos.z);
+                glm::vec2 camxz = glm::vec2(cameraPos.x,cameraPos.z);
+                float rad = std::max(cameraPos.y,ACTIVE_RADIUS);
+                if(glm::distance(birdxz,camxz) > rad * 1.5f)
+                    bird.Randomise(cameraPos, ACTIVE_RADIUS,terrain);
+                    
+                bird.UpdateTrajectory(transform,world.input.deltaTime*world.input.animSpeed*10.f,terrain);
+            }
             bird.UpdateMotion(transform,world.input.deltaTime*world.input.animSpeed,terrain);
         }
     }
