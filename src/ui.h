@@ -41,6 +41,7 @@ static void DrawConfigWindow(bool* p_open, Engine::World& world) {
     ImGui::SliderInt("shadowTestingMode", &world.input.shadowTestingMode, 0, 2);
     ImGui::SliderInt("previewNormalsMode", &world.input.previewNormalsMode, 0, 3);
     ImGui::SliderInt("numCascades", &world.input.numCascades, 1, 16);
+    ImGui::SliderFloat("lightPssmFactor", &world.input.lightPssmFactor, 0.0f,1.0f);
 
     ImGui::SeparatorText("Terrain Rendering");
 

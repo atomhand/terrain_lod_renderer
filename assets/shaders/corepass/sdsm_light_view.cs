@@ -18,20 +18,24 @@ layout(binding = 2, std430) buffer ssbo3 {
     vec4 s_cascadePlaneDistances[];
 };
 
+float GetCascadeDepth(float near, float far, float iCascade) {
+    float m = float(cascadeCount);
+    return mix(near * pow(far/near, iCascade / m), near + far * iCascade/m, pssmFactor);
+}
+
 void main()
 {
     if(gl_LocalInvocationIndex >= cascadeCount) {        
         return;
     }
 
-    float near = depthMinMax[0]/1000.0f;
-    float far = depthMinMax[1]/1000.0f;
+    float near = max(nearPlane,depthMinMax[0]/1000.0f);
+    float far = min(farPlane,depthMinMax[1]/1000.0f);
 
-    float m = float(cascadeCount);
     float iCascade = float(gl_LocalInvocationIndex);
 
-    float cascadeNear = near * pow(far/near, iCascade / m);
-    float cascadeFar = near * pow(far/near, (iCascade+1.0f)/m);
+    float cascadeNear = GetCascadeDepth(near,far,iCascade);
+    float cascadeFar = GetCascadeDepth(near,far,iCascade+1.f);
 
     s_cascadePlaneDistances[gl_LocalInvocationIndex] = vec4(cascadeFar, 0.f,0.f,0.f);
 

@@ -26,6 +26,7 @@ layout (std140, binding=1) uniform LightUniformData {
     vec4 lightDirection;
     vec4 lightColor;
     int cascadeCount;
+    float pssmFactor;
 };
 
 layout (std140, binding=2) uniform MiscUniformData {
@@ -57,9 +58,9 @@ layout (std140, binding=5) uniform PassCullingVPUniform {
 };
 
 layout (std140, binding=6) uniform PassRenderPassIdUniform {
-    uvec4 renderPassId;
-    uvec4 passMaterialId;
-    uvec4 subPassId;
+    uint renderPassId;
+    uint passMaterialId;
+    uint subPassId;
 };
 
 #endif

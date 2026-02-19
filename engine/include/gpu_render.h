@@ -347,7 +347,7 @@ public:
                     for(auto entity : materialView) {
                         auto [materialHeader,materialRenderComponent] = materialView.get<MaterialHeader,MaterialRenderComponent>(entity);
                         if(materialHeader.IsRenderPassEnabled(passId) && materialRenderComponent.renderPass->SupportsWireframe()) {
-                            passIdUniformData.materialId.x = materialHeader.id;
+                            passIdUniformData.materialId = materialHeader.id;
                             gpuRender.passIdUniform.Set(&passIdUniformData);
                             gpuRender.passIdUniform.BindBase(6);
 
@@ -361,7 +361,7 @@ public:
                     for(auto entity : materialView) {
                         auto [materialHeader,materialRenderComponent] = materialView.get<MaterialHeader,MaterialRenderComponent>(entity);
                         if(materialHeader.IsRenderPassEnabled(passId) && materialRenderComponent.renderPass->SupportsTriangleDensity()) {
-                            passIdUniformData.materialId.x = materialHeader.id;
+                            passIdUniformData.materialId = materialHeader.id;
                             gpuRender.passIdUniform.Set(&passIdUniformData);
                             gpuRender.passIdUniform.BindBase(6);
 
@@ -374,7 +374,7 @@ public:
                 for(auto entity : materialView) {
                     auto [materialHeader,materialRenderComponent] = materialView.get<MaterialHeader,MaterialRenderComponent>(entity);
                     if(materialHeader.IsRenderPassEnabled(passId)) {
-                        passIdUniformData.materialId.x = materialHeader.id;
+                        passIdUniformData.materialId = materialHeader.id;
                         gpuRender.passIdUniform.Set(&passIdUniformData);
                         gpuRender.passIdUniform.BindBase(6);
 

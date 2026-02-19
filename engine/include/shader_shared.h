@@ -38,6 +38,7 @@ namespace Engine {
         glm::vec4 lightDirection;
         glm::vec4 lightColor;
         int cascadeCount;
+        float pssmFactor; // "parallel split shadow maps"
     };
     struct MiscUniformData {
         float heightFogFactor;
@@ -64,11 +65,11 @@ namespace Engine {
     };
 
     struct PassRenderPassIdUniform{
-        glm::uvec4 renderPassId;
-        glm::uvec4 materialId;
-        glm::uvec4 subPassId;
+        uint32_t renderPassId;
+        uint32_t materialId;
+        uint32_t subPassId;
 
-        PassRenderPassIdUniform(uint32_t renderPassId, uint32_t materialId, uint32_t subPassId) : renderPassId(renderPassId,0,0,0), materialId(materialId,0,0,0), subPassId(subPassId,0,0,0) {};
+        PassRenderPassIdUniform(uint32_t renderPassId, uint32_t materialId, uint32_t subPassId) : renderPassId(renderPassId), materialId(materialId), subPassId(subPassId) {};
     };
 
     struct PassCullingVPUniform {

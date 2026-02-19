@@ -181,9 +181,9 @@ void RenderPasses::DrawShadowMaps(World& world, Engine::Camera& cameraMain) {
         cameraMain.view,
         glm::vec4(sun.direction,1.f),
         glm::vec4(sun.color,1.f),
-
+        world.input.drawShadows() ? (int)sun.NumCascades : 0,
+        world.input.lightPssmFactor
     };
-    lightUniformData.cascadeCount = world.input.drawShadows() ? sun.NumCascades : 0;
     lightUniforms.Set(&lightUniformData);
     lightUniforms.BindBase(1);
 
