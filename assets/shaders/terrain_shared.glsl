@@ -62,7 +62,7 @@ vec3 GetSplat(vec3 geometryNormal, vec3 worldPos, float hY1, float hY2, float hY
     splat.z = clamp((worldPos.y-snowThreshold)/2048.*snowErosionFactor,0.0,1.0) * (1.0 - splat.y); // In high altitudes grass is replaced with snow
     splat.x = 1.0 - splat.y - splat.z;
 
-    splat = HeightBlend(splat, hY1, hY2, hY3, 0.5);
+    splat = HeightBlend(splat, hY1, hY2, hY3, 0.4);
 
     return splat;
 }
@@ -103,7 +103,7 @@ TriplanarSample ProceduralTilingAndBlending(vec2 uv, float layer) {
     float h3 = textureLod(dispMap, vec3(uv3,layer), 0).r;
 #endif
 
-    vec3 weights = HeightBlend(vec3(w1,w2,w3), h1, h2, h3, 0.1);
+    vec3 weights = HeightBlend(vec3(w1,w2,w3), h1, h2, h3, 0.05);
     //weights = pow(weights,vec3(2,2,2));
     //weights /= dot(weights, vec3(1,1,1));
 
@@ -157,10 +157,9 @@ void GetTriplanarSamples(vec3 worldPos, vec3 normal, out TriplanarSample X, out 
 }
 
 vec3 TriplanarWeights(vec3 geometryNormal, float hx, float hy, float hz, vec2 erosionFactor) {
-    float e = smoothstep(-1.0,1.0,erosionFactor.y);
+    float e = 0.f;//smoothstep(-1.0,1.0,erosionFactor.y);
     vec3 weights = abs(geometryNormal);
     weights = HeightBlend(weights, hx+e, hy, hz+e, 0.1f);
-    weights = pow(weights,vec3(2,2,2));
     weights /= dot(weights, vec3(1,1,1));
     return weights;
 }
