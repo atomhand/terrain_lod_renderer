@@ -103,28 +103,16 @@ void main()
 
     vec4 t = textureLod(dataTex, vec3(RemapUv(p,materialInstanceId),texArrayIndex), 0);
     WorldPos = vec3(model * vec4(p.x, t.w, p.y, 1.0));
-    Normal = normalize(t.xyz);
+    Normal = vec3(t.x,sqrt(1.0-t.x*t.x-t.y*t.y),t.y);
+    //Normal = normalize(t.xyz);
 #ifdef TERRAIN_HEATMAP
     debugColor = vec3(k,k,k) / 2.0f;
 #endif
-
+    
+    vec3 displacedPos = WorldPos + Normal * t.z * displacementScale;
 #ifdef SHADOW_PASS
-    gl_Position = cullingVP * vec4(WorldPos.xyz,1.0);
+    gl_Position = cullingVP * vec4(displacedPos.xyz,1.0);
 #else
-    // Temp - disable
-    erosionFactor = vec2(0.0);
-    vec3 displacedPos = WorldPos.xyz;
-    if(displacementScale > 0.f && distance(WorldPos.xyz,viewPos.xyz) < 2048.f) {
-        // Triplanar displacement
-        TriplanarSample X, Y, Z;
-        GetTriplanarSamples(WorldPos, Normal, X,Y,Z, erosionFactor);
-        vec3 triplanarWeights = TriplanarWeights(Normal, X.h, Y.h, Z.h, erosionFactor);
-
-        // Triplanar blend weights    
-        float h = X.h * triplanarWeights.x + Y.h * triplanarWeights.y + Z.h * triplanarWeights.z - 0.5;
-        displacedPos += Normal * h * displacementScale;
-    }
-
     gl_Position = projection * view * vec4(getCurvedPosition(displacedPos),1.0);
 #endif
 }

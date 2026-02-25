@@ -16,6 +16,7 @@
 #include "light.h"
 
 #include "terrain_material.h"
+#include "compute_shader.h"
 
 #include "imgui.h"
 
@@ -326,6 +327,18 @@ struct TerrainGeometry {
     double timePerGeneratedChunk = 0.1;
 
     TerrainQuadtree quadtree;
+    Engine::ComputeShader displacementShader;
+
+    struct DisplacementUpdateHeader {
+        glm::vec2 offset;
+        glm::vec2 extent;
+        int page;
+        int padding;
+    };
+
+    std::vector<DisplacementUpdateHeader> displacementUpdates;
+
+    Engine::StorageBuffer displacementUpdateBuffer = Engine::StorageBuffer(0);
 public:
     // Update - Chunks get a chance to regenerate if their current position is invalid (too far from the camera)
     // The number of chunks that can generate per frame is rate-limited, hopefully preventing any significant loading stutter.
@@ -339,8 +352,34 @@ public:
     // Create material data and initialise the chunks
     static TerrainGeometry& Insert(Engine::World& world, entt::entity terrain_entity, unsigned int width, float scale);
 
+    void QueueDisplacementUpdate(glm::vec2 offset, glm::vec2 extent, int page) {
+        displacementUpdates.emplace_back(offset,extent,page);
+    }
+
+    void UpdateTerrainDisplacement(World& world) {
+        if(displacementUpdates.size() == 0) return;
+
+        auto& terrainCache = world.GetSingle<TerrainMaterial::Cache>();
+
+        displacementUpdateBuffer.Set<DisplacementUpdateHeader>(displacementUpdates.data(), displacementUpdates.size(), 0, true);
+        displacementUpdateBuffer.BindBase(0);
+
+        glBindImageTexture(0, terrainCache.terrainDataTex.textureObject(), 0, GL_TRUE, 0, GL_READ_WRITE, GL_RGBA32F);
+        displacementShader.use();
+
+        terrainCache.BindTextures(false);
+
+        displacementShader.Dispatch(displacementUpdates.size(), 1, 1);
+        displacementUpdates.clear();
+
+        glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT);
+    }
+
     // width specified in number of verts per side
     TerrainGeometry(unsigned int width, float scale) : width(width), scale(scale), quadtree(MAX_QUADTREE_DEPTH, scale, CHUNK_SIZE,
         BASE_POOL_SIZE /* Add room for the root nodes, so the remaining pool size is divisible by 4 */) {
+            std::string d = std::string("#define PAGE_SIZE ") + std::to_string(CHUNK_SIZE*2+1);
+            std::vector<const char*> defs = { d.c_str() };
+            displacementShader = Engine::ComputeShader("shaders/precalc_terrain_displacement.cs", defs);
         };
 };

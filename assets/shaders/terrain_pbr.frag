@@ -1,4 +1,4 @@
-#version 420
+#version 460
 // Tom Kellett 2025
 // Normals reconstruction code from https://bgolus.medium.com/normal-mapping-for-a-triplanar-shader-10bf39dca05a
 // Texture splatting code original mine

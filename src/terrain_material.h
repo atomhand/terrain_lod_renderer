@@ -176,10 +176,13 @@ public:
             return entity;
         }
 
-        void BindTextures() {            
+        void BindTextures(bool bindDataTex = true) {            
             int offset = GL_TEXTURE0;
-            glActiveTexture(offset++);
-            terrainDataTex.bind();
+            if(bindDataTex) {
+                glActiveTexture(offset);
+                terrainDataTex.bind();
+            }
+            offset++;
 
             for(int i =0; i<texturearrays.size(); i++) {
                 glActiveTexture(offset++);

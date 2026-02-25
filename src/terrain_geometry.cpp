@@ -112,6 +112,7 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                             node.aabb = heightMap.aabb;
 
                             heightmapGenerated = true;
+                            terrainGeometry.QueueDisplacementUpdate(glm::vec2(nodePos.x,nodePos.z), glm::vec2(extent.x,extent.z), node.textureId);
                         }
                     }
 
@@ -177,7 +178,7 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                 }
             }
         }
-    }    
+    }
 
     if(numGenerated > 0) {
         terrainGeometry.timePerGeneratedChunk =  std::lerp(terrainGeometry.timePerGeneratedChunk,generationDuration / numGenerated,0.1);
@@ -257,6 +258,7 @@ void TerrainGeometry::Update(Engine::World& world) {
     }
 
     terrainGeometry.quadtree.TraverseUpdate(world, terrain, terrainGeometry, chunks, camera);
+    terrainGeometry.UpdateTerrainDisplacement(world);
 
     DebugUi(world);
 }

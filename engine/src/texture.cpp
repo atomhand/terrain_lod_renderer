@@ -116,8 +116,7 @@ bool Engine::Texture2DArray::Serialize(const char* path) {
     assert(compressed == GL_TRUE);
 
     GLint internalFormat;
-        glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
-
+    glGetTexLevelParameteriv(GL_TEXTURE_2D_ARRAY, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
 
     std::ofstream fout;
     fout.open(path, std::ios::binary | std::ios::out);
