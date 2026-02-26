@@ -13,31 +13,10 @@
 #include "gpu_filter.h"
 #include "shader_shared.h"
 #include "gpu_mesh.h"
+#include "material.h"
 
 namespace Engine {
     class GpuRender;
-    enum class RenderPassId : uint32_t {
-        OPAQUE,
-        POST_OPAQUE,
-        TRANSPARENT,
-        SHADOW
-    };
-
-    struct DebugRenderUtil {
-    public:
-        Shader wireframeShader = Shader("shaders/basic_instanced.vert","shaders/primitive/wireframe.frag","shaders/primitive/triangle_density.geom");
-        Shader triangleDensityShader = Shader("shaders/basic_instanced.vert","shaders/primitive/basic.frag","shaders/primitive/triangle_density.geom");
-
-        uint32_t wireframeIdPos;
-        uint32_t densityIdPos;
-
-        void BindTriangleDensity(uint32_t materialId) {
-            triangleDensityShader.use();
-        }
-        void BindWireframe(uint32_t materialId) {
-            wireframeShader.use();
-        }
-    };
 
     struct CullingFilter {
     private:
@@ -45,42 +24,6 @@ namespace Engine {
         GpuFilter shadowFilter = GpuFilter("shaders/corepass/shadow_culling.cs");
     public:
         void Cull(GpuRender& gpuRender, RenderPassId pass, StorageBuffer& input, StorageBuffer& output, StorageBuffer& inputCount, StorageBuffer& outputCount);
-    };
-
-    class MaterialRenderPass {
-    public:
-        virtual bool SupportsWireframe() { return true; }
-        virtual bool SupportsTriangleDensity() { return true; }
-
-        // called once per frame, opportunity to fill buffers
-        virtual void Prepare(World& world) {};
-
-        virtual void RenderWireframe(World& world, uint32_t offset, uint32_t count, RenderPassId pass) {
-            glMultiDrawElementsIndirect(GL_TRIANGLES,  GL_UNSIGNED_INT, (void*)(offset*sizeof(DrawElementsIndirectCommand)), count, 0);
-        }
-        
-        virtual void RenderTriangleDensity(World& world, uint32_t offset, uint32_t count, RenderPassId pass) {
-            glMultiDrawElementsIndirect(GL_TRIANGLES,  GL_UNSIGNED_INT, (void*)(offset*sizeof(DrawElementsIndirectCommand)), count, 0);
-        }
-
-        virtual void Render(World& world, uint32_t offset, uint32_t count, RenderPassId pass) {            
-            // Uniforms that should always be set
-            // - Material header index
-            // Buffers
-            // - DrawBaseInstance
-            // - FilteredKeys
-
-            // Bind material specific data
-
-            glMultiDrawElementsIndirect(GL_TRIANGLES,  GL_UNSIGNED_INT, (void*)(offset*sizeof(DrawElementsIndirectCommand)), count, 0);
-        }
-    };
-
-    struct MaterialRenderComponent {
-    public:
-        std::unique_ptr<MaterialRenderPass> renderPass;
-
-        MaterialRenderComponent(MaterialRenderPass* renderPass) : renderPass(renderPass) {};
     };
 
     struct RenderItemData {
@@ -91,40 +34,6 @@ namespace Engine {
 
         RenderItemData(glm::mat4& model, AABB& aabb, uint32_t materialInstanceId) :
             model(model), aabbMin(aabb.min), materialInstanceId(materialInstanceId), aabbMax(aabb.max,1.0) {}
-    };
-
-    struct GpuMaterialInstance {
-        uint32_t materialId;
-        uint32_t meshId;
-        // id within the material's internal buffer, used to access material specific per-instance attributes
-        // Can be 0 if the material doesn't care
-        uint32_t materialInstanceId;
-    };
-
-    // Same struct used on CPU and GPU side
-    struct MaterialHeader {
-        uint32_t id;
-        uint32_t drawBufferOffset;
-        uint32_t drawCount;
-        uint32_t drawKeyOffset; // not set on  CPU side
-
-        uint32_t renderPassesMask;        
-        uint32_t shadowMaterialRedirect = 0xffffffff;
-
-        void SetRenderPass(RenderPassId pass, bool x = true) {
-            uint32_t position = static_cast<uint32_t>(pass);
-            // clear bit and then set it
-            renderPassesMask = (renderPassesMask & ~((uint32_t)1 << position) | (uint32_t(x) << position));
-        }
-
-        bool IsRenderPassEnabled(RenderPassId pass) {
-            uint32_t position = static_cast<uint32_t>(pass);
-            return (renderPassesMask >> position) & uint32_t(1);
-        }
-
-        bool operator < (MaterialHeader const& rhs) {
-            return this->id < rhs.id;
-        }
     };
 
     class GpuRender {
@@ -142,7 +51,9 @@ private:
     }
 public:
         GpuSort gpuSorter;
-        DebugRenderUtil debugRenderUtil;
+        std::unordered_map<RenderPassId,Shader> defaultShaders = {
+            {RenderPassId::DIAGNOSTIC, Shader("shaders/basic_instanced.vert","shaders/primitive/wireframe.frag","shaders/primitive/triangle_density.geom")}
+        };
 
         GpuFilter baseInstanceFilter = GpuFilter("shaders/corepass/draw_base_instance.cs");
         CullingFilter cullingFilter;
@@ -176,9 +87,6 @@ public:
 
         UniformBuffer passIdUniform;
 
-        //ComputeShader cullingShader;
-
-        //ComputeShader indirectGroupsFromCounterShader = ComputeShader("shaders/corepass/indirect_params_from_counter.cs");
         ComputeShader emitDrawCommandsShader = ComputeShader("shaders/corepass/emit_draw_commands.cs");
 
         uint32_t numDraws = 0;
@@ -192,7 +100,12 @@ public:
             return (materialId << 18) | meshId;
         }
 
+        template <typename T>
         MaterialHeader& RegisterMaterial(Engine::World& world, entt::entity entity) {
+            static_assert(std::is_base_of<MaterialImplementation, T>::value, "T must derive from Engine::MaterialImplementation");
+
+            world.registry.emplace<MaterialRenderComponent>(entity, static_cast<MaterialImplementation*>(new T()));
+
             auto& header = world.registry.emplace<MaterialHeader>(entity);
             header.id = numMaterials++;
             return header;
@@ -341,69 +254,19 @@ public:
             glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_ELEMENT_ARRAY_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
             // Iterate materials, bind and draw
             auto materialView = world.registry.view<MaterialHeader,MaterialRenderComponent>();
+            
+            for(auto entity : materialView) {
+                auto [materialHeader,materialRenderComponent] = materialView.get<MaterialHeader,MaterialRenderComponent>(entity);
+                if(materialHeader.IsRenderPassEnabled(passId)) {
+                    passIdUniformData.materialId = materialHeader.id;
+                    gpuRender.passIdUniform.Set(&passIdUniformData);
+                    gpuRender.passIdUniform.BindBase(6);
 
-            if(world.input.wireFrame) {
-                if(passId == RenderPassId::OPAQUE || passId == RenderPassId::POST_OPAQUE) {                    
-                    for(auto entity : materialView) {
-                        auto [materialHeader,materialRenderComponent] = materialView.get<MaterialHeader,MaterialRenderComponent>(entity);
-                        if(materialHeader.IsRenderPassEnabled(passId) && materialRenderComponent.renderPass->SupportsWireframe()) {
-                            passIdUniformData.materialId = materialHeader.id;
-                            gpuRender.passIdUniform.Set(&passIdUniformData);
-                            gpuRender.passIdUniform.BindBase(6);
-
-                            gpuRender.debugRenderUtil.BindWireframe(materialHeader.id);
-                            materialRenderComponent.renderPass->RenderWireframe(world, materialHeader.drawBufferOffset, materialHeader.drawCount, passId);
-                        }
-                    }
-                }
-            } else if(world.input.previewTriangleDensity) {
-                if(passId == RenderPassId::OPAQUE || passId == RenderPassId::POST_OPAQUE) {                    
-                    for(auto entity : materialView) {
-                        auto [materialHeader,materialRenderComponent] = materialView.get<MaterialHeader,MaterialRenderComponent>(entity);
-                        if(materialHeader.IsRenderPassEnabled(passId) && materialRenderComponent.renderPass->SupportsTriangleDensity()) {
-                            passIdUniformData.materialId = materialHeader.id;
-                            gpuRender.passIdUniform.Set(&passIdUniformData);
-                            gpuRender.passIdUniform.BindBase(6);
-
-                            gpuRender.debugRenderUtil.BindTriangleDensity(materialHeader.id);
-                            materialRenderComponent.renderPass->RenderTriangleDensity(world, materialHeader.drawBufferOffset, materialHeader.drawCount, passId);
-                        }
-                    }
-                }
-            } else {
-                for(auto entity : materialView) {
-                    auto [materialHeader,materialRenderComponent] = materialView.get<MaterialHeader,MaterialRenderComponent>(entity);
-                    if(materialHeader.IsRenderPassEnabled(passId)) {
-                        passIdUniformData.materialId = materialHeader.id;
-                        gpuRender.passIdUniform.Set(&passIdUniformData);
-                        gpuRender.passIdUniform.BindBase(6);
-
-                        materialRenderComponent.renderPass->Render(world, materialHeader.drawBufferOffset, materialHeader.drawCount, passId);
-                    }
+                    materialRenderComponent.renderPass->Render(world, materialHeader.drawBufferOffset, materialHeader.drawCount, passId, gpuRender.defaultShaders);
                 }
             }
 
             glBindVertexArray(0);
         }
-
-        // Overview
-
-        // Culling uses a 32 bit key
-        // most significant bit - Cull result
-        // MSbits 2-16 - Instance Group ID (up to 32768 draws)
-        // Bits 17-32 - Instance ID within group (up to 65536 objects per drawcall)
-
-        // Process
-        // 1. CPU side - Write to GPU
-        //  - instance IDs
-        //  - generic instance information (transform, AABB)
-        //  - specialised instance information
-        // - need to think about how 
-
-        static void Cull(Engine::World& world) {
-
-        }
-
-
     };
 }

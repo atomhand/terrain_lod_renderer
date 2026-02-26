@@ -24,8 +24,8 @@ class HDR {
     Engine::ComputeShader computeExposureShader = Engine::ComputeShader("shaders/luminance_compute_exposure.cs");
     Engine::StorageBuffer luminanceHistogramBuffer;
 
-    Engine::Material tonemapMaterial = Engine::Material(Engine::Shader("shaders/primitive/fullscreen_quad.vert","shaders/tonemap.frag"));
-    Engine::Material heatmapMaterial = Engine::Material(Engine::Shader("shaders/primitive/fullscreen_quad.vert","shaders/heatmap.frag"));
+    Engine::DirectDrawMaterial tonemapMaterial = Engine::DirectDrawMaterial(Engine::Shader("shaders/primitive/fullscreen_quad.vert","shaders/tonemap.frag"));
+    Engine::DirectDrawMaterial heatmapMaterial = Engine::DirectDrawMaterial(Engine::Shader("shaders/primitive/fullscreen_quad.vert","shaders/heatmap.frag"));
 
     Engine::Texture outputTexture;
     void ComputeExposure(Engine::World& world) {

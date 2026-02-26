@@ -227,6 +227,10 @@ void RenderPasses::PrepareMain(World& world, Engine::Camera& camera, Engine::Tra
     viewUniforms.Set(&viewUniformData);
     viewUniforms.BindBase(0);
 
+    Engine::DebugUniformData debugUniformData(world);
+    debugUniforms.Set(&debugUniformData);
+    debugUniforms.BindBase(7);
+
     float fogFactor = world.input.drawFog ? std::lerp(0.000001f, 0.001f,world.input.fogStrength) : 0.f;
 
     auto miscUniformData = MiscUniformData {
@@ -277,20 +281,6 @@ void RenderPasses::DrawOpaque(World& world, bool drawAABB, Engine::Camera& camer
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_GEQUAL);
     glDisable(GL_BLEND);
-    
-    /*
-    Water main pass can't write depth because it needs to read from the depth attachment
-    So do 2 separate passes
-    - Gbuffer write (reads depth)
-    - Depth only (writes depth)
-    (depth value is needed for correct position reconstruction in deferred pass)
-
-    An alternative would be shift water into the transparent pass and do its lighting like
-    a 
-    (the advantage being it could then read the Gbuffer as well)
-    */
-
-    //TerrainMaterial::DrawMain(world);
 
     Engine::PassCullingVPUniform cullingVpUniform(cullingCamera);
 
@@ -298,17 +288,13 @@ void RenderPasses::DrawOpaque(World& world, bool drawAABB, Engine::Camera& camer
     passCullingVpUniform.BindBase(5);
     
     auto& gpuRender = world.GetSingle<Engine::GpuRender>();
-    gpuRender.ExecutePass(world, Engine::RenderPassId::OPAQUE, 0);
-    gpuRender.ExecutePass(world, Engine::RenderPassId::POST_OPAQUE, 0);
 
-    /*
-    if(!world.input.previewTriangleDensity) {
-        glDepthMask(GL_FALSE);
-        WaterMaterial::DrawMain(world, deferred.gBuffer.depthAttachment);
-        glDepthMask(GL_TRUE);
-        WaterMaterial::DrawDepth(world);
+    if(world.input.wireFrame || world.input.previewTriangleDensity) {
+        gpuRender.ExecutePass(world, Engine::RenderPassId::DIAGNOSTIC, 0);
+    } else {
+        gpuRender.ExecutePass(world, Engine::RenderPassId::OPAQUE, 0);
+        gpuRender.ExecutePass(world, Engine::RenderPassId::POST_OPAQUE, 0);        
     }
-    */
 
     if(drawAABB) {
         glPolygonMode( GL_FRONT_AND_BACK, GL_LINE);

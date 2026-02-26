@@ -11,63 +11,28 @@
 #include "gpu_mesh.h"
 #include "gpu_render.h"
 
-using Engine::World, Engine::Transform, Engine::GpuRender, Engine::MaterialHeader, Engine::MaterialRenderComponent, Engine::MaterialRenderPass, Engine::DrawElementsIndirectCommand, Engine::MeshCache, Engine::GpuMeshBuilder;
+using Engine::World, Engine::Transform, Engine::GpuRender, Engine::MaterialHeader, Engine::MaterialRenderComponent, Engine::MaterialImplementation, Engine::DrawElementsIndirectCommand, Engine::MeshCache, Engine::GpuMeshBuilder;
 
 struct TerrainMaterial {
 private:
-    class TerrainRenderPass : MaterialRenderPass {
-        void Prepare(World& world) override {
+    class TerrainMaterialImplementation : public Engine::InstancedMaterialImplementation<TerrainMaterial> {
+    public:
+        void Bind(World& world) override {
+            InstancedMaterialImplementation::Bind(world);
             auto& cache = world.GetSingle<Cache>();
-
-            auto view = world.registry.view<TerrainMaterial,Engine::GpuMaterialInstance>();
-            for(auto entity : view) {
-                auto [mat,gpuInstance] = view.get(entity);
-
-                if(cache.instanceData.size() <= gpuInstance.materialInstanceId) {
-                    cache.instanceData.resize(gpuInstance.materialInstanceId+1);
-                }
-                cache.instanceData[gpuInstance.materialInstanceId] = mat;
-            }
-
-            cache.instanceDataBuffer.Set<TerrainMaterial>(cache.instanceData.data(), cache.instanceData.size(), 0, true);
-        }
-
-        void RenderTriangleDensity(World& world, uint32_t drawOffset, uint32_t drawCount, Engine::RenderPassId pass) override {
-            auto cacheView = world.registry.view<Cache,MaterialHeader>();
-            auto [cache,header] = cacheView.get(cacheView.front());
-
-            cache.triangleDensityShader.use();
             cache.BindTextures();
-            cache.instanceDataBuffer.BindBase(6);
-            glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
         }
 
-        void RenderWireframe(World& world, uint32_t drawOffset, uint32_t drawCount, Engine::RenderPassId pass) override {
-            auto cacheView = world.registry.view<Cache,MaterialHeader>();
-            auto [cache,header] = cacheView.get(cacheView.front());
-
-            cache.wireframeShader.use();
-            cache.BindTextures();
-            cache.instanceDataBuffer.BindBase(6);
-            glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
-        }
-
-        void Render(World& world, uint32_t drawOffset, uint32_t drawCount, Engine::RenderPassId pass) override {
-            auto cacheView = world.registry.view<Cache,MaterialHeader>();
-            auto [cache,header] = cacheView.get(cacheView.front());
-
-            if(pass == Engine::RenderPassId::SHADOW) {                  
-                cache.shadowShader.use();
-                cache.BindTextures();
-                cache.instanceDataBuffer.BindBase(6);
-                glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
-            } else {
-                cache.shader.use();
-                cache.BindTextures();
-                cache.instanceDataBuffer.BindBase(6);
-                glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
-            }
-        }
+        TerrainMaterialImplementation() : InstancedMaterialImplementation("TerrainMaterial") {           
+            std::vector<const char*> wireframeDef = { "#define TERRAIN_HEATMAP"};
+            auto shadow_defines = std::vector<const char*>{ "#define SHADOW_PASS"};
+            
+            MaterialImplementation::passShaders = {
+                { Engine::RenderPassId::OPAQUE, Engine::Shader("shaders/terrain.vert","shaders/terrain_pbr.frag") },
+                { Engine::RenderPassId::SHADOW, Engine::Shader("shaders/terrain.vert","shaders/shadow.frag", shadow_defines) },
+                { Engine::RenderPassId::DIAGNOSTIC, Engine::Shader("shaders/terrain.vert","shaders/primitive/wireframe.frag","shaders/primitive/triangle_density.geom",wireframeDef) },
+            };
+        };
     };
 
     static void MakeTerrainMesh(GpuMeshBuilder& meshBuilder, int chunk_size) {
@@ -160,44 +125,10 @@ private:
 public:
     struct Cache {
     public:
-        size_t capacity;
+        const size_t capacity;
         uint32_t meshId;
-        Engine::Shader shader;
-        Engine::Shader depthOnlyShader;
-        Engine::Shader wireframeShader;
-        Engine::Shader shadowShader;
-        
-        Engine::Shader triangleDensityShader;
-        //Engine::Shader wireframeShader;
-
         Engine::Texture2DArray terrainDataTex;
-
-        std::vector<TerrainMaterial> instanceData;
-        Engine::StorageBuffer instanceDataBuffer = Engine::StorageBuffer(0);
-
-        int timeOffset;
-
         std::vector<Engine::Texture2DArray> texturearrays;
-
-        entt::entity CreateTerrainItem(Engine::World& world, glm::vec3 nodePos, glm::vec3 extent, Engine::AABB& aabb, uint32_t textureId) {
-            auto cacheView = world.registry.view<Cache,MaterialHeader>();
-            auto [cache,header] = cacheView.get(cacheView.front());
-            
-            auto entity = world.registry.create();
-            //auto& terrainMat = world.registry.emplace<TerrainMaterial>(entity, textureId);
-
-            auto& transform = world.registry.emplace<Engine::Transform>(entity);
-            transform.global = glm::translate(glm::mat4(1.), nodePos) * glm::scale(glm::mat4(1.), glm::vec3(extent.x,1.f,extent.z));
-
-            world.registry.emplace<Engine::AABB>(entity, aabb);
-
-            auto& instance = world.registry.emplace<Engine::GpuMaterialInstance>(entity);
-            instance.materialId = header.id;
-            instance.meshId = cache.meshId;
-            instance.materialInstanceId = textureId;
-
-            return entity;
-        }
 
         void BindTextures(bool bindDataTex = true) {            
             int offset = GL_TEXTURE0;
@@ -215,18 +146,8 @@ public:
 
         Cache(size_t capacity, int chunkSize, uint32_t meshId) : 
             capacity(capacity),
-            meshId(meshId),
-            shader(Engine::Shader("shaders/terrain.vert", "shaders/terrain_pbr.frag")),
-            depthOnlyShader(Engine::Shader("shaders/terrain.vert","shaders/shadow.frag")),
-            triangleDensityShader(Engine::Shader("shaders/terrain.vert","shaders/primitive/basic.frag","shaders/primitive/triangle_density.geom"))
-            //wireframeShader(Engine::Shader("shaders/terrain.vert","shaders/wireframe.frag","shaders/wireframe.geom")),
+            meshId(meshId)
         {
-            std::vector<const char*> wireframeDef = { "#define TERRAIN_HEATMAP"};
-            wireframeShader = Engine::Shader("shaders/terrain.vert","shaders/primitive/wireframe.frag","shaders/primitive/triangle_density.geom",wireframeDef);
-
-            auto defines = std::vector<const char*>{ "#define SHADOW_PASS"};
-            shadowShader = Engine::Shader("shaders/terrain.vert","shaders/shadow.frag", defines);
-
             terrainDataTex.Configure(1, GL_RGBA32F, chunkSize*2+1, chunkSize*2+1, capacity, GL_LINEAR, GL_CLAMP_TO_EDGE);
 
             texturearrays.push_back(Engine::Texture2DArray::Import({
@@ -257,8 +178,6 @@ public:
                 "textures/snow/disp_4k.jpg"
             },
                 "textures/TERRAIN_SPLAT_DISPLACEMENT"));
-
-            
         }
     };
     
@@ -277,10 +196,9 @@ public:
         world.registry.emplace<TerrainMaterial::Cache>(headerEntity, capacity, chunk_size, meshId);
         
         auto& gpuRender = world.GetSingle<GpuRender>();
-        auto& materialHeader = gpuRender.RegisterMaterial(world, headerEntity);
+        auto& materialHeader = gpuRender.RegisterMaterial<TerrainMaterialImplementation>(world, headerEntity);
         materialHeader.SetRenderPass(Engine::RenderPassId::OPAQUE);
         materialHeader.SetRenderPass(Engine::RenderPassId::SHADOW);
-
-        world.registry.emplace<MaterialRenderComponent>(headerEntity, (MaterialRenderPass*)new TerrainRenderPass());
+        materialHeader.SetRenderPass(Engine::RenderPassId::DIAGNOSTIC);
     }
 };

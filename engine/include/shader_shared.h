@@ -97,4 +97,13 @@ namespace Engine {
             );
         }
     };
+
+    struct DebugUniformData {
+        float debugWireframe;
+        float debugTriangleDensity;
+
+        DebugUniformData(World& world) : debugWireframe(world.input.wireFrame ? 1.f : 0.f), debugTriangleDensity(world.input.previewTriangleDensity ? 1.f : 0.f) {
+
+        }
+    };
 }

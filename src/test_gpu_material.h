@@ -7,32 +7,20 @@
 #include "shapes.h"
 #include "culling.h"
 
-using Engine::GpuRender, Engine::World, Engine::MaterialHeader, Engine::MaterialRenderComponent, Engine::MaterialRenderPass, Engine::MeshCache, Engine::MeshHeader;
+using Engine::GpuRender, Engine::World, Engine::MaterialHeader, Engine::MaterialRenderComponent, Engine::MaterialImplementation, Engine::MeshCache, Engine::MeshHeader;
 
 struct TestGpuMaterial{
 private:
-    class TestGpuMaterialManager {
+    class TestMaterialImplementation : public MaterialImplementation {
     public:
-        std::vector<const char*> defs = {"#define VERTEX_NORMAL","#define VERTEX_UV"};
-        Engine::Shader shader = Engine::Shader("shaders/pbr.vert","shaders/pbr.frag", defs);
-        Engine::Shader shadowShader = Engine::Shader("shaders/gpu_shadow.vert","shaders/shadow.frag", defs);
-    };
-
-    class TestRenderPass : MaterialRenderPass {
-        void Render(World& world, uint32_t drawOffset, uint32_t drawCount, Engine::RenderPassId pass) override {
-            auto view = world.registry.view<TestGpuMaterialManager,MaterialHeader>();
-            for(auto entity : view) {
-                auto [manager,header] = view.get(entity);
-
-                if(pass == Engine::RenderPassId::SHADOW) {                  
-                    manager.shadowShader.use();
-                    glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
-                } else {
-                    manager.shader.use();
-                    glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
-                }
-            }
-        }
+        TestMaterialImplementation() : MaterialImplementation("TestMaterial") {
+            std::vector<const char*> defs = {"#define VERTEX_NORMAL","#define VERTEX_UV"};
+            MaterialImplementation::passShaders = {
+                { Engine::RenderPassId::OPAQUE, Engine::Shader("shaders/pbr.vert","shaders/pbr.frag", defs) },
+                { Engine::RenderPassId::SHADOW, Engine::Shader("shaders/gpu_shadow.vert","shaders/shadow.frag", defs) },
+                //{ Engine::RenderPassId::DIAGNOSTIC, Engine::Shader("shaders/bird.vert","shaders/primitive/wireframe.frag","shaders/primitive/triangle_density.geom", shadow_defs) },
+            };
+        };
     };
 public:
     static void Setup(Engine::World& world) {
@@ -40,12 +28,10 @@ public:
         auto& meshCache = world.GetSingle<MeshCache>();
         auto headerEntity = world.registry.create();
 
-        world.registry.emplace<MaterialRenderComponent>(headerEntity, (MaterialRenderPass*)new TestRenderPass());
-        world.registry.emplace<TestGpuMaterialManager>(headerEntity);
-
-        auto& header = gpuRender.RegisterMaterial(world,headerEntity);
+        auto& header = gpuRender.RegisterMaterial<TestMaterialImplementation>(world,headerEntity);
         header.SetRenderPass(Engine::RenderPassId::OPAQUE);
         header.SetRenderPass(Engine::RenderPassId::SHADOW);
+        header.SetRenderPass(Engine::RenderPassId::DIAGNOSTIC);
 
         // sphere
         auto sphere = Sphere(16,16);

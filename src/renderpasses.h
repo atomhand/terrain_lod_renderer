@@ -31,13 +31,14 @@ private:
 
     Engine::UniformBuffer viewUniforms;
     Engine::UniformBuffer lightUniforms;
+    Engine::UniformBuffer debugUniforms;
     Engine::UniformBuffer miscUniforms;
     Engine::UniformBuffer passCullingVpUniform;
 
     entt::entity debugCameraEntity;
 
-    Engine::Material debugCascadeMaterial = Engine::Material(Engine::Shader("shaders/primitive/fullscreen_quad.vert","shaders/primitive/fullscreen_quad_texture2darray.frag"));
-    Engine::Material debugWireframeMaterial = Engine::Material(Engine::Shader("shaders/primitive/basic.vert","shaders/primitive/basic.frag"));
+    Engine::DirectDrawMaterial debugCascadeMaterial = Engine::DirectDrawMaterial(Engine::Shader("shaders/primitive/fullscreen_quad.vert","shaders/primitive/fullscreen_quad_texture2darray.frag"));
+    Engine::DirectDrawMaterial debugWireframeMaterial = Engine::DirectDrawMaterial(Engine::Shader("shaders/primitive/basic.vert","shaders/primitive/basic.frag"));
 
     // Retrieve render data from the scene (since the scene queries are not very efficient
     // it's better to cache anything that will be used more than once)

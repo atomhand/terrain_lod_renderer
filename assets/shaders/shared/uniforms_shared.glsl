@@ -63,4 +63,9 @@ layout (std140, binding=6) uniform PassRenderPassIdUniform {
     uint subPassId;
 };
 
+layout (std140, binding=7) uniform DebugUniform {
+    float debugWireframe;
+    float debugTriangleDensity;
+};
+
 #endif

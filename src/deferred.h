@@ -10,7 +10,7 @@ using Engine::FrameBuffer;
 
 class Deferred {
 private:
-    Engine::Material deferredMaterial = Engine::Material(Engine::Shader("shaders/primitive/fullscreen_quad.vert","shaders/deferred.frag"));
+    Engine::DirectDrawMaterial deferredMaterial = Engine::DirectDrawMaterial(Engine::Shader("shaders/primitive/fullscreen_quad.vert","shaders/deferred.frag"));
 public:
     FrameBuffer gBuffer;
 

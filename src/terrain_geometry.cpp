@@ -26,7 +26,10 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
     int numGenerated = 0;
     double generationDuration = 0.0;
 
-    auto& terrainCache = world.GetSingle<TerrainMaterial::Cache>();
+    
+    auto cacheView = world.registry.view<TerrainMaterial::Cache,MaterialHeader>();
+    auto [terrainCache,terrainMaterialHeader] = cacheView.get(cacheView.front());
+
     auto& waterCache = world.GetSingle<WaterMaterial::Cache>();
 
     std::priority_queue<TraversalItem> traversalQueue;
@@ -82,12 +85,22 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                     node.aabb = Engine::AABB(glm::vec3(0.,-1.f,0.f), glm::vec3(1.f,terrain.MaxHeight(),1.f));
                     world.registry.emplace<Engine::AABB>(node.entity, node.aabb);
                 } else {
-                    InternalNode& parent = nodePool[node.parentIdx];                    
+                    InternalNode& parent = nodePool[node.parentIdx];
+                    node.entity = world.registry.create();
 
-                    node.entity = terrainCache.CreateTerrainItem(world, nodePos, extent, parent.aabb, node.idx);
-                    auto& terrainMat = world.registry.emplace<TerrainMaterial>(node.entity);
+                    auto& transform = world.registry.emplace<Engine::Transform>(node.entity);
+                    transform.global = glm::translate(glm::mat4(1.), nodePos) * glm::scale(glm::mat4(1.), glm::vec3(extent.x,1.f,extent.z));
 
+                    world.registry.emplace<Engine::AABB>(node.entity, parent.aabb);
+
+                    auto& instance = world.registry.emplace<Engine::GpuMaterialInstance>(node.entity);
+                    instance.materialId = terrainMaterialHeader.id;
+                    instance.meshId = terrainCache.meshId;
+                    instance.materialInstanceId = node.idx;
                     
+                    auto& terrainMat = world.registry.emplace<TerrainMaterial>(node.entity);
+                    
+                    // terrain material instance data
                     InternalNode* current = &nodePool[node.parentIdx];
                     terrainMat.uvs[0] = glm::vec4(float(node.localIdx>>1)*0.5f,float(node.localIdx&1)*0.5f,0.5f,parent.textureId);
                     for(int iNode =1; iNode<4; iNode++) {
@@ -286,7 +299,7 @@ float TerrainGeometry::SuggestFarPlane() const {
 TerrainGeometry& TerrainGeometry::Insert(Engine::World& world, entt::entity terrain_entity, unsigned int width, float scale) {
     auto& terrain = world.registry.emplace<TerrainGeometry>(terrain_entity, width, scale);
 
-    WaterMaterial::Setup(world, terrain.BASE_POOL_SIZE, terrain.scale, terrain.CHUNK_SIZE);
+    WaterMaterial::Setup(world, terrain.scale, terrain.CHUNK_SIZE);
     TerrainMaterial::Setup(world, terrain.BASE_POOL_SIZE, terrain.scale, terrain.CHUNK_SIZE);
 
     for(size_t x=0; x<width; x++)
