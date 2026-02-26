@@ -74,18 +74,23 @@ public:
             if(!noClip && terrain != nullptr) {
                 float terrainHeight = std::max(0.5f,terrain->Height(flyCamera.pos.x,flyCamera.pos.z)+6.0f);
                 if(flyCamera.pos.y > terrainHeight) {
-                    flyCamera.fallSpeed += 9.8 * deltaTime * 2.0;
-                    flyCamera.pos.y -= flyCamera.fallSpeed * deltaTime;
+                    flyCamera.fallSpeed += 9.8 * deltaTime;
+                    flyCamera.pos.y -= flyCamera.fallSpeed * deltaTime * 2.0;
                 } else {
                     flyCamera.fallSpeed = 0.f;
                 }
                 flyCamera.pos.y = std::max(flyCamera.pos.y,terrainHeight);
-                clearance = flyCamera.pos.y - terrainHeight - 1.f;
+                clearance = flyCamera.pos.y - terrainHeight;
             }
             float clearanceFactor = std::clamp(clearance / 10000.f,0.f,1.f);
 
             float spd = noClip ? CAMERA_SPEED* (1.0f + clearanceFactor * 200.f) : CAMERA_SPEED;
             flyCamera.pos += deltaTime * spd * (cameraFront * keyDelta.y + cameraRight * keyDelta.x);
+
+            if(!noClip && terrain != nullptr && clearance < 0.1f) {
+                float terrainHeight = std::max(0.5f,terrain->Height(flyCamera.pos.x,flyCamera.pos.z)+6.0f);
+                flyCamera.pos.y = terrainHeight+clearance;
+            }
 
             camera.near = std::lerp(1.f, 320.f, clearanceFactor);
             //camera.far = far;
