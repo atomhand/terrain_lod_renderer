@@ -121,7 +121,7 @@ private:
         auto& bird = world.registry.emplace<Bird>(bird_entity);
         auto& transform = world.registry.emplace<Transform>(bird_entity);
 
-        world.registry.emplace<Engine::CullingResult>(bird_entity);
+        world.registry.emplace<Engine::RenderEnabledMarker>(bird_entity);
 
         bird.ticksSinceTrajectoryUpdate = i % UPDATE_INTERVAL;
 

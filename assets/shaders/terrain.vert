@@ -18,8 +18,6 @@ layout(binding = 6, std430) readonly buffer instancingSsbo {
     InstanceData instanceData[];
 };
 
-#include "shared/curvature_shared.glsl"
-
 out vec2 TexCoords;
 out vec3 WorldPos;
 out vec3 Normal;
@@ -125,6 +123,6 @@ void main()
 #ifdef SHADOW_PASS
     gl_Position = cullingVP * vec4(displacedPos.xyz,1.0);
 #else
-    gl_Position = projection * view * vec4(getCurvedPosition(displacedPos),1.0);
+    gl_Position = projection * view * vec4(displacedPos,1.0);
 #endif
 }

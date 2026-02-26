@@ -18,6 +18,8 @@
 namespace Engine {
     class GpuRender;
 
+    struct RenderEnabledMarker {};
+
     struct CullingFilter {
     private:
         GpuFilter filter = GpuFilter("shaders/corepass/culling.cs");
@@ -134,9 +136,9 @@ public:
             // Gather render items
             materialKeys.clear();
             renderItemData.clear();
-            auto itemsView = world.registry.view<Transform,GpuMaterialInstance,Engine::CullingResult>();
+            auto itemsView = world.registry.view<Transform,GpuMaterialInstance,RenderEnabledMarker>();
             for(auto entity : itemsView) {
-                auto [transform,material,cc] = itemsView.get(entity);
+                auto [transform,material] = itemsView.get(entity);
 
                 Engine::AABB* aabbPtr = world.registry.try_get<AABB>(entity);
 

@@ -49,7 +49,6 @@ namespace Engine {
         // Main render config
         bool prepass = false;
         bool enableCulling = true;
-        bool fakeCurvature = false;
         bool applyAutoExposure = true;
 
         // debug lights

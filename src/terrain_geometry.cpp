@@ -156,7 +156,7 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                     
                     /*
                     // Reduce split priority significantly for cells that failed culling
-                    Engine::CullingResult* cullingResult = world.registry.try_get<Engine::CullingResult>(node.entity);
+                    Engine::RenderEnabledMarker* cullingResult = world.registry.try_get<Engine::RenderEnabledMarker>(node.entity);
                     if(cullingResult == nullptr || cullingResult->viewResult == false) {
                         priority -= maxDepth;
                     }
@@ -186,18 +186,18 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
 
                 if(shouldDraw) {
                     if(!node.hasRenderComponents) {
-                        world.registry.emplace<Engine::CullingResult>(node.entity);
+                        world.registry.emplace<Engine::RenderEnabledMarker>(node.entity);
 
                         if(node.water_entity != entt::null) {                            
-                            world.registry.emplace<Engine::CullingResult>(node.water_entity);
+                            world.registry.emplace<Engine::RenderEnabledMarker>(node.water_entity);
                         }
                     }
                     node.hasRenderComponents = true;
                 } else {
                     if(node.hasRenderComponents) {
-                        world.registry.remove<Engine::CullingResult>(node.entity);
+                        world.registry.remove<Engine::RenderEnabledMarker>(node.entity);
                         if(node.water_entity != entt::null) {
-                            world.registry.remove<Engine::CullingResult>(node.water_entity);
+                            world.registry.remove<Engine::RenderEnabledMarker>(node.water_entity);
                         }
                     }
                     node.hasRenderComponents = false;

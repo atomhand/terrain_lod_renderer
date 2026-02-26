@@ -41,7 +41,7 @@ public:
         for(int i = 0; i<1000; i++) {
             auto entity = world.registry.create();
 
-            world.registry.emplace<Engine::CullingResult>(entity);
+            world.registry.emplace<Engine::RenderEnabledMarker>(entity);
             auto& instance = world.registry.emplace<Engine::GpuMaterialInstance>(entity);
             instance.materialId = header.id;
             instance.meshId = sphereId;
@@ -56,7 +56,7 @@ public:
         for(int i = 0; i<1000; i++) {
             auto entity = world.registry.create();
 
-            world.registry.emplace<Engine::CullingResult>(entity);
+            world.registry.emplace<Engine::RenderEnabledMarker>(entity);
             auto& instance = world.registry.emplace<Engine::GpuMaterialInstance>(entity);
             instance.materialId = header.id;
             instance.meshId = cubeId;

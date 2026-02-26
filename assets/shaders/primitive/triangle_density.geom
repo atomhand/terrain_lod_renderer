@@ -5,7 +5,6 @@ layout(triangles) in;
 layout(triangle_strip, max_vertices = 3) out;
 
 #include "shared/uniforms_shared.glsl"
-#include "shared/curvature_shared.glsl"
 #include "shared/coordinate_shared.glsl"
 
 uniform mat4 model;

@@ -34,7 +34,6 @@ layout (std140, binding=2) uniform MiscUniformData {
     float constantFogFactor;
     float heightFogTransitionStart;
     float heightFogTransitionDuration;
-    float fakeCurvature;
     float previewCascades;
     float previewNormalsMode;
     float enableStochasticBlending;

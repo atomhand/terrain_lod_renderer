@@ -193,10 +193,6 @@ void RenderPasses::DrawShadowMaps(World& world, Engine::Camera& cameraMain) {
     }
 
     glEnable(GL_DEPTH_CLAMP);
-
-    // No face culling for shadows right now, because it doesn't work with my 
-    // non-manifold terrain mesh
-    //glDisable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
 
     glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
@@ -238,7 +234,6 @@ void RenderPasses::PrepareMain(World& world, Engine::Camera& camera, Engine::Tra
         fogFactor * world.input.constantFogFactor,
         world.input.heightFogTransitionStart,
         world.input.heightFogTransitionDuration,
-        world.input.fakeCurvature  ? 1.0f : 0.0f,
         world.input.previewCascades ? 1.0f : 0.0f,
         float(world.input.previewNormalsMode),
         float(world.input.stochasticBlending),
@@ -304,10 +299,9 @@ void RenderPasses::DrawOpaque(World& world, bool drawAABB, Engine::Camera& camer
         debugWireframeMaterial.use();
         debugWireframeMaterial.SetColor(glm::vec3(100.,100.,100.));
 
-        auto aabbView = world.registry.view<Transform,Engine::CullingResult,Engine::AABB>();
+        auto aabbView = world.registry.view<Transform,Engine::AABB,Engine::RenderEnabledMarker>();
         for(auto entity : aabbView) {
-            auto [transform,cullingResult,aabb] = aabbView.get(entity);
-            if(!cullingResult.viewResult) continue;
+            auto [transform,aabb] = aabbView.get(entity);
             
             glm::vec3 extent = aabb.max - aabb.min;
             assert(extent.x >= 0.f && extent.y >= 0.f && extent.z >= 0.f);

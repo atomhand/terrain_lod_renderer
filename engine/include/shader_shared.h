@@ -45,7 +45,6 @@ namespace Engine {
         float constantFogFactor;
         float heightFogTransitionStart;
         float heightFogTransitionDuration;
-        float fakeCurvature;
         float previewCascades;
         float previewNormalsMode;
         float enableStochasticBlending;

@@ -145,8 +145,6 @@ void Engine::Application::keyCallback(GLFWwindow* window, int k, int s, int acti
 		input->viewDistanceParam = (input->viewDistanceParam+1)%3;
 	if (k == GLFW_KEY_G && action == GLFW_PRESS)
 		input->drawFog = !input->drawFog;
-	if (k == GLFW_KEY_O && action == GLFW_PRESS)
-		input->fakeCurvature = !input->fakeCurvature;
 	if (k == GLFW_KEY_T && action == GLFW_PRESS)
 		input->noClip = !input->noClip;
 	if (k == GLFW_KEY_C && action == GLFW_PRESS) {

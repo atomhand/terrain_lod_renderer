@@ -8,7 +8,6 @@ out vec3 WorldPos;
 out vec3 Normal;
 
 #include "shared/uniforms_shared.glsl"
-#include "shared/curvature_shared.glsl"
 #include "corepass/instancing_shared.glsl"
 
 layout(binding = 6, std430) readonly buffer instancingSsbo {
@@ -39,6 +38,6 @@ void main()
     WorldPos = vec3(model * vec4(pos, 1.0));
     Normal = normalMatrix * vert.normal;
 
-    gl_Position = projection * view * vec4(getCurvedPosition(WorldPos.xyz),1.0);
+    gl_Position = projection * view * vec4(WorldPos.xyz,1.0);
 #endif
 }

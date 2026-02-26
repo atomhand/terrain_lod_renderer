@@ -33,7 +33,6 @@ static void DrawConfigWindow(bool* p_open, Engine::World& world) {
     ImGui::Checkbox("prepass", &world.input.prepass);
     ImGui::Checkbox("autoexposure", &world.input.applyAutoExposure);
     ImGui::Checkbox("vsync", &world.input.vsync);
-    ImGui::Checkbox("fakeCurvature", &world.input.fakeCurvature);
     
     ImGui::SeparatorText("Debug Lights");
 
