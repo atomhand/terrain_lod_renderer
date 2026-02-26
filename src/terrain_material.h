@@ -16,12 +16,29 @@ using Engine::World, Engine::Transform, Engine::GpuRender, Engine::MaterialHeade
 struct TerrainMaterial {
 private:
     class TerrainRenderPass : MaterialRenderPass {
+        void Prepare(World& world) override {
+            auto& cache = world.GetSingle<Cache>();
+
+            auto view = world.registry.view<TerrainMaterial,Engine::GpuMaterialInstance>();
+            for(auto entity : view) {
+                auto [mat,gpuInstance] = view.get(entity);
+
+                if(cache.instanceData.size() <= gpuInstance.materialInstanceId) {
+                    cache.instanceData.resize(gpuInstance.materialInstanceId+1);
+                }
+                cache.instanceData[gpuInstance.materialInstanceId] = mat;
+            }
+
+            cache.instanceDataBuffer.Set<TerrainMaterial>(cache.instanceData.data(), cache.instanceData.size(), 0, true);
+        }
+
         void RenderTriangleDensity(World& world, uint32_t drawOffset, uint32_t drawCount, Engine::RenderPassId pass) override {
             auto cacheView = world.registry.view<Cache,MaterialHeader>();
             auto [cache,header] = cacheView.get(cacheView.front());
 
             cache.triangleDensityShader.use();
             cache.BindTextures();
+            cache.instanceDataBuffer.BindBase(6);
             glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
         }
 
@@ -31,6 +48,7 @@ private:
 
             cache.wireframeShader.use();
             cache.BindTextures();
+            cache.instanceDataBuffer.BindBase(6);
             glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
         }
 
@@ -41,10 +59,12 @@ private:
             if(pass == Engine::RenderPassId::SHADOW) {                  
                 cache.shadowShader.use();
                 cache.BindTextures();
+                cache.instanceDataBuffer.BindBase(6);
                 glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
             } else {
                 cache.shader.use();
                 cache.BindTextures();
+                cache.instanceDataBuffer.BindBase(6);
                 glMultiDrawElementsIndirectCount(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(drawOffset*sizeof(DrawElementsIndirectCommand)), header.id*sizeof(uint32_t), drawCount, 0);
             }
         }
@@ -152,16 +172,19 @@ public:
 
         Engine::Texture2DArray terrainDataTex;
 
+        std::vector<TerrainMaterial> instanceData;
+        Engine::StorageBuffer instanceDataBuffer = Engine::StorageBuffer(0);
+
         int timeOffset;
 
         std::vector<Engine::Texture2DArray> texturearrays;
 
-        entt::entity CreateTerrainItem(Engine::World& world, glm::vec3 nodePos, glm::vec3 extent, Engine::AABB& aabb, uint32_t topIdx) {
+        entt::entity CreateTerrainItem(Engine::World& world, glm::vec3 nodePos, glm::vec3 extent, Engine::AABB& aabb, uint32_t textureId) {
             auto cacheView = world.registry.view<Cache,MaterialHeader>();
             auto [cache,header] = cacheView.get(cacheView.front());
-
+            
             auto entity = world.registry.create();
-            auto& terrainMat = world.registry.emplace<TerrainMaterial>(entity, topIdx);
+            //auto& terrainMat = world.registry.emplace<TerrainMaterial>(entity, textureId);
 
             auto& transform = world.registry.emplace<Engine::Transform>(entity);
             transform.global = glm::translate(glm::mat4(1.), nodePos) * glm::scale(glm::mat4(1.), glm::vec3(extent.x,1.f,extent.z));
@@ -171,7 +194,7 @@ public:
             auto& instance = world.registry.emplace<Engine::GpuMaterialInstance>(entity);
             instance.materialId = header.id;
             instance.meshId = cache.meshId;
-            instance.materialInstanceId = topIdx;
+            instance.materialInstanceId = textureId;
 
             return entity;
         }
@@ -239,10 +262,9 @@ public:
         }
     };
     
-    const int index;
-    bool enabled;
+    glm::vec4 uvs[4];
 
-    TerrainMaterial(int index) : index(index) {}
+    TerrainMaterial() {}
 
     static void Setup(Engine::World& world, size_t capacity, float scale, int chunk_size) {       
         GpuMeshBuilder builder;

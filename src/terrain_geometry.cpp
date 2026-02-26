@@ -82,8 +82,24 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                     node.aabb = Engine::AABB(glm::vec3(0.,-1.f,0.f), glm::vec3(1.f,terrain.MaxHeight(),1.f));
                     world.registry.emplace<Engine::AABB>(node.entity, node.aabb);
                 } else {
-                    InternalNode& parent = nodePool[node.parentIdx];
-                    node.entity = terrainCache.CreateTerrainItem(world, nodePos, extent, parent.aabb, parent.textureId*4 + node.localIdx);
+                    InternalNode& parent = nodePool[node.parentIdx];                    
+
+                    node.entity = terrainCache.CreateTerrainItem(world, nodePos, extent, parent.aabb, node.idx);
+                    auto& terrainMat = world.registry.emplace<TerrainMaterial>(node.entity);
+
+                    
+                    InternalNode* current = &nodePool[node.parentIdx];
+                    terrainMat.uvs[0] = glm::vec4(float(node.localIdx>>1)*0.5f,float(node.localIdx&1)*0.5f,0.5f,parent.textureId);
+                    for(int iNode =1; iNode<4; iNode++) {
+                        if(current->idx == current->parentIdx) {
+                            terrainMat.uvs[iNode] = terrainMat.uvs[iNode-1];
+                        } else {
+                            int localIdx = current->localIdx;
+                            current = &nodePool[current->parentIdx];                            
+                            glm::vec2 baseUv = glm::vec2(localIdx>>1,localIdx&1) * 0.5f;
+                            terrainMat.uvs[iNode] = glm::vec4(baseUv.x + terrainMat.uvs[iNode-1].x*0.5f, baseUv.y + terrainMat.uvs[iNode-1].y*0.5f, terrainMat.uvs[iNode-1].z*0.5f, current->textureId);
+                        }
+                    }
                 }
 
                 node.longestEdge = extent.x / float(terrainGeometry.CHUNK_SIZE) * 1.73;
@@ -152,11 +168,8 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                 }
             }
 
-            if(node.idx != node.parentIdx) {    
+            if(node.idx != node.parentIdx) {
                 bool shouldDraw = node.childIdx == 0;
-
-                auto& mat = world.registry.get<TerrainMaterial>(node.entity);
-                mat.enabled = shouldDraw;
 
                 if(shouldDraw) {
                     if(!node.hasRenderComponents) {
