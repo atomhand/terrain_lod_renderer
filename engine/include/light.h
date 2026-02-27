@@ -135,18 +135,6 @@ namespace Engine {
                     ImGui::Text("t %f", frustumVals[i*6+3]);
                     ImGui::Text("near %f", frustumVals[i*6+4]);
                     ImGui::Text("far %f", frustumVals[i*6+5]);
-
-                    float l = frustumVals[i*6+0];
-                    float r= frustumVals[i*6+1];
-                    float b = frustumVals[i*6+2];
-                    float t = frustumVals[i*6+3];
-                    float near = -frustumVals[i*6+4];
-                    float far = -frustumVals[i*6+5];
-
-                    glm::vec3 extents = glm::vec3(r-l,t-b,far-near)/2.f;
-                    glm::vec3 center = glm::vec3(r,t,far)-extents;
-
-                    debugFrusta[i] = glm::inverse(debugFrusta[i]) * glm::translate(glm::mat4(1.f), center) * glm::scale(glm::mat4(1.),extents);
                 }
             }
 

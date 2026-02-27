@@ -73,11 +73,11 @@ void RenderPasses::RunAll(World& world, Engine::Application& app) {
         hdr.BindHdrFramebuffer(display_w,display_h);
         PrepareMain(world,*cameraMain,*cameraMainTransform,cullingCameraTransform);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        DrawOpaque(world,world.input.drawAABBs, *cameraMain, cullingCamera);
+        DrawOpaque(world, *cameraMain, cullingCamera);
     } else {
         deferred.BindGBuffer(display_w,display_h);
         PrepareMain(world,*cameraMain,*cameraMainTransform,cullingCameraTransform);
-        DrawOpaque(world,world.input.drawAABBs, *cameraMain, cullingCamera);    
+        DrawOpaque(world, *cameraMain, cullingCamera);    
         DrawShadowMaps(world, cullingCamera);
 
         hdr.BindHdrFramebuffer(display_w,display_h);
@@ -88,10 +88,9 @@ void RenderPasses::RunAll(World& world, Engine::Application& app) {
         hdr.ApplyHeatmapping(world);
     } else {
         DrawSkybox(world, *cameraMain);
-        DrawTransparent(world,world.input.drawAABBs);
-        if(world.input.previewCascades)                
-            DrawDebugOverlays(world,*cameraMain);
-        hdr.ApplyTonemapping(world);
+        DrawTransparent(world); 
+        DrawDebugOverlays(world,cullingCamera);
+        hdr.ApplyTonemapping(world);          
     }
 
     DrawDebugQuad(world);
@@ -118,48 +117,59 @@ void RenderPasses::RetrieveData(World& world, Engine::Application& app, Engine::
 
 // Draw to a special debug camera with a different
 // Not part of the regular render
-void RenderPasses::DrawDebugOverlays(World& world, Engine::Camera& cameraToDebug, bool drawCameraFrustum) {
+void RenderPasses::DrawDebugOverlays(World& world, Engine::Camera& cameraToDebug) {
     auto profileHandle = Profiler::StartCpu("RenderPasses::DrawDebugOverlays");
     auto gpuProfileHandle = Profiler::StartGpu("RenderPasses::DrawDebugOverlays");
 
     glPolygonMode( GL_FRONT_AND_BACK, GL_LINE);
     glDisable(GL_CULL_FACE);
-
     glDepthMask(GL_FALSE);
+    glEnable(GL_DEPTH_TEST);
+
+    // draw camera frustum
     debugWireframeMaterial.use();
-    if(drawCameraFrustum) {
-        debugWireframeMaterial.SetColor(glm::vec3(1.0,0.0,0.0));
-        debugWireframeMaterial.SetModel(cameraToDebug.invCamera);
+    if(world.input.debugMetaCam) {
+        debugWireframeMaterial.SetColor(glm::vec3(10.0,0.0,0.0));
+        debugWireframeMaterial.SetModel(cameraToDebug.lightingInvVP);
         Engine::DrawUtil::DrawCubeNdc();
-    }
-    auto lightView = world.registry.view<Engine::DirectionalLight>();
-    for(auto entity : lightView) {
-        auto& light = lightView.get<Engine::DirectionalLight>(entity);
+    }    
 
-        std::vector lightSpaceMatrices = light.ReadbackLightMatrices();        
-        std::vector<glm::mat4> debugFrusta = light.DebugLightCullingFrusta();
+    if(world.input.drawAABBs) {
+        debugWireframeMaterial.SetColor(glm::vec3(0.,0.,10.));
 
-        glm::vec3 rgb = glm::vec3(1,0.5,0);
-        for(auto lsm : lightSpaceMatrices) {                
-            glm::mat4 invLsm = glm::inverse(lsm);
-            debugWireframeMaterial.SetColor(rgb);
-            debugWireframeMaterial.SetModel(invLsm);
-            Engine::DrawUtil::DrawCubeNdc();
-
-            rgb = glm::vec3(rgb.z,rgb.x,rgb.y);
-        }
-
-        rgb = glm::vec3(0.,0.0,1.);
-        for(auto lsm : debugFrusta) {             
-            debugWireframeMaterial.SetColor(rgb);
-            debugWireframeMaterial.SetModel(lsm);
+        auto aabbView = world.registry.view<Transform,Engine::AABB,Engine::RenderEnabledMarker>();
+        for(auto entity : aabbView) {
+            auto [transform,aabb] = aabbView.get(entity);
+            
+            glm::vec3 extent = aabb.max - aabb.min;
+            assert(extent.x >= 0.f && extent.y >= 0.f && extent.z >= 0.f);
+            glm::vec3 offset = aabb.min + (extent / 2.f);
+            glm::mat4 aabbT = transform.global * glm::translate(glm::mat4(1.0),offset) * glm::scale(glm::mat4(1.0), extent/2.f);
+            
+            debugWireframeMaterial.SetModel(aabbT);
             Engine::DrawUtil::DrawCube();
+        }
+    }
 
-            rgb = glm::vec3(rgb.z,rgb.x,rgb.y);
+    if(world.input.previewCascades) {        
+        auto lightView = world.registry.view<Engine::DirectionalLight>();
+        for(auto entity : lightView) {
+            auto& light = lightView.get<Engine::DirectionalLight>(entity);
+
+            std::vector lightSpaceMatrices = light.ReadbackLightMatrices();
+            glm::vec3 rgb = glm::vec3(1,0.5,0);
+            for(auto lsm : lightSpaceMatrices) {                
+                glm::mat4 invLsm = glm::inverse(lsm);
+                debugWireframeMaterial.SetColor(rgb);
+                debugWireframeMaterial.SetModel(invLsm);
+                Engine::DrawUtil::DrawCubeNdc();
+
+                rgb = glm::vec3(rgb.z,rgb.x,rgb.y);
+            }
         }
     }
     glDepthMask(GL_TRUE);
-
+    glEnable(GL_CULL_FACE);
     glPolygonMode( GL_FRONT_AND_BACK, GL_FILL);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -268,7 +278,7 @@ void RenderPasses::DrawDebugQuad(World& world) {
 }
 
 // Draw opaque renderitems
-void RenderPasses::DrawOpaque(World& world, bool drawAABB, Engine::Camera& camera, Engine::Camera& cullingCamera) {
+void RenderPasses::DrawOpaque(World& world, Engine::Camera& camera, Engine::Camera& cullingCamera) {
     auto profileHandle = Profiler::StartCpu("RenderPasses::DrawOpaque");
     auto gpuProfileHandle = Profiler::StartGpu("RenderPasses::DrawOpaque");
 
@@ -290,36 +300,10 @@ void RenderPasses::DrawOpaque(World& world, bool drawAABB, Engine::Camera& camer
         gpuRender.ExecutePass(world, Engine::RenderPassId::OPAQUE, 0);
         gpuRender.ExecutePass(world, Engine::RenderPassId::POST_OPAQUE, 0);        
     }
-
-    if(drawAABB) {
-        glPolygonMode( GL_FRONT_AND_BACK, GL_LINE);
-        glDisable(GL_CULL_FACE);
-        glDepthMask(GL_FALSE);
-
-        debugWireframeMaterial.use();
-        debugWireframeMaterial.SetColor(glm::vec3(100.,100.,100.));
-
-        auto aabbView = world.registry.view<Transform,Engine::AABB,Engine::RenderEnabledMarker>();
-        for(auto entity : aabbView) {
-            auto [transform,aabb] = aabbView.get(entity);
-            
-            glm::vec3 extent = aabb.max - aabb.min;
-            assert(extent.x >= 0.f && extent.y >= 0.f && extent.z >= 0.f);
-            glm::vec3 offset = aabb.min + (extent / 2.f);
-            glm::mat4 aabbT = transform.global * glm::translate(glm::mat4(1.0),offset) * glm::scale(glm::mat4(1.0), extent/2.f);
-            
-            debugWireframeMaterial.SetModel(aabbT);
-            Engine::DrawUtil::DrawCube();
-        }
-
-        glDepthMask(GL_TRUE);
-        glPolygonMode( GL_FRONT_AND_BACK, GL_FILL);
-        glEnable(GL_CULL_FACE);
-    }
 }
 
 // Draw transparent renderitems
-void RenderPasses::DrawTransparent(World& world, bool drawAABB) {
+void RenderPasses::DrawTransparent(World& world) {
     auto profileHandle = Profiler::StartCpu("RenderPasses::DrawTransparent");
     auto gpuProfileHandle = Profiler::StartGpu("RenderPasses::DrawTransparent");
 

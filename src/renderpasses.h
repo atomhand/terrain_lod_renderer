@@ -46,7 +46,7 @@ private:
 
     // Draw to a special debug camera with a different
     // Not part of the regular render
-    void DrawDebugOverlays(World& world, Engine::Camera& cameraToDebug, bool drawCameraFrustum = false);
+    void DrawDebugOverlays(World& world, Engine::Camera& cameraToDebug);
 
     // Draw to the shadow map depth buffers
     void DrawShadowMaps(World& world, Engine::Camera& cameraMain);
@@ -58,10 +58,10 @@ private:
     void DrawDebugQuad(World& world);
 
     // Draw opaque renderitems
-    void DrawOpaque(World& world, bool drawAABB, Engine::Camera& camera, Engine::Camera& cullingCamera);
+    void DrawOpaque(World& world, Engine::Camera& camera, Engine::Camera& cullingCamera);
 
     // Draw transparent renderitems
-    void DrawTransparent(World& world, bool drawAABB = false);
+    void DrawTransparent(World& world);
 
     void DrawSkybox(World& world, Engine::Camera& camera) {
         auto profile = Engine::Profiler::StartCpu("RenderPasses::DrawSkybox");
