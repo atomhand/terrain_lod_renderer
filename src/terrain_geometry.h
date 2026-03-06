@@ -17,6 +17,7 @@
 
 #include "terrain_material.h"
 #include "compute_shader.h"
+#include "uniform_buffer.h"
 
 #include "imgui.h"
 
@@ -100,7 +101,7 @@ public:
 
     void FillData(TerrainMaterial::Cache& cache, int page) {
         // not taking account of height for now
-        longestEdge = glm::length(glm::vec3(extent.x, aabb.max.y-aabb.min.y, extent.y)) / float(width);
+        longestEdge = glm::length(glm::vec3(extent.x, 0.f, extent.y)) / float(width);
 
         outData.clear();
         for(int iz=0; iz<width; iz++) {
@@ -328,6 +329,9 @@ struct TerrainGeometry {
 
     TerrainQuadtree quadtree;
     Engine::ComputeShader displacementShader;
+    Engine::ComputeShader computeTerrainShader;
+
+    bool wasComputeTerrain;
 
     struct DisplacementUpdateHeader {
         glm::vec2 offset;
@@ -339,6 +343,7 @@ struct TerrainGeometry {
     std::vector<DisplacementUpdateHeader> displacementUpdates;
 
     Engine::StorageBuffer displacementUpdateBuffer = Engine::StorageBuffer(0);
+    Engine::UniformBuffer terrainNoiseUniforms;
 public:
     // Update - Chunks get a chance to regenerate if their current position is invalid (too far from the camera)
     // The number of chunks that can generate per frame is rate-limited, hopefully preventing any significant loading stutter.
@@ -359,17 +364,27 @@ public:
     void UpdateTerrainDisplacement(World& world) {
         if(displacementUpdates.size() == 0) return;
 
+        auto& terrain = world.GetSingle<Terrain>();
+
         auto& terrainCache = world.GetSingle<TerrainMaterial::Cache>();
 
         displacementUpdateBuffer.Set<DisplacementUpdateHeader>(displacementUpdates.data(), displacementUpdates.size(), 0, true);
         displacementUpdateBuffer.BindBase(0);
 
         glBindImageTexture(0, terrainCache.terrainDataTex.textureObject(), 0, GL_TRUE, 0, GL_READ_WRITE, GL_RGBA32F);
-        displacementShader.use();
-
         terrainCache.BindTextures(false);
 
-        displacementShader.Dispatch(displacementUpdates.size(), 1, 1);
+        if(world.input.computeTerrain) {
+            auto terrainNoiseUniformData = terrain.GetTerrainNoiseUniform();
+            terrainNoiseUniforms.Set(&terrainNoiseUniformData);
+            terrainNoiseUniforms.BindBase(8);
+            computeTerrainShader.use();
+            computeTerrainShader.Dispatch(displacementUpdates.size(), 1, 1);
+        } else {
+            displacementShader.use();
+            displacementShader.Dispatch(displacementUpdates.size(), 1, 1);
+        }
+
         displacementUpdates.clear();
 
         glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT);
@@ -381,5 +396,7 @@ public:
             std::string d = std::string("#define PAGE_SIZE ") + std::to_string(CHUNK_SIZE*2+1);
             std::vector<const char*> defs = { d.c_str() };
             displacementShader = Engine::ComputeShader("shaders/precalc_terrain_displacement.cs", defs);
+            defs.push_back("#define COMPUTE_TERRAIN");
+            computeTerrainShader = Engine::ComputeShader("shaders/precalc_terrain_displacement.cs", defs);
         };
 };

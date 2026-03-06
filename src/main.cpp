@@ -39,7 +39,7 @@ const unsigned int terrainEdgeLength = 5;
 #endif
 
 // Size of a terrain cell
-const float chunkSize = 256000.0;
+const float chunkSize = 1024000.0;
 
 int main()
 {
@@ -71,7 +71,7 @@ int main()
 	sun.direction= glm::normalize(glm::vec3(2.0,-1.,-4.0));
 	sun.color = glm::vec3(15.0,15.,15.);
 
-	BirdFlockManager::Setup(world);
+	//BirdFlockManager::Setup(world);
 	// event loop
 	while(!app.shouldClose()) {
 		app.frameStart(world);
@@ -79,7 +79,7 @@ int main()
 		FlyCamera::Update(world);
 
 		Engine::UpdateCameraSystem(world);
-		BirdFlockManager::Update(world);
+		//BirdFlockManager::Update(world);
 		TerrainGeometry::Update(world);
 
 		renderPasses.RunAll(world,app);

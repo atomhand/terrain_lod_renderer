@@ -15,6 +15,7 @@ layout (std140, binding=0) uniform Matrices
     float farPlane;
     float lodFovFactor;
     float lodControlParam;
+    float lodMorphs;
 };
 
 layout (std140, binding=1) uniform LightUniformData {
@@ -65,6 +66,18 @@ layout (std140, binding=6) uniform PassRenderPassIdUniform {
 layout (std140, binding=7) uniform DebugUniform {
     float debugWireframe;
     float debugTriangleDensity;
+};
+
+layout (std140, binding=8) uniform TerrainNoiseUniform {
+    float noisePeriod;
+    float noiseScale;
+    float noiseFoothillsFreq;
+    float noiseFoothillsScale;
+    float noiseMountainFreq;
+    float noiseMountainScale;
+    int noiseMountainExponent;
+    int noiseFoothillOctaves;
+    int noiseMountainOctaves;
 };
 
 #endif

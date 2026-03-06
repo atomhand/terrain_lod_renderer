@@ -97,7 +97,7 @@ void main()
     // (minor convenience, saves binding a uniforms)
     vec2 nodeDimension = (textureSize(dataTex,0).xy-1.0) / 2.0;
     float edgeLength = model[0][0] / nodeDimension.x * 1.73;
-    float k = TargetLodDepth(initialVertPos,edgeLength);
+    float k = lodMorphs > 0.f ? TargetLodDepth(initialVertPos,edgeLength) : 0.f;
 
     // vertexes on chunk edges should snap to a whole number LoD
     // This is effective at preventing cracks in practice

@@ -48,6 +48,8 @@ static void DrawConfigWindow(bool* p_open, Engine::World& world) {
     ImGui::Checkbox("stochasticBlending", &world.input.stochasticBlending);
     ImGui::SliderFloat("displacement Scale", &world.input.displacementScale, 0.0, 25.0);
     ImGui::SliderInt("LoD control param", &world.input.lodControlParam, 1, 32);
+    ImGui::Checkbox("Compute Driven Terrain LoD", &world.input.computeTerrain);
+    ImGui::Checkbox("LoD transition morphs", &world.input.lodMorphs);
 
     
     ImGui::SeparatorText("Fog");

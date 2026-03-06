@@ -16,8 +16,9 @@ namespace Engine {
         float farPlane;
         float lodFovFactor;
         float lodControlParam;
+        float lodMorphs;
 
-        ViewUniformData(Engine::Camera& camera, Transform& transform, glm::vec3 lodCameraViewPos, float lodControlParam) : lodControlParam(lodControlParam) {
+        ViewUniformData(Engine::Camera& camera, Transform& transform, glm::vec3 lodCameraViewPos, float lodControlParam, bool enableLodMorphs) : lodControlParam(lodControlParam) {
             view = camera.view;
             projection = camera.projection;
             boundedInverseViewProjection = camera.lightingInvVP;
@@ -31,6 +32,7 @@ namespace Engine {
             screenDimensions = glm::vec2(camera.width,camera.height);
 
             lodFovFactor = camera.lodFovFactor;
+            lodMorphs = enableLodMorphs ? 1.f : 0.f;
         }
     };
     struct LightUniformData {
@@ -104,5 +106,17 @@ namespace Engine {
         DebugUniformData(World& world) : debugWireframe(world.input.wireFrame ? 1.f : 0.f), debugTriangleDensity(world.input.previewTriangleDensity ? 1.f : 0.f) {
 
         }
+    };
+
+    struct TerrainNoiseUniformData {
+        float noisePeriod  = 30000.0;
+        float noiseScale  = 4000.0;
+        float noiseFoothillsFreq = 1.f;
+        float noiseFoothillsScale = 0.25f;
+        float noiseMountainFreq = 0.4f;
+        float noiseMountainScale = 10.f;
+        int noiseMountainExponent = 2;
+        int noiseFoothillOctaves = 8;//8;
+        int noiseMountainOctaves = 10;//10;
     };
 }

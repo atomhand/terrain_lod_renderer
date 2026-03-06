@@ -229,7 +229,7 @@ void RenderPasses::PrepareMain(World& world, Engine::Camera& camera, Engine::Tra
     glViewport(0, 0, display_w, display_h);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    ViewUniformData viewUniformData(camera,cameraTransform, cullingCameraTransform.position(), float(world.input.lodControlParam));
+    ViewUniformData viewUniformData(camera,cameraTransform, cullingCameraTransform.position(), float(world.input.lodControlParam), world.input.lodMorphs);
     viewUniforms.Set(&viewUniformData);
     viewUniforms.BindBase(0);
 

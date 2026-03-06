@@ -2,6 +2,7 @@
 #include "world.h"
 #include "fastnoise/FastNoise.h"
 #include "imgui.h"
+#include "shader_shared.h"
 
 class Terrain {
     FastNoise::SmartNode<FastNoise::Add> noise;
@@ -27,7 +28,7 @@ class Terrain {
         int MOUNTAIN_OCTAVES = 10;//10;
         int mountainExponent = 2;
 
-        bool operator==(const TerrainConfig&) const = default; 
+        bool operator==(const TerrainConfig&) const = default;
     };
 
     TerrainConfig config;
@@ -37,6 +38,22 @@ class Terrain {
     std::vector<float> heightTemp;
 
 public:
+    Engine::TerrainNoiseUniformData GetTerrainNoiseUniform() {
+        Engine::TerrainNoiseUniformData uniform;
+
+        uniform.noisePeriod = config.PERIOD;
+        uniform.noiseScale = config.FINAL_SCALE;
+        uniform.noiseFoothillsFreq = config.foothillsFreq;
+        uniform.noiseFoothillsScale = config.foothillsScale;
+        uniform.noiseMountainFreq = config.mountainFreq;
+        uniform.noiseMountainScale = config.mountainScale;
+        uniform.noiseMountainExponent = config.mountainExponent;
+        uniform.noiseFoothillOctaves = config.FOOTHILL_OCTAVES;
+        uniform.noiseMountainOctaves = config.MOUNTAIN_OCTAVES;
+
+        return uniform;
+    }
+
     bool CalibrationUi(Engine::World& world) {
         if(world.input.terrainCalibrationWindow) {
             TerrainConfig oldConfig = TerrainConfig(config);
@@ -82,7 +99,7 @@ public:
     }
 
     float MaxHeight() {
-        return config.FINAL_SCALE;
+        return config.mountainScale * config.FINAL_SCALE * 0.5f + 4.f;;
     }
 
     float Height(float x, float z);

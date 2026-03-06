@@ -61,6 +61,8 @@ namespace Engine {
         bool stochasticBlending = true;
         float displacementScale = 2.0;
         int lodControlParam = 8; // roughly ~= pixel length of terrain mesh edges
+        bool computeTerrain = true;
+        bool lodMorphs = true;
 
         // fog
         bool drawFog = true;

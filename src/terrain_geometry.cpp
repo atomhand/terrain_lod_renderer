@@ -22,7 +22,7 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
 
     const int budget = std::max(4.0, 5.0 / terrainGeometry.timePerGeneratedChunk);
 
-    int updateQuota = budget;
+    int updateQuota = world.input.computeTerrain ? 999999 : budget;
     int numGenerated = 0;
     double generationDuration = 0.0;
 
@@ -135,13 +135,18 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                         if(GetTextureId(node.textureId)) {
                             // non-root nodes need to generate map at the point of allocating their cihldren
                             auto start = std::chrono::steady_clock::now();
-                            Heightmap heightMap(terrain, chunk.positionOffset + uvMin*scale, chunk.positionOffset + uvMax*scale, terrainGeometry.CHUNK_SIZE*2+1);
-                            generationDuration +=  std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
-                            heightMap.FillData(terrainCache, node.textureId);
-                            node.aabb = heightMap.aabb;
+
+                            if(world.input.computeTerrain) {                                
+                                node.aabb = Engine::AABB(glm::vec3(0,-0.5f * terrain.MaxHeight(),0.f), glm::vec3(1.f, terrain.MaxHeight(),1.f));
+                            } else {                                
+                                Heightmap heightMap(terrain, chunk.positionOffset + uvMin*scale, chunk.positionOffset + uvMax*scale, terrainGeometry.CHUNK_SIZE*2+1);
+                                heightMap.FillData(terrainCache, node.textureId);
+                                node.aabb = heightMap.aabb;
+                            }
 
                             heightmapGenerated = true;
                             terrainGeometry.QueueDisplacementUpdate(glm::vec2(nodePos.x,nodePos.z), glm::vec2(extent.x,extent.z), node.textureId);
+                            generationDuration +=  std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
                         }
                     }
 
@@ -206,7 +211,7 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
         }
     }
 
-    if(numGenerated > 0) {
+    if(numGenerated > 0 && !world.input.computeTerrain) {
         terrainGeometry.timePerGeneratedChunk =  std::lerp(terrainGeometry.timePerGeneratedChunk,generationDuration / numGenerated,0.1);
     }
 }
@@ -272,6 +277,9 @@ void TerrainGeometry::Update(Engine::World& world) {
 
     std::vector<TerrainChunkHeader*> chunks;
 
+    bool resetAll = terrainGeometry.wasComputeTerrain != world.input.computeTerrain;
+    terrainGeometry.wasComputeTerrain = world.input.computeTerrain;
+
     auto view = world.registry.view<TerrainChunkHeader>();
     for(auto entity : view) {
         auto& chunk = view.get<TerrainChunkHeader>(entity);
@@ -279,7 +287,7 @@ void TerrainGeometry::Update(Engine::World& world) {
 
         bool offsetsChanged = chunk.ApplyNewOffsets(world, cX-hW, cZ-hW, terrainGeometry.width);
 
-        if(terrainConfigChanged || offsetsChanged)
+        if(terrainConfigChanged || offsetsChanged || resetAll)
             terrainGeometry.quadtree.Reset(world,chunk);
     }
 
