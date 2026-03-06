@@ -11,7 +11,7 @@ layout(rgba32f, binding=0) uniform image2DArray terrainData;
 #define TERRAIN_VERTEX
 #include "terrain_shared.glsl"
 
-#include "shared/gpu_noise_lib.glsl"
+#include "shared/fastnoise_gpu.glsl"
 
 struct NodeHeader {
     vec2 worldOffset;
@@ -27,32 +27,41 @@ layout(binding = 0, std430) readonly buffer nodeHeaderSsbo {
 
 #ifdef COMPUTE_TERRAIN
 
-float fbm(vec2 p, int octaves, float freq) {
+float fbm(vec2 p, int octaves, float freq, int seedOffset) {
+    int seed = noiseSeed + seedOffset;
     float amp = 1.f;
-    float sum = 0.f;
+    float lacunarity = 2.f;
+    float gain = 0.5f;
 
-    float result = 0.f;
-    for(int i =0; i<octaves; i++) {
-        sum += amp;
-        result += SimplexPerlin2D(p * freq) * amp;
-        amp *= 0.5f;
-        freq *= 2.f;
+    //const float weightedStrength = 0.f;
+
+    float noise = GenPerlin2D(seed, p.x, p.y, freq);
+    float sum = noise * amp;
+
+    for(int i =1; i<octaves; i++) {
+        seed += 1;
+        //amp *= mix(1.f, (noise+1.f) * 0.5f, weightedStrength);
+        amp *= gain;
+
+        p *= lacunarity;
+        noise = GenPerlin2D(seed, p.x, p.y, freq);
+        sum += noise * amp;
     }
 
-    // normalize
-    return result / sum;
+    return sum;
 }
 
 // output (h, dfdx, dfdy)
 float TerrainHeightFunction(vec2 p) {
-    float foothills = fbm(p  / noisePeriod, noiseFoothillOctaves, noiseFoothillsFreq) ;
+    float foothillsFbm = fbm(p  , noiseFoothillOctaves, noiseFoothillsFreq/ noisePeriod, 32112) ;
 
-    float mountainsModifier = (foothills +2.f)/3.f;
+    float mountainsModifier = (foothillsFbm +2.f)/3.f;
+    float foothills = foothillsFbm * noiseFoothillsScale * 0.5f;
 
-    float mountains = fbm(p / noisePeriod, noiseMountainOctaves, noiseMountainFreq) * mountainsModifier;
-    mountains = sign(mountains) * pow(abs(mountains), noiseMountainExponent) * noiseMountainScale;
+    float mountains = fbm(p , noiseMountainOctaves, noiseMountainFreq/ noisePeriod, 4432) * mountainsModifier * 0.5f;
+    mountains = mountains * pow(abs(mountains), noiseMountainExponent-1) * noiseMountainScale;
 
-    return (foothills * noiseFoothillsScale + mountains) * noiseScale * 0.5f + 4.f;
+    return (foothills + mountains) * noiseScale + 4.f;
 }
 
 vec3 GetLocalPos(int x, int z, NodeHeader header) {    

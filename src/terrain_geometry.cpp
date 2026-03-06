@@ -22,7 +22,7 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
 
     const int budget = std::max(4.0, 5.0 / terrainGeometry.timePerGeneratedChunk);
 
-    int updateQuota = world.input.computeTerrain ? 999999 : budget;
+    int updateQuota = world.input.computeTerrain || world.input.forceFullGeneration ? 999999 : budget;
     int numGenerated = 0;
     double generationDuration = 0.0;
 
@@ -292,6 +292,8 @@ void TerrainGeometry::Update(Engine::World& world) {
     }
 
     terrainGeometry.quadtree.TraverseUpdate(world, terrain, terrainGeometry, chunks, camera);
+
+
     terrainGeometry.UpdateTerrainDisplacement(world);
 
     DebugUi(world);

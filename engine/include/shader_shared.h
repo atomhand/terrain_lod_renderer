@@ -118,5 +118,6 @@ namespace Engine {
         int noiseMountainExponent = 2;
         int noiseFoothillOctaves = 8;//8;
         int noiseMountainOctaves = 10;//10;
+        int noiseSeed;
     };
 }

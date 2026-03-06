@@ -18,6 +18,7 @@
 #include "terrain_material.h"
 #include "compute_shader.h"
 #include "uniform_buffer.h"
+#include "profiler.h"
 
 #include "imgui.h"
 
@@ -363,6 +364,8 @@ public:
 
     void UpdateTerrainDisplacement(World& world) {
         if(displacementUpdates.size() == 0) return;
+        auto profileHandle = Engine::Profiler::StartCpu("TerrainGeometry::UpdateTerrainDisplacement");
+        auto gpuProfileHandle = Engine::Profiler::StartGpu("TerrainGeometry::UpdateTerrainDisplacement");
 
         auto& terrain = world.GetSingle<Terrain>();
 

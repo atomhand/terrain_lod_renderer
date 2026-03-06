@@ -122,6 +122,7 @@ void Terrain::SampleRegion(glm::vec2 origin, glm::vec2 step, int cellW, std::spa
             float height = heightTemp[tX + tZ * tempW];
 
             glm::vec2 erosionAmount = glm::vec2(0.f);
+            /*
 
             float a = config.EROSION_SCALE * 0.5f;//+ glm::smoothstep(-0.5f * config.foothillsScale, config.foothillsScale, height);
             if(a > 0.f && doErosion) {
@@ -138,6 +139,7 @@ void Terrain::SampleRegion(glm::vec2 origin, glm::vec2 step, int cellW, std::spa
                 erosionAmount.y = -erosion;
                 height = newHeight;
             }
+            */
 
             output[x + z * cellW] = height * config.FINAL_SCALE + 4.f;
             extraOutput[x + z * cellW] = erosionAmount;

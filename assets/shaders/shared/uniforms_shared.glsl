@@ -78,6 +78,7 @@ layout (std140, binding=8) uniform TerrainNoiseUniform {
     int noiseMountainExponent;
     int noiseFoothillOctaves;
     int noiseMountainOctaves;
+    int noiseSeed;
 };
 
 #endif

@@ -63,6 +63,7 @@ namespace Engine {
         int lodControlParam = 8; // roughly ~= pixel length of terrain mesh edges
         bool computeTerrain = true;
         bool lodMorphs = true;
+        bool forceFullGeneration = false;
 
         // fog
         bool drawFog = true;

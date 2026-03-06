@@ -50,6 +50,7 @@ static void DrawConfigWindow(bool* p_open, Engine::World& world) {
     ImGui::SliderInt("LoD control param", &world.input.lodControlParam, 1, 32);
     ImGui::Checkbox("Compute Driven Terrain LoD", &world.input.computeTerrain);
     ImGui::Checkbox("LoD transition morphs", &world.input.lodMorphs);
+    ImGui::Checkbox("Force Full Generation", &world.input.forceFullGeneration);
 
     
     ImGui::SeparatorText("Fog");

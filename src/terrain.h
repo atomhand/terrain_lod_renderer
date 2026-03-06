@@ -23,7 +23,7 @@ class Terrain {
         float foothillsScale = 0.25f;
         int FOOTHILL_OCTAVES = 8;//8;
 
-        float mountainFreq = 0.4f;
+        float mountainFreq = 0.75f;
         float mountainScale = 10.f;
         int MOUNTAIN_OCTAVES = 10;//10;
         int mountainExponent = 2;
@@ -50,6 +50,7 @@ public:
         uniform.noiseMountainExponent = config.mountainExponent;
         uniform.noiseFoothillOctaves = config.FOOTHILL_OCTAVES;
         uniform.noiseMountainOctaves = config.MOUNTAIN_OCTAVES;
+        uniform.noiseSeed = config.SEED;
 
         return uniform;
     }
@@ -110,11 +111,12 @@ public:
         ConfigureNoise();
     }
 
-    void ConfigureNoise() {        auto fnMountainsSrc = FastNoise::New<FastNoise::Simplex>();
+    void ConfigureNoise() {
+        auto fnMountainsSrc = FastNoise::New<FastNoise::Perlin>();
 
         // FOOTHILLS
 
-        auto fnFoothillsSrc = FastNoise::New<FastNoise::Simplex>();
+        auto fnFoothillsSrc = FastNoise::New<FastNoise::Perlin>();
         auto fnFoothillsFbm = FastNoise::New<FastNoise::FractalFBm>();
 
         fnFoothillsSrc ->SetSeedOffset(32112);
@@ -134,7 +136,7 @@ public:
         fnLandScale->SetRHS(2.0f);
 
         auto fnLandScale2 = FastNoise::New<FastNoise::Divide>();
-        fnLandScale2->SetLHS(fnFoothillsFbm);
+        fnLandScale2->SetLHS(fnLandScale);
         fnLandScale2->SetRHS(3.0f);
 
         // MOUNTAINS
@@ -156,18 +158,32 @@ public:
         fnMountainsScaled->SetLHS(fnMountainsShift);
         fnMountainsScaled->SetRHS(fnLandScale2);
 
-        auto fnMountainsPow = FastNoise::New<FastNoise::PowInt>();
-        fnMountainsPow->SetValue(fnMountainsScaled);
-        fnMountainsPow->SetPow(config.mountainExponent);
+        auto absMountains = FastNoise::New<FastNoise::Abs>();
+        absMountains->SetSource(fnMountainsScaled);
 
         auto fnMountains = FastNoise::New<FastNoise::Multiply>();
-        fnMountains->SetLHS(fnMountainsPow);
-        fnMountains->SetRHS(config.mountainScale);
+        if(config.mountainExponent == 1) {
+            fnMountains->SetLHS(fnMountainsScaled);
+            fnMountains->SetRHS(1);
+        } else if(config.mountainExponent == 2) {
+            fnMountains->SetLHS(fnMountainsScaled);
+            fnMountains->SetRHS(absMountains);
+        } else {
+            auto fnMountainsPow = FastNoise::New<FastNoise::PowInt>();
+            fnMountainsPow->SetValue(absMountains);
+            fnMountainsPow->SetPow(config.mountainExponent-1);
+            fnMountains->SetLHS(fnMountainsPow);
+            fnMountains->SetRHS(fnMountainsScaled);
+        }
+
+        auto fnMountains2 = FastNoise::New<FastNoise::Multiply>();
+        fnMountains2->SetLHS(fnMountains);
+        fnMountains2->SetRHS(config.mountainScale);
 
         // OUTPUT
 
         noise = FastNoise::New<FastNoise::Add>();
-        noise->SetLHS(fnMountains);
+        noise->SetLHS(fnMountains2);
         noise->SetRHS(fnFoothills);
     }
 };
