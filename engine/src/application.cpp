@@ -12,6 +12,9 @@
 #include "application.h"
 #include "world.h"
 
+#include "stb_image_write.h"
+#include "asset_helper.h"
+
 static Engine::Input* input;
 
 static float numInput = -1.0;
@@ -319,6 +322,10 @@ void Engine::Application::frameStart(World& world) {
 		keyAxisDelta.x += -1.0;
 	if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 		keyAxisDelta.x += 1.0;
+
+
+	if(glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS)
+		SaveScreenshot(nullptr);
 	
 	input->keyAxisDelta = keyAxisDelta.x + keyAxisDelta.y > 0.f ? glm::normalize(keyAxisDelta) : keyAxisDelta;
 
@@ -336,4 +343,38 @@ void Engine::Application::frameEnd(World& world) {
 
 bool Engine::Application::shouldClose() {
 	return glfwWindowShouldClose(window);
+}
+
+void Engine::Application::SaveScreenshot(const char* filename) {
+	int w,h;
+	getFramebufferSize(w,h);
+
+	std::vector<uint8_t> pixels(3*w*h);
+
+	glReadPixels(0,0,w,h, GL_RGB,GL_UNSIGNED_BYTE, pixels.data());
+
+	// flip (opengl framebuffer is upside down relative to image data format)
+	for(int line = 0; line != h/2; ++line) {
+    std::swap_ranges(
+            pixels.begin() + 3 * w * line,
+            pixels.begin() + 3 * w * (line+1),
+            pixels.begin() + 3 * w * (h-line-1));
+	}
+
+	std::filesystem::path path;
+
+	if(filename == nullptr) {
+		std::time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		std::string pathStr = std::ctime(&time);
+		std::replace(pathStr.begin(), pathStr.end(), ' ', '_');
+		std::replace(pathStr.begin(), pathStr.end(), ':', '-');
+		pathStr.erase(std::remove(pathStr.begin(), pathStr.end(), '\n'), pathStr.cend());
+		pathStr += ".png";
+		path = AssetHelper::screenshotPath(pathStr.c_str());
+	} else {
+		path = AssetHelper::screenshotPath(filename);
+	}
+
+	std::cout << "Saving screenshot to: " << path.string() << std::endl;
+	stbi_write_png(path.string().c_str(), w, h, 3, pixels.data(), 3 * w);
 }

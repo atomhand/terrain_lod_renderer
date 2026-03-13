@@ -49,5 +49,7 @@ namespace Engine {
         void frameEnd(World& world);
 
         bool shouldClose();
+
+        void SaveScreenshot(const char* filename);
     };
 }

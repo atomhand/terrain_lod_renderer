@@ -18,6 +18,17 @@ namespace Engine {
             
             path += "/textures/";
             std::filesystem::create_directory(path);
+
+            path = std::filesystem::current_path();
+            path += "/screenshots/";
+            std::filesystem::create_directory(path);
+        }
+
+        static std::filesystem::path screenshotPath(const char* localPath) {
+            std::filesystem::path path = std::filesystem::current_path();
+            path += "/screenshots/";
+            path += localPath;
+            return path;
         }
 
         static std::filesystem::path compressedAssetPath(const char *localPath) {
