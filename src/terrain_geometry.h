@@ -29,7 +29,6 @@ struct TerrainGeometry;
 struct Heightmap {
 private:
     static inline std::vector<float> height;
-    static inline std::vector<glm::vec2> extraData;
     
     static inline std::vector<glm::vec4> outData;
     
@@ -64,7 +63,6 @@ public:
 
     Heightmap(Terrain& terrain, glm::vec2 posMin, glm::vec2 posMax, int width) : posMin(posMin), posMax(posMax), extent(posMax-posMin), width(width), internalWidth(width+3) {
         height.assign(internalWidth*internalWidth, 0.f);
-        extraData.assign(internalWidth*internalWidth, glm::vec2(0.f));
 
         aabb.min = glm::vec3(0., 99999999.f, 0.);
         aabb.max = glm::vec3(1.f, -99999999.f, 1.f);
@@ -73,7 +71,7 @@ public:
         anyWater = false;
 
         glm::vec2 step = extent / float(width-1);
-        terrain.SampleRegion(posMin - step, step, internalWidth, height, extraData);
+        terrain.SampleRegion(posMin - step, step, internalWidth, height);
 
 
         for(int x=0; x<internalWidth; x++)
@@ -154,9 +152,9 @@ struct TerrainChunkHeader {
 struct TerrainQuadtree {
     struct InternalNode {
         unsigned short childIdx = 0; // 0 used to represent disabled
-        uint16_t idx;
-        uint16_t parentIdx;
-        uint16_t localIdx;
+        uint32_t idx;
+        uint32_t parentIdx;
+        uint32_t localIdx;
         int textureId = -1;
 
         Engine::AABB aabb;
@@ -172,9 +170,9 @@ struct TerrainQuadtree {
         entt::entity entity = entt::null;
         entt::entity water_entity = entt::null;
 
-        InternalNode(uint16_t idx) : idx(idx) {};
+        InternalNode(uint32_t idx) : idx(idx) {};
 
-        void Set(uint16_t idx, uint16_t parentIdx, uint16_t localIdx, unsigned short x, unsigned short z, unsigned char depth) {
+        void Set(uint32_t idx, uint32_t parentIdx, uint32_t localIdx, unsigned short x, unsigned short z, unsigned char depth) {
             this->idx = idx;
             this->parentIdx = parentIdx;
             this->localIdx = localIdx;

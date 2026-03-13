@@ -69,12 +69,12 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
             node.hasRenderComponents = false;
         } else {
             TraversalItem item = traversalQueue.top();
+            traversalQueue.pop();
             TerrainChunkHeader& chunk = *chunks[item.chunkId];
             chunk.nodeCount += 1;
             InternalNode& node = nodePool[item.id];
             glm::vec2 uvMin, uvMax;
             NodeUvs(node.x, node.z, node.depth, uvMin, uvMax);
-            traversalQueue.pop();
 
             glm::vec3 nodePos = glm::vec3(chunk.positionOffset.x,0.f,chunk.positionOffset.y) + glm::vec3(uvMin.x,0.f,uvMin.y) * scale;
             glm::vec3 extent = (glm::vec3(uvMax.x,0.f,uvMax.y) - glm::vec3(uvMin.x,0.f,uvMin.y))*scale;
@@ -136,8 +136,28 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                             // non-root nodes need to generate map at the point of allocating their cihldren
                             auto start = std::chrono::steady_clock::now();
 
-                            if(world.input.computeTerrain) {                                
-                                node.aabb = Engine::AABB(glm::vec3(0,-0.5f * terrain.MaxHeight(),0.f), glm::vec3(1.f, terrain.MaxHeight(),1.f));
+                            if(world.input.computeTerrain) {
+                                // is compute terrain mode, don't have the heightmap available,
+                                // so guess the AABB from a minimal number of samples
+                                // not great
+                                // TODO - 
+
+                                float minH = terrain.MaxHeight()*2.f;
+                                float maxH = -minH;
+                                for(int x=0; x<4; x++) {
+                                    for(int z=0; z<4; z++) {
+                                        glm::vec2 p =glm::vec2(nodePos.x,nodePos.z) + glm::vec2(extent.x,extent.z) * glm::vec2(x,z)/3.f;
+                                        float h = terrain.Height(p.x,p.y);
+                                        minH = std::min(h,minH);
+                                        maxH = std::max(h,maxH);
+                                    }
+                                }
+
+                                float scaledExtent = extent.x / 3.f;
+                                minH = std::max(0.f,minH-scaledExtent);
+                                maxH = std::min(terrain.MaxHeight(), maxH + scaledExtent);
+                                
+                                node.aabb = Engine::AABB(glm::vec3(0,minH,0.f), glm::vec3(1.f, maxH,1.f));
                             } else {                                
                                 Heightmap heightMap(terrain, chunk.positionOffset + uvMin*scale, chunk.positionOffset + uvMax*scale, terrainGeometry.CHUNK_SIZE*2+1);
                                 heightMap.FillData(terrainCache, node.textureId);
