@@ -38,28 +38,37 @@ vec3 rnmBlendUnpacked(vec3 n1, vec3 n2)
     return n1*dot(n1, n2)/n1.z - n2;
 }
 
-void TriplanarUvs(vec3 worldPos, out vec2 uvX, out vec2 uvY, out vec2 uvZ) {
+vec2 SingleTriplanarUv(vec2 inPosition) {
+    // uv is scaled, then wrapped within a 
+    // without the wrap, artefacts appear 
+    // there would still probably be precision issues when the coordinate gets large enough
+    // finally it's mirrored around the midpoint to ensure the uvs are continuous
+
     float triplanarScale = 64.f;
-    uvX = worldPos.zy / triplanarScale;
-    uvY = worldPos.xz / triplanarScale;
-    uvZ = worldPos.xy / triplanarScale;
-    uvX.y += 0.5;
-    uvZ.x += 0.5;
+    float tiles = 64.f;
+    vec2 outUv = mod(inPosition, vec2(tiles*triplanarScale)) / triplanarScale;
+    
+    if(outUv.x > tiles/2.f) outUv.x = tiles - outUv.x;
+    if(outUv.y > tiles/2.f) outUv.y = tiles - outUv.y;
+
+    return outUv + 0.5f;
 }
 
-vec3 GetSplat(vec3 geometryNormal, vec3 worldPos, float hY1, float hY2, float hY3, vec2 erosionFactor) {
-    float erosion =max(0.f, (0.1+erosionFactor.x)*smoothstep(-0.25,1.0, erosionFactor.y));
-    
-    float sandThreshold = 32.0 + erosion * 256.0;
+void TriplanarUvs(vec3 worldPos, out vec2 uvX, out vec2 uvY, out vec2 uvZ) {
+    uvX = SingleTriplanarUv(worldPos.zy);
+    uvY = SingleTriplanarUv(worldPos.xz);
+    uvZ = SingleTriplanarUv(worldPos.xy);
+}
+
+vec3 GetSplat(vec3 geometryNormal, vec3 worldPos, float hY1, float hY2, float hY3) {    
+    float sandThreshold = 32.0;// + erosion * 256.0;
     float snowThreshold = 256.0 ;//+  * 2048.0;
 
     vec3 splat;
     float slope = clamp(dot(geometryNormal,vec3(0.,1.,0.)),0.,1.);
-    splat.y = max(0.f,1.0 - worldPos.y/sandThreshold) + erosion * 15.0; // Sand - low lying and flat areas
+    splat.y = max(0.f,1.0 - worldPos.y/sandThreshold); // Sand - low lying and flat areas
 
-    float snowErosionFactor = 2.0 * smoothstep(1.0,-1.0,erosionFactor.y) - 1.0;
-
-    splat.z = clamp((worldPos.y-snowThreshold)/2048.*snowErosionFactor,0.0,1.0) * (1.0 - splat.y); // In high altitudes grass is replaced with snow
+    splat.z = clamp((worldPos.y-snowThreshold)/2048.,0.0,1.0) * (1.0 - splat.y); // In high altitudes grass is replaced with snow
     splat.x = 1.0 - splat.y - splat.z;
 
     splat = HeightBlend(splat, hY1, hY2, hY3, 0.4);
@@ -126,18 +135,20 @@ TriplanarSample ProceduralTilingAndBlending(vec2 uv, float layer) {
     result.normal = normalize(weights.x*n1 + weights.y*n2 + weights.z*n3);
     result.arm = weights.x*arm1 + weights.y*arm2 + weights.z*arm3;
 
+    /*
     // Use the erosion displacement to calculate a cheap and dumb AO term
     // 
     float hackAO= clamp(smoothstep(0.75,-0.5, erosionFactor.y),0.,1.);
     hackAO *= hackAO;
 
     result.arm.x *= hackAO;
+    */
 #endif
     result.h = weights.x*h1 + weights.y*h2 + weights.z*h3;
     return result;
 }
 
-void GetTriplanarSamples(vec3 worldPos, vec3 normal, out TriplanarSample X, out TriplanarSample Y, out TriplanarSample Z, vec2 erosionFactor) {
+void GetTriplanarSamples(vec3 worldPos, vec3 normal, out TriplanarSample X, out TriplanarSample Y, out TriplanarSample Z) {
     vec2 uvX, uvY, uvZ;
     TriplanarUvs(worldPos, uvX, uvY, uvZ);
 
@@ -148,7 +159,7 @@ void GetTriplanarSamples(vec3 worldPos, vec3 normal, out TriplanarSample X, out 
     //Y3.h = smoothstep(-0.15,1.0,Y3.h);// + 0.15f;
 
     // splat blending for Y-facing plane
-    vec3 splat = GetSplat(normal,worldPos, Y1.h, Y2.h, Y3.h, erosionFactor);
+    vec3 splat = GetSplat(normal,worldPos, Y1.h, Y2.h, Y3.h);
     Y = TriBlend(splat, Y1,Y2,Y3);
 
     // Procedural tiling for X and Z facing planes
@@ -156,10 +167,9 @@ void GetTriplanarSamples(vec3 worldPos, vec3 normal, out TriplanarSample X, out 
     Z = ProceduralTilingAndBlending(uvZ, 1);
 }
 
-vec3 TriplanarWeights(vec3 geometryNormal, float hx, float hy, float hz, vec2 erosionFactor) {
-    float e = 0.f;//smoothstep(-1.0,1.0,erosionFactor.y);
+vec3 TriplanarWeights(vec3 geometryNormal, float hx, float hy, float hz) {
     vec3 weights = abs(geometryNormal);
-    weights = HeightBlend(weights, hx+e, hy, hz+e, 0.1f);
+    weights = HeightBlend(weights, hx, hy, hz, 0.1f);
     weights /= dot(weights, vec3(1,1,1));
     return weights;
 }

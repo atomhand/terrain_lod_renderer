@@ -23,8 +23,6 @@ out vec3 WorldPos;
 out vec3 Normal;
 out vec3 debugColor;
 
-out vec2 erosionFactor;
-
 float TargetLodDepth(vec3 position, float geometricError) {
     float d = distance(lodViewPos.xyz,position);
     float screenSpaceErrorEstimate = (2.f * geometricError / d) * lodFovFactor;

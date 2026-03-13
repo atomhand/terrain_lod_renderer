@@ -11,12 +11,7 @@ class Terrain {
         float PERIOD  = 30000.0;
 
         float FINAL_SCALE  = 4000.0;
-
-        bool erosionEnabled = false;
-        float EROSION_PERIOD  = 1000.0;
-        float EROSION_SCALE  = 0.25f;
-        float EROSION_STRENGTH = 0.1f; // 0.04
-        int EROSION_OCTAVES = 4;
+        
         int SEED = 0;
 
         float foothillsFreq = 1.f;
@@ -64,14 +59,6 @@ public:
             ImGui::SliderFloat("Noise Period", &config.PERIOD, 5000.f, 100000.f);
             ImGui::SliderFloat("Overall Scale", &config.FINAL_SCALE, 100.f, 8000.f);
 
-            // Erosion
-            ImGui::SeparatorText("Erosion");
-            ImGui::Checkbox("Erosion enabled", &config.erosionEnabled);
-            ImGui::SliderFloat("Erosion Period", &config.EROSION_PERIOD, 100.f, 4000.f);
-            ImGui::SliderFloat("Erosion Scale", &config.EROSION_SCALE, 0.f, 10.f);
-            ImGui::SliderFloat("Erosion Strength", &config.EROSION_STRENGTH, 0.01f, 1.0f);
-            ImGui::SliderInt("Erosion octaves", &config.EROSION_OCTAVES, 1, 10);
-
             // MOUNTAINS
             ImGui::SeparatorText("Mountains");
 
@@ -105,7 +92,7 @@ public:
 
     float Height(float x, float z);
     
-    void SampleRegion(glm::vec2 origin, glm::vec2 extent, int cellW, std::span<float> output, std::span<glm::vec2> extraOutput);
+    void SampleRegion(glm::vec2 origin, glm::vec2 extent, int cellW, std::span<float> output);
 
     Terrain() {
         ConfigureNoise();
@@ -182,8 +169,16 @@ public:
 
         // OUTPUT
 
+        auto combined = FastNoise::New<FastNoise::Add>();
+        combined->SetLHS(fnMountains2);
+        combined->SetRHS(fnFoothills);
+
+        auto scaled = FastNoise::New<FastNoise::Multiply>();
+        scaled->SetLHS(combined);
+        scaled->SetRHS(config.FINAL_SCALE);
+
         noise = FastNoise::New<FastNoise::Add>();
-        noise->SetLHS(fnMountains2);
-        noise->SetRHS(fnFoothills);
+        noise->SetLHS(scaled);
+        noise->SetRHS(4);
     }
 };

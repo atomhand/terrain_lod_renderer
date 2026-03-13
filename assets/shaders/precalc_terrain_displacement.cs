@@ -104,8 +104,8 @@ void main() {
 #endif
             // Triplanar displacement
             TriplanarSample X, Y, Z;
-            GetTriplanarSamples(worldPos, Normal, X,Y,Z, vec2(0.f));
-            vec3 triplanarWeights = TriplanarWeights(Normal, X.h, Y.h, Z.h, vec2(0.f));
+            GetTriplanarSamples(worldPos, Normal, X,Y,Z);
+            vec3 triplanarWeights = TriplanarWeights(Normal, X.h, Y.h, Z.h);
 
             // Triplanar blend weights    
             float displacement = X.h * triplanarWeights.x + Y.h * triplanarWeights.y + Z.h * triplanarWeights.z - 0.5;

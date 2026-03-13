@@ -7,8 +7,6 @@ in vec3 WorldPos;
 in vec3 Normal;
 in vec3 debugColor;
 
-in vec2 erosionFactor;
-
 #include "shared/uniforms_shared.glsl"
 #include "terrain_shared.glsl"
 #include "shared/deferred_shared.glsl"
@@ -16,10 +14,10 @@ in vec2 erosionFactor;
 void main()
 {
     TriplanarSample X, Y, Z;
-    GetTriplanarSamples(WorldPos, Normal, X,Y,Z, erosionFactor);
+    GetTriplanarSamples(WorldPos, Normal, X,Y,Z);
 
     // Triplanar blend weights    
-    vec3 weights = TriplanarWeights(Normal, X.h, Y.h, Z.h, erosionFactor);
+    vec3 weights = TriplanarWeights(Normal, X.h, Y.h, Z.h);
 
     // Triplanar normals reconstruction
     // https://bgolus.medium.com/normal-mapping-for-a-triplanar-shader-10bf39dca05a
