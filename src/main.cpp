@@ -24,6 +24,7 @@
 #include "gpu_filter.h"
 
 #include "test_gpu_material.h"
+#include "tester.h"
 
 using namespace std;
 
@@ -76,6 +77,7 @@ int main()
 	while(!app.shouldClose()) {
 		app.frameStart(world);
 
+		Tester::Update(world);
 		FlyCamera::Update(world);
 
 		Engine::UpdateCameraSystem(world);
@@ -86,14 +88,16 @@ int main()
 
 		world.shaderAnimTime = fmod(world.shaderAnimTime + world.animDeltaTime(), 1000.f);
 
-		DrawUi(world);
+		if(!world.input.testFlythrough) {			
+			DrawUi(world);
 
-		if(world.input.radixSortTester)
-			gpuSortTester.DrawInterface(world);
-		if(world.input.gpuFilterTester)
-			gpuFilterTester.DrawInterface(world);
+			if(world.input.radixSortTester)
+				gpuSortTester.DrawInterface(world);
+			if(world.input.gpuFilterTester)
+				gpuFilterTester.DrawInterface(world);
 
-		Engine::Profiler::Render(world);
+			Engine::Profiler::Render(world);
+		}
 
 		app.frameEnd(world);
 	}

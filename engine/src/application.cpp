@@ -166,11 +166,20 @@ void Engine::Application::keyCallback(GLFWwindow* window, int k, int s, int acti
 		input->profilerWindow = !input->profilerWindow;
 	}
 
+	if(k == GLFW_KEY_H && action == GLFW_PRESS) {
+		input->testFlythrough = true;
+	}
+
 	if (k == GLFW_KEY_V && action == GLFW_PRESS)
 		input->vsync = !input->vsync;
 
-	if (k == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, GL_TRUE);
+	if (k == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+		if(input->testFlythrough) {
+			input->testFlythrough = false;
+		} else {			
+			glfwSetWindowShouldClose(window, GL_TRUE);
+		}
+	}
 }
 
 void Engine::Application::scrollCallback(GLFWwindow* window, double xoffset, double yoffset)

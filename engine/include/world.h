@@ -22,9 +22,11 @@ namespace Engine {
         glm::vec2 keyAxisDelta;
 
         float animSpeed = 3.0;
-
+        
         float deltaTime;
         bool vsync = true;
+
+        bool testFlythrough = false;
 
         // Windows
         bool terrainGeometryDebug = false;
