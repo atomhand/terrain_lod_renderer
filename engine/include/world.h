@@ -49,7 +49,6 @@ namespace Engine {
         int previewNormalsMode = 0;
 
         // Main render config
-        bool prepass = false;
         bool enableCulling = true;
         bool applyAutoExposure = true;
 
