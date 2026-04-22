@@ -50,6 +50,10 @@ void main()
     vec3 albedo = weights.x * X.albedo + weights.y * Y.albedo + weights.z * Z.albedo;
     vec3 arm = weights.x * X.arm + weights.y * Y.arm + weights.z * Z.arm;
 
+    if(previewChunksMode == 1.f) {
+        albedo = debugColor;
+    }
+
     if(previewNormalsMode == 1.f) {
         N = Normal;
     }

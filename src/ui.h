@@ -22,12 +22,14 @@ static void DrawConfigWindow(bool* p_open, Engine::World& world) {
             ImGui::Checkbox("Profiler", &world.input.profilerWindow);
             ImGui::Checkbox("gpu profiling", &world.input.enableGpuProfiling);
             ImGui::Checkbox("noClip", &world.input.noClip);
+            ImGui::Checkbox("previewChunks", &world.input.previewChunksMode);
             ImGui::EndTabItem();
         }
         if(ImGui::BeginTabItem("Graphics Settings")) {
             ImGui::Checkbox("Culling", &world.input.enableCulling);
             ImGui::Checkbox("autoexposure", &world.input.applyAutoExposure);
             ImGui::Checkbox("vsync", &world.input.vsync);
+            ImGui::Checkbox("previewChunks", &world.input.previewChunksMode);
 
             ImGui::SeparatorText("Debug");
 

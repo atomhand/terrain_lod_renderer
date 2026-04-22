@@ -113,9 +113,10 @@ void main()
     WorldPos = vec3(model * vec4(p.x, t.w, p.y, 1.0));
     Normal = vec3(t.x,sqrt(1.0-t.x*t.x-t.y*t.y),t.y);
     //Normal = normalize(t.xyz);
-#ifdef TERRAIN_HEATMAP
-    debugColor = vec3(k,k,k) / 2.0f;
-#endif
+
+
+    float chunkId = instanceHeader.uvs[0].x + instanceHeader.uvs[0].y * 2.f + instanceHeader.uvs[0].w * 2.f;
+    debugColor = hash41(chunkId).xyz;
 
     vec3 displacedPos = WorldPos + Normal * t.z * displacementScale;
 #ifdef SHADOW_PASS

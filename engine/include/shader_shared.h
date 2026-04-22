@@ -49,6 +49,7 @@ namespace Engine {
         float heightFogTransitionDuration;
         float previewCascades;
         float previewNormalsMode;
+        float previewChunksMode;
         float enableStochasticBlending;
         float applyExposure;
         float displacementScale;

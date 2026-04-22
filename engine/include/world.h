@@ -47,6 +47,7 @@ namespace Engine {
         bool previewTriangleDensity = false;
         bool drawAABBs = false;
         int previewNormalsMode = 0;
+        bool previewChunksMode = false;
 
         // Main render config
         bool enableCulling = true;

@@ -246,6 +246,7 @@ void RenderPasses::PrepareMain(World& world, Engine::Camera& camera, Engine::Tra
         world.input.heightFogTransitionDuration,
         world.input.previewCascades ? 1.0f : 0.0f,
         float(world.input.previewNormalsMode),
+        world.input.previewChunksMode ? 1.0f : 0.0f,
         float(world.input.stochasticBlending),
         float(world.input.applyAutoExposure),
         world.input.displacementScale,
