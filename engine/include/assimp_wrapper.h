@@ -1,4 +1,3 @@
-// Tom Kellett 2025
 // Code closely follows the Assimp sample at
 // https://github.com/assimp/assimp/blob/master/samples/SimpleOpenGL/Sample_SimpleOpenGL.c
 #pragma once

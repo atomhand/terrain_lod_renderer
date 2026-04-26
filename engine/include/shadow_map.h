@@ -1,4 +1,3 @@
-// Tom Kellett 2025
 // partly adapted from https://learnopengl.com/Guest-Articles/2021/CSM
 #pragma once
 #include <memory>

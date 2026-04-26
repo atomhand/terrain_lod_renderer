@@ -1,4 +1,3 @@
-// Tom Kellett 2025
 #version 420
 layout (location = 0) in vec3 aPos;
 

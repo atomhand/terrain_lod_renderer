@@ -1,4 +1,3 @@
-// Tom Kellett 2025
 
 // references (not copied) https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping
 // and https://learnopengl.com/Guest-Articles/2021/CSM

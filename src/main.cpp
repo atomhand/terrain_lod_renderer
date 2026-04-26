@@ -1,4 +1,3 @@
-// Tom Kellett 2025
 #include <iostream>
 #include <utility>
 #include "shader.h"

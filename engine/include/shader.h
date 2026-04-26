@@ -1,4 +1,3 @@
-// Tom Kellett 2025
 // Partially adapted https://learnopengl.com/Getting-started/Shaders
 #pragma once
 #include <string>

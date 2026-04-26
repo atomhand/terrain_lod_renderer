@@ -1,8 +1,7 @@
 #ifndef SHADOW_SHARED_GLSL
 #define SHADOW_SHARED_GLSL
 
-// TOm Kellett 2025 
-// Shadow code is not a direct copy, but was written with reference to
+// Shadow code references
 // learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping
 // https://learnopengl.com/Guest-Articles/2021/CSM
 // https://www.opengl-tutorial.org/intermediate-tutorials/tutorial-16-shadow-mapping/

@@ -1,4 +1,3 @@
-// Tom Kellett 2025
 // All code in this file copied or closely adapted from: https://learnopengl.com/PBR/IBL/Diffuse-irradiance
 
 #pragma once

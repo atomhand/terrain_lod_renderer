@@ -1,4 +1,3 @@
-// Tom Kellett 2025
 #version 460
 
 

@@ -1,4 +1,3 @@
-// Tom Kellett 2025
 #include "shader.h"
 
 void Engine::Shader::use()

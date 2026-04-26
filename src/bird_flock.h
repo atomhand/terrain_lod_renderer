@@ -1,4 +1,3 @@
-// Tom Kellett 2025
 // reference https://learnopengl.com/Getting-started/Camera
 // --> Code to convert pitch and yaw to a direction is from the OpenGL tut
 // everything else original mine

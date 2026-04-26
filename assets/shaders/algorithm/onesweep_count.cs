@@ -1,3 +1,4 @@
+// onesweep algorithm: Andy Adinets and Duane Merrill. Onesweep: A Faster Least Significant Digit Radix Sort for GPUs. 2022. arXiv: 2206.01784 
 #version 460
 #inject
 

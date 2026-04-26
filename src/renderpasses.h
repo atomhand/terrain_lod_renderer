@@ -1,4 +1,3 @@
-// Tom Kellett 2025
 #pragma once
 #include <glad/gl.h>
 #include <glm/glm.hpp>

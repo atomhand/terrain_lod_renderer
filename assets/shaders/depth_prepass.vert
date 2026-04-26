@@ -1,5 +1,4 @@
 #version 420
-// Tom Kellett 2025
 
 #include "shared/uniforms_shared.glsl"
 

@@ -1,6 +1,5 @@
 #version 460
 #inject
-// Tom Kellett 2025
 // TBN snippet from: https://learnopengl.com/Advanced-Lighting/Normal-Mapping
 
 out vec2 TexCoords;

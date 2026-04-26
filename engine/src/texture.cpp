@@ -1,4 +1,3 @@
-// Tom Kellett 2025
 // Reference https://learnopengl.com/Getting-started/Textures
 #include <iostream>
 #include <fstream>

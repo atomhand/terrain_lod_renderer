@@ -1,4 +1,3 @@
-// Tom Kellett 2025
 #pragma once
 #include <iostream>
 #include <memory>
