@@ -57,7 +57,7 @@ namespace Engine {
         int shadowTestingMode = 0;
         bool previewCascades = false;
         int numCascades = 5;
-        float lightPssmFactor = 0.15f;
+        float lightPssmFactor = 0.f;
 
         // Terrain render     
         bool stochasticBlending = true;
