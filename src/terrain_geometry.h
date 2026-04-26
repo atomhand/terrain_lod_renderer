@@ -118,7 +118,7 @@ public:
 };
 
 struct TerrainChunkHeader {    
-    const int rootId;
+    const uint32_t rootId;
     int nodeCount;
 
     glm::ivec2 chunkOffset;
@@ -144,16 +144,18 @@ struct TerrainChunkHeader {
         return false;
     }
 
-    TerrainChunkHeader(glm::ivec2 chunkOffset, float scale, int rootId) : scale(scale), chunkOffset(chunkOffset), rootId(rootId) {
+    TerrainChunkHeader(glm::ivec2 chunkOffset, float scale, uint32_t rootId) : scale(scale), chunkOffset(chunkOffset), rootId(rootId) {
         positionOffset = glm::vec2(chunkOffset) * scale;
     }
 };
 
 struct TerrainQuadtree {
     struct InternalNode {
-        unsigned short childIdx = 0; // 0 used to represent disabled
+        std::vector<uint32_t> childIds;
+
         uint32_t idx;
         uint32_t parentIdx;
+        bool isFree = true;
         uint32_t localIdx;
         int textureId = -1;
 
@@ -172,16 +174,19 @@ struct TerrainQuadtree {
 
         InternalNode(uint32_t idx) : idx(idx) {};
 
-        void Set(uint32_t idx, uint32_t parentIdx, uint32_t localIdx, unsigned short x, unsigned short z, unsigned char depth) {
-            this->idx = idx;
+        bool HasChildren() const {
+            return !childIds.empty();
+        }
+
+        void Set(uint32_t parentIdx, uint32_t localIdx, unsigned short x, unsigned short z, unsigned char depth) {
             this->parentIdx = parentIdx;
             this->localIdx = localIdx;
             this->x = x;
             this->z = z;
             this->depth = depth;
+            isFree = false;
 
             hasRenderComponents = false;
-            childIdx = 0;
         }
     };
 
@@ -190,78 +195,71 @@ struct TerrainQuadtree {
     };
 
     void AllocChildren(InternalNode& node) {
-        assert(node.childIdx == 0);
-
-        int idx = node.childIdx = TakePoolIds();
+        assert(!node.HasChildren());
         int depth = node.depth;
-
         int baseX = node.x * 2;
         int baseZ = node.z * 2;
 
-        nodePool[idx].Set(idx, node.idx, 0, baseX, baseZ, depth+1);
-        nodePool[idx+1].Set(idx+1, node.idx, 1, baseX, baseZ+1, depth+1);
-        nodePool[idx+2].Set(idx+2, node.idx, 2, baseX+1, baseZ, depth+1);
-        nodePool[idx+3].Set(idx+3, node.idx, 3, baseX+1, baseZ+1, depth+1);
+        for(int x=0, i=0; x<2; x++)
+            for(int z=0; z<2; z++, i++) {
+                uint32_t childIdx = NextPoolId();
+                nodePool[childIdx].Set(node.idx, i, baseX+x, baseZ+z, depth+1);                
+
+                node.childIds.push_back(childIdx);
+            }
     }
 
     const int maxDepth;
     const float scale;
     const int chunkSize;
 
-    std::stack<unsigned short> mergeQueue;
+    std::stack<uint32_t> mergeQueue;
     std::vector<LayerProperties> layerProperties;
 
     const int poolCapacity;
 
-    // NOTE
-    // The free list is used to free/allocate an entire set of children (4 nodes)
-    // at a time. Therefore each id on the free list also "owns" the adjacent 3 ids (i+1,i+2,+3)
-    std::vector<int> freeList;
+    std::vector<uint32_t> freeList;
     std::vector<InternalNode> nodePool;
 
     std::vector<int> textureIdFreelist;
     int nextTextureId = 0;
 
-    bool GetTextureId(int& id) {
-        if(id >= 0) {
-            assert(id < poolCapacity);
+    void DestroyChunk(Engine::World& world, InternalNode& node);
+
+    bool GetTextureId(InternalNode& node) {
+        if(node.textureId >= 0) {
+            assert(node.textureId < poolCapacity);
             return true;
         }
 
         if(textureIdFreelist.size() > 0) {
-            id = textureIdFreelist.back();
+            node.textureId = textureIdFreelist.back();
             textureIdFreelist.pop_back();
             return true;
         } else if(nextTextureId < poolCapacity) {
-            id = nextTextureId++;
+            node.textureId = nextTextureId++;
             return true;
         }
-        id = -1;
+        node.textureId = -1;
         return false;
     }
-    void FreeTextureId(int id) {
+    void FreeTextureId(int& id) {
         assert(id>=0);
         assert(id<poolCapacity);
         textureIdFreelist.push_back(id);
+        id = -1;
     }
 
-    int TakePoolIds() {
+    uint32_t NextPoolId() {
         if(freeList.size() > 0) {
-            int newId = freeList.back();
+            uint32_t id = freeList.back();
             freeList.pop_back();
-            return newId;
+            return id;
         } else {
-            int newId = nodePool.size();            
-            for(int i =0; i<4; i++) {
-                nodePool.emplace_back(nodePool.size());
-            }
+            uint32_t newId = nodePool.size();
+            nodePool.emplace_back(newId);
             return newId;
         }
-    }
-    int TakeSinglePoolId() {
-        int newId = nodePool.size();
-        nodePool.emplace_back(nodePool.size());
-        return newId;
     }
 
     void NodeUvs(int x, int z, int depth, glm::vec2& uvMin, glm::vec2& uvMax) {
@@ -276,25 +274,27 @@ struct TerrainQuadtree {
     }
 
     // Ref: "Rendering Massive Terrains using Chunked Level of Detail Control"
-    float TargetLodDepth(int inputLod, glm::vec3 offset, glm::vec3 extent, Engine::AABB& aabb, Engine::Camera& camera, int lodControlParam, float geometricError) {
+    float TargetLodDepth(int inputLod, glm::vec3 offset, glm::vec3 extent, Engine::AABB& aabb, Engine::Camera& camera, int targetTriangleSize, float worldSpaceTriangleSize) {
         extent.y = 1.0f;
 
+        // calculate the nearest position to the camera within the chunk's conservative bounds
         glm::vec3 nearestM = glm::clamp(camera.position,aabb.min*extent+offset,aabb.max*extent+offset);
+        // calculate the distance to the camera
         float distance = glm::distance(camera.position,nearestM);
 
-        float screenSpaceErrorEstimate = (geometricError / distance) * camera.lodFovFactor;
+        // Estimate the screen space size of a triangle, in pixels, at the current LOD level
+        float screenSpaceTriangleSizeEstimate = (worldSpaceTriangleSize / distance) * camera.lodFovFactor;
 
-        // assumption: Geometric error approximately halves with each higher LoD level
-        // maybe it would be possible to actually measure this factor and create a better empirical heuristic?
-        float lodDiff = std::log2(screenSpaceErrorEstimate / lodControlParam);
+        // Calculate the change in LOD levels required to achieve the target triangle size
+        float lodDiff = std::log2(screenSpaceTriangleSizeEstimate / targetTriangleSize);
         float targetLod = inputLod + lodDiff;
         
         return std::clamp(targetLod, 0.f, float(maxDepth));
     }
 
     TerrainChunkHeader MakeChunk(glm::ivec2 chunkOffset) {
-        int rootId = TakeSinglePoolId();
-        nodePool[rootId].Set(rootId, rootId, 0, 0,0,0);
+        int rootId = NextPoolId();
+        nodePool[rootId].Set(rootId, 0, 0,0,0);
         return TerrainChunkHeader(chunkOffset,scale,rootId);
     }
 

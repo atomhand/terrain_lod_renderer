@@ -7,7 +7,7 @@
 #include "profiler.h"
 
 struct TraversalItem {
-    unsigned short id;
+    uint32_t id;
     unsigned short chunkId;
     float score;
 
@@ -15,6 +15,37 @@ struct TraversalItem {
         return score < other.score;
     };
 };
+
+void TerrainQuadtree::DestroyChunk(Engine::World& world, InternalNode& node) {
+    if(node.HasChildren()) {
+        for(uint32_t childIdx : node.childIds) {
+            mergeQueue.push(childIdx);
+        }
+        node.childIds.clear();
+    }
+
+    if(node.textureId >= 0) {
+        FreeTextureId(node.textureId);
+    }
+
+    if(node.entity != entt::null) {
+        world.registry.destroy(node.entity);
+        node.entity = entt::null;
+    }
+
+    if(node.water_entity != entt::null) {
+        world.registry.destroy(node.water_entity);
+        node.water_entity = entt::null;
+    }
+
+    node.hasRenderComponents = false;
+
+    if(node.idx != node.parentIdx) {
+        assert(!node.isFree);
+        node.isFree = true;
+        freeList.push_back(node.idx);
+    }
+}
 
 void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, TerrainGeometry& terrainGeometry, std::vector<TerrainChunkHeader*> chunks, Engine::Camera& camera) {
     auto profile = Engine::Profiler::StartCpu("TerrainQuadtree::TraverseUpdate");
@@ -34,7 +65,7 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
 
     std::priority_queue<TraversalItem> traversalQueue;
     for(int i =0; i<chunks.size(); i++) {        
-        traversalQueue.push(TraversalItem{unsigned short(chunks[i]->rootId),unsigned short(i), 99999.f});
+        traversalQueue.push(TraversalItem{chunks[i]->rootId,unsigned short(i), 99999.f});
         chunks[i]->nodeCount = 0;
     }
 
@@ -42,49 +73,36 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
         if(!mergeQueue.empty()) {
             InternalNode& node = nodePool[mergeQueue.top()];
             mergeQueue.pop();
-
-            if(node.childIdx != 0) {
-                freeList.push_back(node.childIdx);
-                for(unsigned short i =0; i<4; i++) {
-                    mergeQueue.push(node.childIdx + i);
-                }
-                node.childIdx = 0;
-            }
-
-            if(node.textureId >= 0) {
-                FreeTextureId(node.textureId);
-                node.textureId = -1;
-            }
-
-            if(node.entity != entt::null) {
-                world.registry.destroy(node.entity);
-                node.entity = entt::null;
-            }
-
-            if(node.water_entity != entt::null) {
-                world.registry.destroy(node.water_entity);
-                node.water_entity = entt::null;
-            }
-
-            node.hasRenderComponents = false;
+            DestroyChunk(world, node);
         } else {
             TraversalItem item = traversalQueue.top();
             traversalQueue.pop();
             TerrainChunkHeader& chunk = *chunks[item.chunkId];
             chunk.nodeCount += 1;
-            InternalNode& node = nodePool[item.id];
+
+            // Since we are potentially resizing nodePool inside this block, a ref wouldn't be stable 
+            // so need to take a copy and re-insert it at the end of the block
+            InternalNode node = nodePool[item.id];
             glm::vec2 uvMin, uvMax;
             NodeUvs(node.x, node.z, node.depth, uvMin, uvMax);
+
+            assert(node.idx == item.id);
+            assert(!node.isFree);
 
             glm::vec3 nodePos = glm::vec3(chunk.positionOffset.x,0.f,chunk.positionOffset.y) + glm::vec3(uvMin.x,0.f,uvMin.y) * scale;
             glm::vec3 extent = (glm::vec3(uvMax.x,0.f,uvMax.y) - glm::vec3(uvMin.x,0.f,uvMin.y))*scale;
 
             if(node.entity == entt::null) {
                 if(node.parentIdx == node.idx) {
+                    // This is a root chunk
+                    // Root chunks are never rendered directly, so they don't need to create most instance data
                     node.entity = world.registry.create();
                     node.aabb = Engine::AABB(glm::vec3(0.,-1.f,0.f), glm::vec3(1.f,terrain.MaxHeight(),1.f));
                     world.registry.emplace<Engine::AABB>(node.entity, node.aabb);
                 } else {
+                    // Non-root chunk
+                    // Create the chunk entity and add the data used for rendering
+
                     InternalNode& parent = nodePool[node.parentIdx];
                     node.entity = world.registry.create();
 
@@ -127,20 +145,18 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                 // wants to split
                 // (or keep children, if they already exist)
                 // no children, try split
-                if(node.childIdx == 0
+                if(!node.HasChildren()
                     && numGenerated +4 <= updateQuota) {
                     bool heightmapGenerated = node.textureId >= 0;
 
                     if(!heightmapGenerated) {
-                        if(GetTextureId(node.textureId)) {
+                        if(GetTextureId(node)) {
                             // non-root nodes need to generate map at the point of allocating their cihldren
                             auto start = std::chrono::steady_clock::now();
 
                             if(world.input.computeTerrain) {
                                 // is compute terrain mode, don't have the heightmap available,
-                                // so guess the AABB from a minimal number of samples
-                                // not great
-                                // TODO - 
+                                // so guess the AABB from a minimal number of samples (not ideal)
 
                                 float minH = terrain.MaxHeight()*2.f;
                                 float maxH = -minH;
@@ -171,48 +187,39 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                     }
 
                     if(heightmapGenerated) {
+                        assert(node.idx == item.id);
                         AllocChildren(node);
                         numGenerated += 4;
                     }                    
                 }
                 
-                if(node.childIdx != 0) {
+                if(node.HasChildren()) {
                     float priority = targetDepth - node.depth;
-                    
-                    /*
-                    // Reduce split priority significantly for cells that failed culling
-                    Engine::RenderEnabledMarker* cullingResult = world.registry.try_get<Engine::RenderEnabledMarker>(node.entity);
-                    if(cullingResult == nullptr || cullingResult->viewResult == false) {
-                        priority -= maxDepth;
-                    }
-                    */
-
-                    for(unsigned short i =0; i<4; i++) {
-                        traversalQueue.push(TraversalItem{unsigned short(node.childIdx + i),item.chunkId, priority});
+                    for(uint32_t childIdx : node.childIds) {
+                        traversalQueue.push(TraversalItem{childIdx,item.chunkId, priority});
                     }
                 }                      
             } else {
                 // Wants to merge
-                if(node.childIdx != 0) {
-                    freeList.push_back(node.childIdx);
-                    for(int i =0; i<4; i++) {
-                        mergeQueue.push(node.childIdx + i);
+                if(node.HasChildren()) {
+                    for(uint32_t childIdx : node.childIds) {
+                        mergeQueue.push(childIdx);
                     }
-                    node.childIdx = 0;
+                    node.childIds.clear();
                 }
                 if(node.textureId >= 0) {
                     FreeTextureId(node.textureId);
-                    node.textureId = -1;
                 }
             }
 
             if(node.idx != node.parentIdx) {
-                bool shouldDraw = node.childIdx == 0;
+                bool shouldDraw = !node.HasChildren();
 
+                // Add or remove marker components that tell the render system to render
+                // the chunk entities (land and water)
                 if(shouldDraw) {
                     if(!node.hasRenderComponents) {
                         world.registry.emplace<Engine::RenderEnabledMarker>(node.entity);
-
                         if(node.water_entity != entt::null) {                            
                             world.registry.emplace<Engine::RenderEnabledMarker>(node.water_entity);
                         }
@@ -228,6 +235,8 @@ void TerrainQuadtree::TraverseUpdate(Engine::World& world, Terrain& terrain, Ter
                     node.hasRenderComponents = false;
                 }
             }
+
+            nodePool[item.id] = node;
         }
     }
 
