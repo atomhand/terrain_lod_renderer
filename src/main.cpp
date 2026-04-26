@@ -12,7 +12,6 @@
 #include "terrain_geometry.h"
 
 #include "fly_camera.h"
-#include "bird_flock.h"
 
 #include "light.h"
 
@@ -71,7 +70,6 @@ int main()
 	sun.direction= glm::normalize(glm::vec3(2.0,-1.,-4.0));
 	sun.color = glm::vec3(15.0,15.,15.);
 
-	//BirdFlockManager::Setup(world);
 	// event loop
 	while(!app.shouldClose()) {
 		app.frameStart(world);
@@ -80,7 +78,6 @@ int main()
 		FlyCamera::Update(world);
 
 		Engine::UpdateCameraSystem(world);
-		//BirdFlockManager::Update(world);
 		TerrainGeometry::Update(world);
 
 		renderPasses.RunAll(world,app);

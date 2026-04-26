@@ -18,7 +18,6 @@ private:
             MaterialImplementation::passShaders = {
                 { Engine::RenderPassId::OPAQUE, Engine::Shader("shaders/pbr.vert","shaders/pbr.frag", defs) },
                 { Engine::RenderPassId::SHADOW, Engine::Shader("shaders/gpu_shadow.vert","shaders/shadow.frag", defs) },
-                //{ Engine::RenderPassId::DIAGNOSTIC, Engine::Shader("shaders/bird.vert","shaders/primitive/wireframe.frag","shaders/primitive/triangle_density.geom", shadow_defs) },
             };
         };
     };
