@@ -28,6 +28,17 @@ TriplanarSample TriBlend(vec3 splat, TriplanarSample a, TriplanarSample b, Tripl
     return result;
 }
 
+TriplanarSample TriBlend(vec4 splat, TriplanarSample a, TriplanarSample b, TriplanarSample c, TriplanarSample d) {
+    TriplanarSample result;
+#ifndef TERRAIN_VERTEX
+    result.normal = splat.x * a.normal + splat.y * b.normal + splat.z * c.normal + splat.w * d.normal;
+    result.albedo = splat.x * a.albedo + splat.y * b.albedo + splat.z * c.albedo + splat.w * d.albedo;
+    result.arm = splat.x * a.arm + splat.y * b.arm + splat.z * c.arm + splat.w * d.arm;
+#endif
+    result.h = splat.x * a.h + splat.y * b.h + splat.z * c.h + splat.w * d.h;
+    return result;
+}
+
 // Reoriented Normal Mapping
 // http://discourse.selfshadow.com/t/blending-in-detail/21/18
 // via https://bgolus.medium.com/normal-mapping-for-a-triplanar-shader-10bf39dca05a
@@ -58,6 +69,28 @@ void TriplanarUvs(vec3 worldPos, out vec2 uvX, out vec2 uvY, out vec2 uvZ) {
     uvX = SingleTriplanarUv(worldPos.zy);
     uvY = SingleTriplanarUv(worldPos.xz);
     uvZ = SingleTriplanarUv(worldPos.xy);
+}
+
+vec4 GetSplat(vec3 geometryNormal, vec3 worldPos, float hY1, float hY2, float hY3, float hY4) {    
+    float sandThreshold = 32.0;// + erosion * 256.0;
+    float snowThreshold = 256.0 ;//+  * 2048.0;
+
+    vec4 splat;
+    float slope = 1.0 - clamp(dot(geometryNormal,vec3(0.,1.,0.)),0.,1.);
+    splat.w = clamp(slope*4.0,0.0,1.0);
+
+    float k = 1.0 - splat.w;
+    splat.y = max(0.f,1.0 - worldPos.y/sandThreshold); // Sand - low lying and flat areas
+
+    k -= splat.y;
+    splat.z = clamp((worldPos.y-snowThreshold)/2048.,0.0,1.0) * k; // In high altitudes grass is replaced with snow
+
+    k -= splat.z;
+    splat.x = k;
+
+    splat = HeightBlend(splat, hY1, hY2, hY3, hY4, 0.4);
+
+    return splat;
 }
 
 vec3 GetSplat(vec3 geometryNormal, vec3 worldPos, float hY1, float hY2, float hY3) {    
@@ -148,23 +181,30 @@ TriplanarSample ProceduralTilingAndBlending(vec2 uv, float layer) {
     return result;
 }
 
-void GetTriplanarSamples(vec3 worldPos, vec3 normal, out TriplanarSample X, out TriplanarSample Y, out TriplanarSample Z) {
-    vec2 uvX, uvY, uvZ;
-    TriplanarUvs(worldPos, uvX, uvY, uvZ);
-
-    TriplanarSample Y1 = ProceduralTilingAndBlending(uvY, 0);
-    TriplanarSample Y2 = ProceduralTilingAndBlending(uvY, 2);
-    TriplanarSample Y3 = ProceduralTilingAndBlending(uvY, 3);
+TriplanarSample TriSplat(vec3 normal, vec3 worldPos, vec2 uv) {
+    TriplanarSample Y1 = ProceduralTilingAndBlending(uv, 0);
+    TriplanarSample Y2 = ProceduralTilingAndBlending(uv, 2);
+    TriplanarSample Y3 = ProceduralTilingAndBlending(uv, 3);
+    TriplanarSample Y4 = ProceduralTilingAndBlending(uv, 1);
 
     //Y3.h = smoothstep(-0.15,1.0,Y3.h);// + 0.15f;
 
     // splat blending for Y-facing plane
-    vec3 splat = GetSplat(normal,worldPos, Y1.h, Y2.h, Y3.h);
-    Y = TriBlend(splat, Y1,Y2,Y3);
+    vec4 splat = GetSplat(normal,worldPos, Y1.h, Y2.h, Y3.h, Y4.h);
+    return TriBlend(splat, Y1,Y2,Y3,Y4);
+}
+
+void GetTriplanarSamples(vec3 worldPos, vec3 normal, out TriplanarSample X, out TriplanarSample Y, out TriplanarSample Z) {
+    vec2 uvX, uvY, uvZ;
+    TriplanarUvs(worldPos, uvX, uvY, uvZ);
+
+    Y = TriSplat(normal,worldPos,uvY);
+    X = TriSplat(normal,worldPos,uvX);
+    Z = TriSplat(normal,worldPos,uvZ);
 
     // Procedural tiling for X and Z facing planes
-    X = ProceduralTilingAndBlending(uvX, 1);
-    Z = ProceduralTilingAndBlending(uvZ, 1);
+    //X = ProceduralTilingAndBlending(uvX, 1);
+    //Z = ProceduralTilingAndBlending(uvZ, 1);
 }
 
 vec3 TriplanarWeights(vec3 geometryNormal, float hx, float hy, float hz) {

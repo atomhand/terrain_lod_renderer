@@ -37,6 +37,7 @@ layout (std140, binding=2) uniform MiscUniformData {
     float heightFogTransitionDuration;
     float previewCascades;
     float previewNormalsMode;
+    float previewChunksMode;
     float enableStochasticBlending;
     float applyExposure;
     float displacementScale;

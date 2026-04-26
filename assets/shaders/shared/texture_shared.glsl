@@ -20,6 +20,23 @@ vec3 HeightBlend(vec3 inWeights, float h0, float h1, float h2, float contrast) {
     return weights;
 }
 
+vec4 HeightBlend(vec4 inWeights, float h0, float h1, float h2, float h3, float contrast) {
+    const float epsilon = 1.0f / 1024.0f;
+    vec4 weights = vec4(inWeights.x * (h0+epsilon),
+                        inWeights.y * (h1+epsilon),
+                        inWeights.z * (h2+epsilon),
+                        inWeights.w * (h3+epsilon));
+    
+    float maxWeight = max(weights.x,max(weights.y,max(weights.w,weights.z)));
+    float transition = contrast * maxWeight;
+    float threshold = maxWeight - transition;
+    float scale = 1.0f / transition;
+
+    weights = clamp((weights-threshold)*scale, 0.f,1.f);
+    weights /= (weights.x + weights.y + weights.z + weights.w);
+    return weights;
+}
+
 // Procedural Stochastic Textures by Tiling and Blending
 void TriangleGrid(vec2 uv,
     out float w1, out float w2, out float w3,
