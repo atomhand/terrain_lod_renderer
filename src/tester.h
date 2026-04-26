@@ -88,7 +88,7 @@ public:
                 if(tester.currentFrame == MAX_FRAMES) {
                     auto end = std::chrono::steady_clock::now();
                     auto timing = (std::chrono::duration_cast<std::chrono::microseconds>(end-tester.start) / 1ms) / MAX_FRAMES;
-                    std::cout << "Test " << tester.currentEvaluationConfig << "(" << phaseNames[tester.currentEvaluationConfig] << ") complete, time per frame " << timing << "ms" << std::endl;
+                    std::cout << "Test " << tester.currentEvaluationConfig << "(" << configNames[tester.currentEvaluationConfig] << ") complete, time per frame " << timing << "ms" << std::endl;
                     tester.currentEvaluationConfig += 1;
 
                     if(tester.currentEvaluationConfig == 4) {                        

@@ -23,6 +23,11 @@ static void DrawConfigWindow(bool* p_open, Engine::World& world) {
             ImGui::Checkbox("gpu profiling", &world.input.enableGpuProfiling);
             ImGui::Checkbox("noClip", &world.input.noClip);
             ImGui::Checkbox("previewChunks", &world.input.previewChunksMode);
+
+            if(ImGui::Button("Test Flythrough")) {
+                world.input.testFlythrough = true;
+            }
+
             ImGui::EndTabItem();
         }
         if(ImGui::BeginTabItem("Graphics Settings")) {
