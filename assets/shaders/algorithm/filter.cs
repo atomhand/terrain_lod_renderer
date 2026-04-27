@@ -19,7 +19,7 @@ void main() {
     uint keys[KEYS_PER_THREAD];
 
     for(uint i =0; i<KEYS_PER_THREAD; i++) {        
-        uint keyId = blockId * PARTITION_SIZE + gl_SubgroupID * 32 * KEYS_PER_THREAD + gl_SubgroupInvocationID + i * 32;
+        uint keyId = blockId * PARTITION_SIZE + gl_SubgroupID * gl_SubgroupSize * KEYS_PER_THREAD + gl_SubgroupInvocationID + i * gl_SubgroupSize;
 
         keys[i] = 0xffffffff;
         if(keyId < inputCount[0]) {

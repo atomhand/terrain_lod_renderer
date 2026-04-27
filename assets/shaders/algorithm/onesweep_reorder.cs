@@ -1,4 +1,5 @@
 // onesweep algorithm: Andy Adinets and Duane Merrill. Onesweep: A Faster Least Significant Digit Radix Sort for GPUs. 2022. arXiv: 2206.01784 
+// This implementation Tom Kellett 2026
 #version 460
 
 #inject
@@ -8,6 +9,9 @@
 #extension GL_KHR_shader_subgroup_arithmetic: enable
 
 #define BLOCK_SIZE NUM_WARPS*32
+// in theory this implementation should work with AMD's 64-wide warps
+// But not <32 warps (sorry Intel)
+#define TRUE_NUM_WARPS (BLOCK_SIZE/gl_SubgroupSize)
 
 layout(local_size_x = BLOCK_SIZE, local_size_y = 1, local_size_z = 1) in;
 
@@ -76,11 +80,23 @@ uint GetPrefixChainedLookback(uint startBlock, uint word, uint currentPass) {
     return accumulatedSum;
 }
 
+/* Multisplit could be more efficient if specialised to specific warp size
+
 uint Warp32Multisplit(uint word) {
     uint mask = 0xffffffff;
     for(uint k=0; k<WORD_BITS; k++) {
         const bool t = bool((word >> k) & 0x01u);
         mask &= (t ? 0 : 0xffffffff) ^ subgroupBallot(t).x;
+    }
+    return mask;
+}
+*/
+
+uvec4 SubgroupMultisplit(uint word) {
+    uvec4 mask = uvec4(0xffffffff);
+    for(uint k=0; k<WORD_BITS; k++) {
+        const bool t = bool((word >> k) & 0x01u);
+        mask &= (t ? uvec4(0) : uvec4(0xffffffff)) ^ subgroupBallot(t);
     }
     return mask;
 }
@@ -90,15 +106,15 @@ uint Warp32Multisplit(uint word) {
 void WarpLevelPrefix(KEY_TYPE keys[KEYS_PER_THREAD], out uint warpLocalOffsets[KEYS_PER_THREAD], uint wordOffset) {
     for(int i=0; i<KEYS_PER_THREAD; i++) {
         uint word = (keys[i].x >> wordOffset) & WORD_MASK;
-        uint mask = Warp32Multisplit(word);
+        uvec4 mask = SubgroupMultisplit(word);
 
         // - count of threads in warp which share the same digit 
-        uint totalBits = bitCount(mask);
+        uint totalBits = subgroupBallotBitCount(mask);
         // - count of threads in warp which share the same digit and have a lower thread id
-        uint peerBits = bitCount(mask & gl_SubgroupLtMask.x);
+        uint peerBits = subgroupBallotBitCount(mask & gl_SubgroupLtMask);
 
         // lowest rank thread in warp with the same word
-        uint lowestRankPeer = findLSB(mask);
+        uint lowestRankPeer = subgroupBallotFindLSB(mask);
 
         uint exclusiveWarpPrefix;
         // lowest rank thread associated with a given digit is responsible for increment total to shared memory
@@ -122,7 +138,7 @@ void BlockPrefixScan(uint value) {
     // Compute the offset for the warp by summing the totals (I.e. final lane values) for each lower warp
     // It would be possible to calculate the prefix sum once and pushing it to shared memory,
     // but computing it redundantly for each warp saves a shared mem round trip - seems to win on performance
-    uint warpOffset = subgroupAdd(gl_SubgroupInvocationID < gl_SubgroupID ? internalBinOffset[gl_SubgroupInvocationID * 32 + 31] : 0);
+    uint warpOffset = subgroupAdd(gl_SubgroupInvocationID < gl_SubgroupID ? internalBinOffset[gl_SubgroupInvocationID * gl_SubgroupSize + gl_SubgroupSize - 1] : 0);
 
     barrier();
 
@@ -138,7 +154,7 @@ void main() {
     }
     if(gl_LocalInvocationIndex < 256) {        
         // Clear shared offsets
-        for(int i =0; i<NUM_WARPS; i++)
+        for(int i =0; i< TRUE_NUM_WARPS; i++)
             histogramShared[gl_LocalInvocationIndex+i*256] = 0;
     }
     
@@ -149,7 +165,7 @@ void main() {
 
     KEY_TYPE keys[KEYS_PER_THREAD];
     for(uint i =0; i<KEYS_PER_THREAD; i++) {        
-        uint keyId = blockId * PARTITION_SIZE + gl_SubgroupID * 32 * KEYS_PER_THREAD + gl_SubgroupInvocationID + i * 32;
+        uint keyId = blockId * PARTITION_SIZE + gl_SubgroupID * gl_SubgroupSize * KEYS_PER_THREAD + gl_SubgroupInvocationID + i * gl_SubgroupSize;
         keys[i] = keyId < totalCount ? inputKeys[keyId] : KEY_TYPE(0xffffffff);
     }
 
@@ -168,7 +184,7 @@ void main() {
         // Prefix sum over warp histograms
         // Each thread performs the prefix sum for the word value corresponding
         // to gl_LocalInvocationIndex
-        for(int subgroup=0; subgroup<NUM_WARPS; subgroup++) {
+        for(int subgroup=0; subgroup< TRUE_NUM_WARPS; subgroup++) {
             uint tmp = histogramShared[subgroup * WORD_SIZE + gl_LocalInvocationIndex];
             histogramShared[subgroup * WORD_SIZE + gl_LocalInvocationIndex] = binTotal;
             binTotal += tmp;

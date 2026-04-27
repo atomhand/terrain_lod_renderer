@@ -9,8 +9,8 @@
 #define FILTER_KEY_OUTPUT_TYPE uint
 #endif
 
-#define WARP_SIZE 32
-#define BLOCK_SIZE NUM_WARPS*WARP_SIZE
+#define MIN_WARP_SIZE 32
+#define BLOCK_SIZE NUM_WARPS*MIN_WARP_SIZE
 #define PARTITION_SIZE BLOCK_SIZE*KEYS_PER_THREAD
 
 layout(local_size_x = BLOCK_SIZE, local_size_y = 1, local_size_z = 1) in;

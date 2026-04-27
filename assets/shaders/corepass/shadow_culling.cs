@@ -30,7 +30,7 @@ layout(binding = 9, std430) readonly buffer lightFrustumPlanesSsbo {
     float lightFrustum[];
 };
 uint KeyId(uint blockId, uint i) {
-    return blockId * PARTITION_SIZE + gl_SubgroupID * 32 * KEYS_PER_THREAD + gl_SubgroupInvocationID + i * 32;
+    return blockId * PARTITION_SIZE + gl_SubgroupID * gl_SubgroupSize * KEYS_PER_THREAD + gl_SubgroupInvocationID + i * gl_SubgroupSize;
 }
 
 bool FrustumAABBTest(mat4 model, vec3 aabbMin, vec3 aabbMax) {
