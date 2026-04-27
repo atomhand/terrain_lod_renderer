@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(GpuProgrammingProject LANGUAGES C CXX)
+project(TerrainRendererProject LANGUAGES C CXX)
 
 set (CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -34,24 +34,24 @@ add_subdirectory("extern/imgui")
 
 add_subdirectory("engine")
 
-add_executable(GpuProgrammingProject
+add_executable(TerrainRendererProject
     src/main.cpp
     src/renderpasses.cpp
     src/terrain.cpp
     src/terrain_geometry.cpp
 )
 
-target_include_directories(GpuProgrammingProject PUBLIC
+target_include_directories(TerrainRendererProject PUBLIC
     engine/include
 )
 
-target_link_libraries(GpuProgrammingProject PRIVATE engine FastNoise)
+target_link_libraries(TerrainRendererProject PRIVATE engine FastNoise)
 
 # Copy asset folder to executing directory
 # TODO - Compress it
 add_custom_command(
-    TARGET GpuProgrammingProject POST_BUILD
+    TARGET TerrainRendererProject POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_SOURCE_DIR}/assets
-        $<TARGET_FILE_DIR:GpuProgrammingProject>/assets
+        $<TARGET_FILE_DIR:TerrainRendererProject>/assets
 )
