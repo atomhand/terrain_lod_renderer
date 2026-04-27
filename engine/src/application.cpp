@@ -16,7 +16,6 @@
 
 static Engine::Input* input;
 
-static float numInput = -1.0;
 static double lastFrameTime;
 
 // for imgui
@@ -104,36 +103,10 @@ void Engine::Application::passInputs(World& world) {
 		secsSinceAvg = 0.0;
 		framesSinceAvg = 0;
 	}
-
-	if(numInput >= 0.0) {
-		world.input.animSpeed = numInput;
-		numInput = -1.0;
-	}
 }
 
 void Engine::Application::keyCallback(GLFWwindow* window, int k, int s, int action, int mods)
 {
-	if (k == GLFW_KEY_1 && action == GLFW_PRESS)
-		numInput = 1.0;
-	if (k == GLFW_KEY_2 && action == GLFW_PRESS)
-		numInput = 2.0;
-	if (k == GLFW_KEY_3 && action == GLFW_PRESS)
-		numInput = 3.0;
-	if (k == GLFW_KEY_4 && action == GLFW_PRESS)
-		numInput = 4.0;
-	if (k == GLFW_KEY_5 && action == GLFW_PRESS)
-		numInput = 5.0;
-	if (k == GLFW_KEY_6 && action == GLFW_PRESS)
-		numInput = 6.0;
-	if (k == GLFW_KEY_7 && action == GLFW_PRESS)
-		numInput = 7.0;
-	if (k == GLFW_KEY_8 && action == GLFW_PRESS)
-		numInput = 8.0;
-	if (k == GLFW_KEY_9 && action == GLFW_PRESS)
-		numInput = 9.0;
-	if (k == GLFW_KEY_0 && action == GLFW_PRESS)
-		numInput = 0.0;
-
 	if (k == GLFW_KEY_F && action == GLFW_PRESS)
 		input->flyCamera = !input->flyCamera;
 
@@ -143,30 +116,26 @@ void Engine::Application::keyCallback(GLFWwindow* window, int k, int s, int acti
 	if (k == GLFW_KEY_M && action == GLFW_PRESS)
 		input->shadowTestingMode = (input->shadowTestingMode+1)%3;
 
-	if (k == GLFW_KEY_L && action == GLFW_PRESS)
-		input->viewDistanceParam = (input->viewDistanceParam+1)%3;
 	if (k == GLFW_KEY_G && action == GLFW_PRESS)
 		input->drawFog = !input->drawFog;
 	if (k == GLFW_KEY_T && action == GLFW_PRESS)
 		input->noClip = !input->noClip;
-	if (k == GLFW_KEY_C && action == GLFW_PRESS) {
-		input->drawAABBs = !input->drawAABBs;
-		input->wireFrame = input->drawAABBs;
-	}
+	if (k == GLFW_KEY_C && action == GLFW_PRESS)
+			input->wireFrame = !input->wireFrame;
 	if (k == GLFW_KEY_B && action == GLFW_PRESS) 
 		input->stochasticBlending = !input->stochasticBlending;
 	if (k == GLFW_KEY_U && action == GLFW_PRESS)
 		input->previewCascades = !input->previewCascades;
 
 	if (k == GLFW_KEY_N && action == GLFW_PRESS)
-		input->previewNormalsMode = (input->previewNormalsMode+1)%4;
+		input->previewNormalsMode = !input->previewNormalsMode;
 	if (k == GLFW_KEY_P && action == GLFW_PRESS)
 	{		
 		input->profilerWindow = !input->profilerWindow;
 	}
 
 	if(k == GLFW_KEY_H && action == GLFW_PRESS) {
-		input->testFlythrough = true;
+		input->testFlythrough = !input->testFlythrough;
 	}
 
 	if (k == GLFW_KEY_V && action == GLFW_PRESS)

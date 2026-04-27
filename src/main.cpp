@@ -21,7 +21,6 @@
 #include "gpu_sort.h"
 #include "gpu_filter.h"
 
-#include "test_gpu_material.h"
 #include "tester.h"
 
 using namespace std;
@@ -31,6 +30,8 @@ Engine::Application app = Engine::Application(1920,1080,title);
 Engine::World world;
 
 // edge length of the terrain (counted in chunks/quadtrees)
+// World is a smaller in debug mode
+// (debug mode runs painfully slow, anything helps) 
 #ifdef DEBUG
 const unsigned int terrainEdgeLength = 3;
 #else
@@ -56,14 +57,8 @@ int main()
 	auto terrainGeometry = TerrainGeometry::Insert(world,terrain_entity,terrainEdgeLength,chunkSize);
 	world.registry.emplace<Terrain>(terrain_entity);
 
-	TestGpuMaterial::Setup(world);
-
 	// Camera
-#ifdef DEBUG
-	FlyCamera::Setup(world, glm::vec3(0.f,128.f,0.f),terrainGeometry.SuggestFarPlane());
-#else
 	FlyCamera::Setup(world, glm::vec3(0.f,128.f,0.f), terrainGeometry.SuggestFarPlane());
-#endif
 
 	// Sun
 	auto &sun = world.registry.emplace<Engine::DirectionalLight>(world.registry.create(), world.input.numCascades);

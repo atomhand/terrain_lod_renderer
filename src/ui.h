@@ -31,14 +31,11 @@ static void DrawConfigWindow(bool* p_open, Engine::World& world) {
             ImGui::EndTabItem();
         }
         if(ImGui::BeginTabItem("Graphics Settings")) {
-            ImGui::Checkbox("Culling", &world.input.enableCulling);
             ImGui::Checkbox("autoexposure", &world.input.applyAutoExposure);
             ImGui::Checkbox("vsync", &world.input.vsync);
-            ImGui::Checkbox("previewChunks", &world.input.previewChunksMode);
 
             ImGui::SeparatorText("Debug");
-
-            ImGui::Checkbox("enableRendering", &world.input.enableRendering);
+            
             ImGui::Checkbox("debugMetaCam", &world.input.debugMetaCam);
             ImGui::Checkbox("drawAABBs", &world.input.drawAABBs);
             ImGui::Checkbox("wireFrame", &world.input.wireFrame);
@@ -48,9 +45,9 @@ static void DrawConfigWindow(bool* p_open, Engine::World& world) {
 
             ImGui::Checkbox("previewCascades", &world.input.previewCascades);
             ImGui::SliderInt("shadowTestingMode", &world.input.shadowTestingMode, 0, 2);
-            ImGui::SliderInt("previewNormalsMode", &world.input.previewNormalsMode, 0, 3);
+            ImGui::Checkbox("Geometry Normals only", &world.input.previewNormalsMode);
             ImGui::SliderInt("numCascades", &world.input.numCascades, 1, 16);
-            ImGui::SliderFloat("lightPssmFactor", &world.input.lightPssmFactor, 0.0f,1.0f);
+            //ImGui::SliderFloat("lightPssmFactor", &world.input.lightPssmFactor, 0.0f,1.0f);
 
             ImGui::SeparatorText("Fog");
             ImGui::Checkbox("drawFog", &world.input.drawFog);
@@ -67,7 +64,6 @@ static void DrawConfigWindow(bool* p_open, Engine::World& world) {
             ImGui::Checkbox("Terrain Generation Calibration", &world.input.terrainCalibrationWindow);
 
             ImGui::SeparatorText("Terrain Rendering");
-            ImGui::SliderInt("viewDistanceParam", &world.input.viewDistanceParam, 0, 2);
             ImGui::Checkbox("stochasticBlending", &world.input.stochasticBlending);
             ImGui::SliderFloat("displacement Scale", &world.input.displacementScale, 0.0, 25.0);
 

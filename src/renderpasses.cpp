@@ -4,7 +4,6 @@
 #include "culling.h"
 #include "light.h"
 #include "water_material.h"
-#include "terrain_material.h"
 #include "profiler.h"
 
 #include "gpu_render.h"
@@ -245,7 +244,7 @@ void RenderPasses::PrepareMain(World& world, Engine::Camera& camera, Engine::Tra
         world.input.heightFogTransitionStart,
         world.input.heightFogTransitionDuration,
         world.input.previewCascades ? 1.0f : 0.0f,
-        float(world.input.previewNormalsMode),
+        world.input.previewNormalsMode ? 1.0f : 0.0f,
         world.input.previewChunksMode ? 1.0f : 0.0f,
         float(world.input.stochasticBlending),
         float(world.input.applyAutoExposure),

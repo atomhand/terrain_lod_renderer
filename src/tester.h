@@ -76,7 +76,6 @@ public:
                 world.input.flyCamera = true;                
                 world.input.enableGpuProfiling = false;
                 world.input.vsync = false;
-                world.input.viewDistanceParam = 4;
                 world.input.previewTriangleDensity = false;
 
                 world.input.computeTerrain = true;

@@ -1,6 +1,8 @@
 #ifndef FASTNOISE_GPU_GLSL
 #define FASTNOISE_GPU_GLSL
 
+// GPU implementation of the FastNoise2 2D perlin noise function
+
 /*
 MIT License
 

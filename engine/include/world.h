@@ -19,8 +19,6 @@ namespace Engine {
         float scrollDelta;
 
         glm::vec2 keyAxisDelta;
-
-        float animSpeed = 3.0;
         
         float deltaTime;
         bool vsync = true;
@@ -45,11 +43,10 @@ namespace Engine {
         bool wireFrame = false;
         bool previewTriangleDensity = false;
         bool drawAABBs = false;
-        int previewNormalsMode = 0;
+        bool previewNormalsMode = false;
         bool previewChunksMode = false;
 
         // Main render config
-        bool enableCulling = true;
         bool applyAutoExposure = true;
 
         // debug lights
@@ -76,8 +73,6 @@ namespace Engine {
 
 
         bool drawShadows() { return shadowTestingMode != 2; }
-
-        int viewDistanceParam = 0;
     };
 
     class World {
@@ -95,7 +90,7 @@ namespace Engine {
 
         // 
         float animDeltaTime() {
-            return input.deltaTime * input.animSpeed * 0.2f;
+            return input.deltaTime;
         }
     };
 }
