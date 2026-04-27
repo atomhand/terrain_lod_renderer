@@ -24,6 +24,7 @@ namespace Engine {
         bool vsync = true;
 
         bool testFlythrough = false;
+        bool takeEvaluationScreenshots;
 
         // Windows
         bool terrainGeometryDebug = false;

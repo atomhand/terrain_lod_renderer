@@ -69,7 +69,7 @@ int main()
 	while(!app.shouldClose()) {
 		app.frameStart(world);
 
-		Tester::Update(world);
+		Tester::Update(world,app);
 		FlyCamera::Update(world);
 
 		Engine::UpdateCameraSystem(world);

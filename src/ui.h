@@ -27,6 +27,7 @@ static void DrawConfigWindow(bool* p_open, Engine::World& world) {
             if(ImGui::Button("Test Flythrough")) {
                 world.input.testFlythrough = true;
             }
+            ImGui::Checkbox("Take evaluation screenshots", &world.input.takeEvaluationScreenshots);
 
             ImGui::EndTabItem();
         }

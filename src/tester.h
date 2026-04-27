@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 
+#include "application.h"
 #include "world.h"
 #include "asset_helper.h"
 
@@ -38,6 +39,7 @@ class Tester {
 public:
     static inline const int PART_FRAMES = 450;
     static inline const int MAX_FRAMES = PART_FRAMES*4;
+    static inline const int SCREENSHOT_INTERVAL = 100;
 
     int currentFrame;
     std::chrono::time_point<std::chrono::steady_clock> start;
@@ -46,10 +48,10 @@ public:
     int currentEvaluationConfig = 0;
 
     static inline std::vector<const char*> configNames = {
-        "GPU terrain",
-        "GPU terrain (geometry only)",
-        "CPU terrain",
-        "CPU terrain (geometry only)"
+        "GPU-terrain",
+        "GPU-terrain (geometry only)",
+        "CPU-terrain",
+        "CPU-terrain (geometry only)"
     };
 
     static inline std::vector<const char*> phaseNames = {
@@ -59,7 +61,7 @@ public:
         "Zoom out"
     };
 
-    static void Update(World& world) {
+    static void Update(World& world, Engine::Application& app) {
         using namespace std::literals;
 
         auto testerView = world.registry.view<Tester>();
@@ -83,6 +85,13 @@ public:
                 Tester& tester = testerView.get<Tester>(testerEnt);
                 tester.currentFrame += 1;
                 tester.frameTimes[tester.currentEvaluationConfig].push_back(world.input.deltaTime * 1000.f);
+
+                if(world.input.takeEvaluationScreenshots
+                    && (tester.currentEvaluationConfig == 0 || tester.currentEvaluationConfig == 2) 
+                    && tester.currentFrame % SCREENSHOT_INTERVAL == 30) {
+                        std::string path_name = std::string(configNames[tester.currentEvaluationConfig]) + std::string("_Frame") + std::to_string(tester.currentFrame) + std::string(".png");
+                        app.SaveScreenshot(path_name.c_str());
+                    }
 
                 if(tester.currentFrame == MAX_FRAMES) {
                     auto end = std::chrono::steady_clock::now();
